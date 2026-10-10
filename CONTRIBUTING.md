@@ -33,9 +33,13 @@ npm run dev         # the editor on http://localhost:8787/
 | `packages/interop` | Lottie and SVG export, Lottie import |
 | `packages/project` | Project format and `.tramme` archives |
 | `packages/assistant` | The assistant's models, prompt and tools |
+| `packages/plugin` | The types of a plugin (nodes, effects, tools…) and `definePlugin()`, for completion and checks while writing one |
+| `packages/api` | The `/api` routes wherever they run: storage over any bucket (R2, IndexedDB), providers reached with the user's keys |
 | `packages/cli` | Command line: offline rendering, exports, local companion |
 | `apps/editor` | The web editor (Preact) |
 | `apps/worker` | The Cloudflare Worker: serves the editor, projects in R2, assistant relay |
+| `apps/desktop` | The native app (Tauri 2): one window on the editor, the `/api` storage answered from the local folders in Rust |
+| `apps/site` | The project's site (Astro, static): the landing page and the docs under `/docs/` (Starlight, made from `docs/` and the README: `src/lib/docs.ts`) |
 
 The document format is described in [docs/document.md](docs/document.md), the project format in [docs/project.md](docs/project.md).
 

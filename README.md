@@ -17,7 +17,7 @@ Node 22.18 or newer. Chrome for command-line renders.
 
 ```sh
 npm install
-npm test                      # 72 tests (core, sequences, modifiers, operations, validation, interop, project format, Worker, assistant)
+npm test                      # the engine, the operations, the format, the interop, the editor's logic, the Worker, the API and the desktop storage
 npm run typecheck
 
 npm run dev                   # the editor on http://localhost:8787/ (local Worker, projects in .wrangler/state)
@@ -37,7 +37,7 @@ then paste the token it prints in the editor (Assistant, settings). See [The ass
 
 ## The desktop app
 
-The same editor in a native window ([Tauri 2](https://v2.tauri.app/), Windows): `npm run desktop:dev`. A custom protocol serves the built editor and its `/api` routes from Rust, so the editor runs unmodified and its projects live in folders (`Documents/Tramme` by default, changed in the settings), without a server. Videos over 95 MB are sent in parts like on the web, a `.tramme` double-clicked in the file explorer opens in the running window, and the storage passes the same contract suite as R2 and the browser. The assistant's providers are not wired yet (the companion `tramme agent` already works from the app, with its origin: `npm run tramme -- agent --origin http://tramme.localhost`); the whole picture, and what comes next, in [docs/desktop-and-mobile-apps.md](docs/desktop-and-mobile-apps.md).
+The same editor in a native window ([Tauri 2](https://v2.tauri.app/); Windows, macOS and Linux, unsigned installers): `npm run desktop:dev`. A custom protocol serves the built editor and its `/api` routes from Rust, so the editor runs unmodified and its projects live in folders (`Documents/Tramme` by default, changed in the settings), without a server. Videos over 95 MB are sent in parts like on the web, a `.tramme` double-clicked in the file explorer opens in the running window, and the storage passes the same contract suite as R2 and the browser. The assistant works without a server too: the provider keys live in the system keychain, the provider routes run in the page and their requests leave through Rust (transcription included, with the OpenAI key); the companion `tramme agent` also works from the app, with its origin (`npm run tramme -- agent --origin http://tramme.localhost`). The whole picture, and what comes next, in [docs/desktop-and-mobile-apps.md](docs/desktop-and-mobile-apps.md).
 
 ## Deploying
 
@@ -80,11 +80,12 @@ apps/
   site/      the project's site (Astro, static, light and dark): the landing page (no engine on the page; the examples as videos in src/videos, placeholders until they are there) and the docs under /docs/ (Starlight, made from docs/ and this README: src/lib/docs.ts)
 packages/
   core/      document, properties, keyframes, expressions, modifiers, evaluation, operations, validation
-  nodes/     built-in nodes: shapes, path, image, text, counter, event tag and receipt, callout, group, composition, particles, shader, code, sound; effects
+  nodes/     built-in nodes: shapes, path, image, sequence (drawn animation), video, text, captions, counter, event tag and receipt, callout, group, composition, particles, shader, follow, code, sound; effects
   render/    rendering: Canvas2D backend, WebGL2 compositor (motion blur, linear color, finishing), assets
   interop/   Lottie and SVG export, Lottie import (browser and Node)
   project/   the tramme-project/1 project format: manifest, allowed paths, checks, .tramme archive
   assistant/ what the assistant can do: models, prompt, tools (shared by the editor and the companion)
+  plugin/    the types of a plugin (nodes, effects, tools…) and definePlugin(), for completion and checks while writing one
   api/       the /api routes wherever they run: storage over any bucket (R2, IndexedDB), providers reached with the user's keys
   cli/       command line: offline renders (headless Chrome + ffmpeg), exports, project format, companion
 examples/
@@ -159,7 +160,7 @@ Transcription runs first on the Worker (Workers AI, Whisper large v3 turbo), oth
 - Lottie: a single weight per text, no finishing effects, no motion blur, no nodes drawn by code. SVG: the same, as a still image.
 - Browser export: no ProRes (the CLI does it); GIF is computed frame by frame, slow at large sizes.
 - A single user, no accounts: access is controlled by Cloudflare Access. Files of 95 MB at most (the Workers request limit), except sounds and videos uploaded in parts (4 GiB).
-- Video: the browser must be able to decode the codec (H.264, VP9, AV1 depending on the case; no ProRes). No crossfade between takes or automatic reframing on the face yet. No image generation: dressing only uses engine layers.
+- Video: the browser must be able to decode the codec (H.264, VP9, AV1 depending on the case; no ProRes). No crossfade between takes; automatic reframing on the subject (the biggest person, from a subjects analysis) happens in shorts only, not in the editor.
 - Drawn animation: no brush or onion skin in the editor yet (drawings come from a drawing app), and no bone or mesh deformation. Each loaded drawing takes its own memory: prefer drawings at the size you need.
 - Editor: path points and the anchor cannot be manipulated in the viewport yet (inspector only); no lasso selection of keyframes. With a finger, the keyframe menu (curve, delete) is not reachable yet: it opens with a right click.
 
