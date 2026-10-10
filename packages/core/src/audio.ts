@@ -44,6 +44,11 @@ export interface AudioClip {
   /** the low cut over time when it is animated (a build thinning the music out): [composition time, Hz] */
   lowCutCurve: [number, number][] | null;
   highCut: number;
+  /** the equaliser, dB (0 as recorded): a shelf under 120 Hz, a bell around eqMidFreq, a shelf over 8 kHz */
+  eqLow: number;
+  eqMid: number;
+  eqMidFreq: number;
+  eqHigh: number;
   /** share of reverb, 0 (dry) to 1 */
   reverb: number;
 }
@@ -107,6 +112,10 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
       lowCut: Math.max(0, lowCutCurve ? lowCutCurve[0][1] : num(staticValue(props.lowCut), 0)),
       lowCutCurve,
       highCut: Math.max(0, num(staticValue(props.highCut), 0)),
+      eqLow: clamp(num(staticValue(props.eqLow), 0), -24, 12),
+      eqMid: clamp(num(staticValue(props.eqMid), 0), -24, 12),
+      eqMidFreq: clamp(num(staticValue(props.eqMidFreq), 1000), 200, 8000),
+      eqHigh: clamp(num(staticValue(props.eqHigh), 0), -24, 12),
       reverb: clamp(num(staticValue(props.reverb), 0), 0, 1),
     });
   }

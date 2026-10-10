@@ -86,6 +86,10 @@ export function clipChain(ctx: BaseAudioContext, clip: AudioClip, out: AudioNode
     stages.push(f);
   }
   if (clip.highCut > 0) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = clip.highCut; stages.push(f); }
+  // the equaliser: one biquad per band set, nothing at 0 dB (an uneq'd clip builds the same chain as before)
+  if (clip.eqLow !== 0) { const f = ctx.createBiquadFilter(); f.type = 'lowshelf'; f.frequency.value = 120; f.gain.value = clip.eqLow; stages.push(f); }
+  if (clip.eqMid !== 0) { const f = ctx.createBiquadFilter(); f.type = 'peaking'; f.frequency.value = clip.eqMidFreq; f.Q.value = 0.9; f.gain.value = clip.eqMid; stages.push(f); }
+  if (clip.eqHigh !== 0) { const f = ctx.createBiquadFilter(); f.type = 'highshelf'; f.frequency.value = 8000; f.gain.value = clip.eqHigh; stages.push(f); }
   const gain = ctx.createGain();
   stages.push(gain);
   stages.reduce((a, b) => a.connect(b));

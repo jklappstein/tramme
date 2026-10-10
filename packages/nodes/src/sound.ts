@@ -12,6 +12,10 @@ export const SOUND_PROPS: PropSchema = {
   fadeOut: { type: 'number', default: 0, min: 0, step: 0.05, unit: 's', label: 'Fade out', group, animatable: false },
   lowCut: { type: 'number', default: 0, min: 0, max: 20000, step: 10, label: 'Low cut', group, description: 'Hz: removes the sound under it (rumble, a thinner sound); 0 for none; animate it to thin a music out before a hit (a build)' },
   highCut: { type: 'number', default: 0, min: 0, max: 20000, step: 100, label: 'High cut', group, animatable: false, description: 'Hz: removes the sound over it (muffled, far away); 0 for none' },
+  eqLow: { type: 'number', default: 0, min: -24, max: 12, step: 0.5, unit: 'dB', label: 'Low', group, animatable: false, description: 'warms the bass, or thins it out (a voice\'s rumble lives there); 0 leaves it as recorded' },
+  eqMid: { type: 'number', default: 0, min: -24, max: 12, step: 0.5, unit: 'dB', label: 'Mid', group, animatable: false, description: 'pushes or dips the ear\'s band around the mid frequency: presence, or a nasality tamed' },
+  eqMidFreq: { type: 'number', default: 1000, min: 200, max: 8000, step: 50, label: 'Mid at', group, animatable: false, description: 'Hz: where the mid bell acts' },
+  eqHigh: { type: 'number', default: 0, min: -24, max: 12, step: 0.5, unit: 'dB', label: 'High', group, animatable: false, description: 'air and brightness over, or the hiss tamed under; 0 leaves it as recorded' },
   reverb: { type: 'number', default: 0, min: 0, max: 1, step: 0.05, label: 'Reverb', group, animatable: false, description: 'share of room sound, 0 (dry) to 1' },
 };
 

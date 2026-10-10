@@ -75,7 +75,7 @@ Shared with the plugins roadmap (step 10, audio processing).
 - [x] The master brought to the composition's loudness (`sound.loudness`, -14 LUFS by default, BS.1770) with a look-ahead true-peak limiter at -1 dBTP, in every export; the preview applies the same gain, measured ahead, and a limiter.
 - [x] `mix` tool: each effect's gain set against the bed band by band (a support sound 3.5 dB over it in its easiest band, a hero 5 dB in its main one), capped in the bright band and under the bed's peaks, a sound crowding the one before brought down, one sound kept within 2 dB of itself.
 - [x] A hero stacked (`sfx` with `sound: "a+b"`, peaks aligned, each 4 dB under), the bed stopping before it (`stop`) and thinning out into it (`build`, an animated `lowCut`).
-- [ ] Equaliser bands beyond the two cuts; pitch matched to the music's key.
+- [x] Equaliser bands beyond the two cuts: `eqLow` (shelf at 120 Hz), `eqMid` (bell at `eqMidFreq`, 200–8000 Hz, Q 0.9) and `eqHigh` (shelf at 8 kHz), in dB on every sound layer and the sound of videos, one biquad per band set in the one mixer. Pitch matched to the music's key: still open.
 
 ### Step 8. Made by providers
 

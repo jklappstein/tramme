@@ -1387,7 +1387,11 @@
     "Kind": "Genre",
     "Layers": "Calques",
     "Length (s)": "Durée (s)",
+    "Low": "Graves",
     "Low cut": "Coupe-bas",
+    "Mid": "Médiums",
+    "Mid at": "Médium à",
+    "High": "Aigus",
     "On": "Sur",
     "Prompt": "Consigne",
     "Provider": "Fournisseur",
@@ -1644,7 +1648,11 @@
     "what it sounds like, as a sound designer would tag it: \"wood tap\", \"paper swish\", \"deep boom\"": "ce à quoi il ressemble, comme un sound designer l'étiquetterait : « wood tap », « paper swish », « deep boom »",
     "impact, whoosh, riser, click, tap, pop, thump, boom, chime, ambience…: how it is judged and found later": "impact, whoosh, riser, click, tap, pop, thump, boom, chime, ambience… : comment il est jugé et retrouvé ensuite",
     "How many": "Combien",
-    "4 by default": "4 par défaut"
+    "4 by default": "4 par défaut",
+    "Hz: where the mid bell acts": "Hz : là où agit le cloche des médiums",
+    "warms the bass, or thins it out (a voice's rumble lives there); 0 leaves it as recorded": "réchauffe les graves, ou les affine (la rumeur d'une voix vit là) ; 0 laisse tel qu'enregistré",
+    "pushes or dips the ear's band around the mid frequency: presence, or a nasality tamed": "pousse ou creuse la bande de l'oreille autour de la fréquence des médiums : de la présence, une nasalité calmée",
+    "air and brightness over, or the hiss tamed under; 0 leaves it as recorded": "de l'air et de la brillance au-dessus, le sifflement contenu en dessous ; 0 laisse tel qu'enregistré"
   },
   "personal": {
     "cannotStart": "tramme ne peut pas démarrer ici",

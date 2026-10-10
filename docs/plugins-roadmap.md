@@ -141,7 +141,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 - [x] `@tramme/plugin` (`packages/plugin`): every type a plugin exports and `definePlugin()`.
 - [x] A library of plugins shared between projects (`/api/library` in the Worker, R2 `library/plugins/`); tools `library-add` and `library-use` (assistant and `/` menu); a plugin is copied into the project when used, so archives stay self-contained.
 - [ ] Isolation of untrusted plugins (worker with OffscreenCanvas) for projects from unknown sources.
-- [x] Audio processing (gain curves, fades, low and high cut, reverb, speed) with one mixer for the preview and every export ([sound-roadmap.md](sound-roadmap.md), step 7); equaliser bands and a compressor left.
+- [x] Audio processing (gain curves, fades, low and high cut, equaliser in three bands, reverb, speed) with one mixer for the preview and every export ([sound-roadmap.md](sound-roadmap.md), step 7); a compressor left.
 
 ## Flagship results and what they need
 
