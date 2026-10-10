@@ -12,6 +12,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 - Importing a `.tramme` project that carries code — plugins, or expressions — now asks first, listing what it would run (the plugins with their file and size, the expressions with where they are). Nothing runs before the yes, and a refusal writes nothing. The shipped examples skip the question.
 - With a finger, a long press opens the same menus as a right click: a keyframe's curve and delete, the layers, the compositions, the assets, the tokens and the project cards. A press held still never moves a key or a layer.
+- Dragging over the timeline's tracks or the curve editor's background draws a lasso that selects the keyframes it covers, across layers and properties. Shift adds to the selection, Ctrl/Cmd flips it, and a selected group moves in one undo entry. With a finger the drag still scrolls.
 
 ## [0.4.0] - 2026-10-10
 

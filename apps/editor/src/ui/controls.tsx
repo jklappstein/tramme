@@ -48,6 +48,23 @@ export function longPress(e: { pointerType: string; clientX: number; clientY: nu
   return stop;
 }
 
+// ── lasso selection ──────────────────────────────────────────
+export interface Band { l: number; r: number; t: number; b: number }
+
+/**
+ * The rectangle of a drag between two points, in viewport coordinates, and
+ * the ids (a data- attribute) of the elements it touches — the lasso's
+ * intersection, shared by the timeline's tracks and the curve editor.
+ */
+export function bandOf(el: Element, from: { clientX: number; clientY: number }, to: { clientX: number; clientY: number }, query: string, attr: string): { band: Band; ids: string[] } {
+  const band: Band = { l: Math.min(from.clientX, to.clientX), r: Math.max(from.clientX, to.clientX), t: Math.min(from.clientY, to.clientY), b: Math.max(from.clientY, to.clientY) };
+  const ids = [...el.querySelectorAll<HTMLElement>(query)].filter((n) => {
+    const b = n.getBoundingClientRect();
+    return b.right >= band.l && b.left <= band.r && b.bottom >= band.t && b.top <= band.b;
+  }).map((n) => n.getAttribute(attr)!);
+  return { band, ids };
+}
+
 export function MenuHost() {
   const m = menuState.value;
   const ref = useRef<HTMLDivElement>(null);

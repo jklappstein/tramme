@@ -9,6 +9,7 @@ import { Evaluator, getAt, modsOf, resolveTokens, sampleKeyframes, type Bezier, 
 import { comp, commit, draft, cancelDraft, S, setTime, viewDoc, uiTime } from '../state.ts';
 import { assetData } from '../preview.ts';
 import { animatedProps, keysOf, layerName, propPath, rulerLabel, snap, timecode } from '../model.ts';
+import { bandOf } from './controls.tsx';
 import { Icon } from './icons.tsx';
 import { propLabel } from './Timeline.tsx';
 import { t } from '../i18n/index.ts';
@@ -35,6 +36,7 @@ export function GraphEditor() {
   const c = comp.value, doc = viewDoc.value, now = uiTime.value, compId = S.compId.value;
   const host = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 600, h: 240 });
+  const [band, setBand] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   useLayoutEffect(() => {
     const ro = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }));
     ro.observe(host.current!);
@@ -111,7 +113,7 @@ export function GraphEditor() {
       const tt = ta + ((tb - ta) * i) / n;
       const f = finalValue(ch, tt);
       if (!Number.isFinite(f)) return '';
-      d += `${i ? 'W' : 'M'}${X(tt).toFixed(1)},${Y(norm(ch, f)).toFixed(1)}`;
+      d += `${i ? 'L' : 'M'}${X(tt).toFixed(1)},${Y(norm(ch, f)).toFixed(1)}`;
     }
     return d;
   };
@@ -121,7 +123,7 @@ export function GraphEditor() {
     for (let i = 0; i <= n; i++) {
       const tt = ta + ((tb - ta) * i) / n;
       const v = norm(ch, num(sampleKeyframes(ch.type, ch.keys, tt, doc.tokens), ch.comp));
-      d += `${i ? 'W' : 'M'}${X(tt).toFixed(1)},${Y(v).toFixed(1)}`;
+      d += `${i ? 'L' : 'M'}${X(tt).toFixed(1)},${Y(v).toFixed(1)}`;
     }
     return d;
   };
@@ -129,6 +131,36 @@ export function GraphEditor() {
   // ── edits ──────────────────────────────────────────────────
   const keysPath = (ch: Channel) => `${propPath(compId, ch.layer, ch.prop)}/$k`;
   const rawKeys = (ch: Channel) => keysOf(getAt(S.doc.peek(), propPath(compId, ch.layer, ch.prop))) ?? ch.keys;
+
+  /** a lasso over the background selects the keys it touches (Shift: added, Ctrl/Cmd: flipped); a click sets the time */
+  const bgDown = (e: PointerEvent) => {
+    if (e.target !== e.currentTarget || e.button !== 0 || e.pointerType === 'touch') return;
+    const el = e.currentTarget as SVGElement;
+    const svg = el.getBoundingClientRect();
+    const x0 = e.clientX, y0 = e.clientY, adding = e.shiftKey, toggling = e.ctrlKey || e.metaKey;
+    const base = adding || toggling ? S.keys.peek() : [];
+    const picked = (ids: string[]) => {
+      const out = new Set(base);
+      for (const id of ids) toggling && out.has(id) ? out.delete(id) : out.add(id);
+      return [...out];
+    };
+    let banding = false;
+    const move = (ev: PointerEvent) => {
+      if (!banding && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
+      banding = true;
+      const { band, ids } = bandOf(el, { clientX: x0, clientY: y0 }, ev, 'rect.key[data-key]', 'data-key');
+      S.keys.value = picked(ids);
+      setBand({ x: band.l - svg.left, y: band.t - svg.top, w: band.r - band.l, h: band.b - band.t });
+    };
+    const up = (ev: PointerEvent) => {
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up);
+      setBand(null);
+      if (banding) return;
+      S.keys.value = [];
+      setTime(snap(Tm(ev.clientX - svg.left), c.fps));
+    };
+    addEventListener('pointermove', move); addEventListener('pointerup', up);
+  };
 
   const dragKey = (e: PointerEvent, ch: Channel, i: number) => {
     e.stopPropagation();
@@ -207,7 +239,8 @@ export function GraphEditor() {
         <div class="empty" style={{ height: '100%' }}><Icon name="curve" />{t('curves.selectAnAnimatedLayer')}</div>
       ) : (
         <>
-          <svg onPointerDown={(e) => { if (e.target === e.currentTarget) { S.keys.value = []; const r = (e.currentTarget as SVGElement).getBoundingClientRect(); setTime(snap(Tm(e.clientX - r.left), c.fps)); } }}>
+          <svg onPointerDown={bgDown}>
+            {band && <rect class="lasso" x={band.x} y={band.y} width={band.w} height={band.h} />}
             {Array.from({ length: Math.floor((tb - ta) / tStep) + 2 }, (_, i) => Math.ceil(ta / tStep) * tStep + i * tStep).filter((x) => x <= tb).map((x) => (
               <g key={`t${x}`}><line class="grid" x1={X(x)} y1={padT} x2={X(x)} y2={H - padB} /><text class="glabel" x={X(x) + 3} y={H - 7}>{rulerLabel(x, c.fps)}</text></g>
             ))}
@@ -236,13 +269,13 @@ export function GraphEditor() {
               })() : null;
               return <g key={`${ch.id}.${i}`}>
                 {handles}
-                <rect class={`key${selKeys.has(kid) ? ' selected' : ''}`} x={x - 4.5} y={y - 4.5} width={9} height={9} transform={`rotate(45 ${x} ${y})`}
+                <rect class={`key${selKeys.has(kid) ? ' selected' : ''}`} data-key={kid} x={x - 4.5} y={y - 4.5} width={9} height={9} transform={`rotate(45 ${x} ${y})`}
                   onPointerDown={(e) => dragKey(e as unknown as PointerEvent, ch, i)} onDblClick={() => setTime(k.t)}>
                   <title>{`${timecode(k.t, c.fps)} · ${JSON.stringify(k.v)}`}</title>
                 </rect>
               </g>;
             }))}
-            <line x1={X(now)} y1={0} x2={X(now)} y2={H} stroke="var(--danger)" stroke-width={1} />
+            <line class="playhead" x1={X(now)} y1={0} x2={X(now)} y2={H} stroke="var(--danger)" stroke-width={1} />
           </svg>
           <div class="graph-side">
             {channels.map((ch) => (

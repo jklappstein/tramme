@@ -579,6 +579,7 @@ input[type=text].plain, input.plain { background: transparent; border: 0; outlin
 /* where a moved edge snaps, and the band drawn to select */
 .tl-snap { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--key); pointer-events: none; z-index: 3; }
 .tl-band { position: absolute; border: 1px solid var(--accent); background: var(--accent-soft); pointer-events: none; z-index: 3; }
+.graph .lasso { fill: var(--accent-soft); stroke: var(--accent); pointer-events: none; }
 .kf { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; transform: rotate(45deg); border-radius: 1.5px; background: var(--key); box-shadow: 0 0 0 1px rgba(0,0,0,.6); cursor: pointer; z-index: 1; }
 .kf.hold { border-radius: 0; background: #d98f2b; }
 .kf.summary { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; background: color-mix(in srgb, var(--key) 80%, #000); pointer-events: none; }
@@ -593,6 +594,8 @@ input[type=text].plain, input.plain { background: transparent; border: 0; outlin
 /* graph editor */
 .graph { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--panel-2); }
 .graph svg { width: 100%; height: 100%; display: block; }
+/* the drawn things stay out of the way of the background's click and lasso */
+.graph .grid, .graph .glabel, .graph .curve, .graph .handle-line, .graph .playhead { pointer-events: none; }
 .graph .curve { fill: none; stroke-width: 1.6; }
 .graph .grid { stroke: var(--line); stroke-width: 1; }
 .graph .grid.zero { stroke: var(--line-strong); }

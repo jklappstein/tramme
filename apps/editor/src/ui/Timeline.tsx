@@ -7,7 +7,7 @@ import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { layerActive, pointer, staticValue, type Composition, type Keyframe, type Layer, type Op } from '@tramme/core';
 import { clickSelect, comp, commit, draft, cancelDraft, S, select, setTime, frameStep, toggleFold, uiTime, viewDoc } from '../state.ts';
 import { animatedProps, flatTree, keysOf, layerName, parentOf, parseTime, propPath, rawProp, rulerLabel, shiftLayerOps, snap, subtree, timecode, topLayers, type TreeItem } from '../model.ts';
-import { longPress, openMenu, useSize } from './controls.tsx';
+import { bandOf, longPress, openMenu, useSize } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
 import { preview } from '../preview.ts';
 import { GraphEditor } from './GraphEditor.tsx';
@@ -138,24 +138,27 @@ export function Timeline() {
     addEventListener('pointermove', move); addEventListener('pointerup', up);
   };
 
-  /** a click in an empty part of the tracks sets the time; a drag draws a band selecting the clips and keyframes it touches (Shift or Ctrl: added to the selection) */
+  /** a click in an empty part of the tracks sets the time; a drag draws a lasso over the clips and keyframes it touches
+   *  (Shift: added to the selection, Ctrl/Cmd: theirs flips). Mouse and pen: a finger keeps scrolling. */
   const emptyDown = (e: PointerEvent) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || e.pointerType === 'touch') return;
     const el = tracks.current!, r = el.getBoundingClientRect();
-    const x0 = e.clientX, y0 = e.clientY, adding = e.shiftKey || e.ctrlKey || e.metaKey;
-    const baseLayers = adding ? S.selection.peek() : [], baseKeys = adding ? S.keys.peek() : [];
+    const x0 = e.clientX, y0 = e.clientY, adding = e.shiftKey, toggling = e.ctrlKey || e.metaKey;
+    const baseLayers = adding || toggling ? S.selection.peek() : [], baseKeys = adding || toggling ? S.keys.peek() : [];
+    const picked = (base: string[], ids: string[]) => {
+      const out = new Set(base);
+      for (const id of ids) toggling && out.has(id) ? out.delete(id) : out.add(id);
+      return [...out];
+    };
     let banding = false;
     const move = (ev: PointerEvent) => {
       if (!banding && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
       banding = true;
-      const a = { l: Math.min(x0, ev.clientX), r: Math.max(x0, ev.clientX), t: Math.min(y0, ev.clientY), b: Math.max(y0, ev.clientY) };
-      setBand({ x: a.l - r.left + el.scrollLeft, y: a.t - r.top + el.scrollTop, w: a.r - a.l, h: a.b - a.t });
-      const touched = (query: string, attr: string) => [...el.querySelectorAll<HTMLElement>(query)].filter((n) => {
-        const b = n.getBoundingClientRect();
-        return b.right >= a.l && b.left <= a.r && b.bottom >= a.t && b.top <= a.b;
-      }).map((n) => n.getAttribute(attr)!);
-      select([...new Set([...baseLayers, ...touched('.clip[data-layer]', 'data-layer')])]);
-      S.keys.value = [...new Set([...baseKeys, ...touched('.kf[data-key]', 'data-key')])];
+      const { band, ids: clips } = bandOf(el, { clientX: x0, clientY: y0 }, ev, '.clip[data-layer]', 'data-layer');
+      const keys = bandOf(el, { clientX: x0, clientY: y0 }, ev, '.kf[data-key]', 'data-key').ids;
+      setBand({ x: band.l - r.left + el.scrollLeft, y: band.t - r.top + el.scrollTop, w: band.r - band.l, h: band.b - band.t });
+      select(picked(baseLayers, clips));
+      S.keys.value = picked(baseKeys, keys);
     };
     const up = (ev: PointerEvent) => {
       removeEventListener('pointermove', move); removeEventListener('pointerup', up);
