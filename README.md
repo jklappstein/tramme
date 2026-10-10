@@ -161,7 +161,7 @@ Transcription runs first on the Worker (Workers AI, Whisper large v3 turbo), oth
 - Browser export: no ProRes (the CLI does it); GIF is computed frame by frame, slow at large sizes.
 - A single user, no accounts: access is controlled by Cloudflare Access. Files of 95 MB at most (the Workers request limit), except sounds and videos uploaded in parts (4 GiB).
 - Video: the browser must be able to decode the codec (H.264, VP9, AV1 depending on the case; no ProRes). No crossfade between takes; automatic reframing on the subject (the biggest person, from a subjects analysis) happens in shorts only, not in the editor.
-- Drawn animation: no brush or onion skin in the editor yet (drawings come from a drawing app), and no bone or mesh deformation. Each loaded drawing takes its own memory: prefer drawings at the size you need.
+- Drawn animation: no brush in the editor yet (drawings come from a drawing app), and no bone or mesh deformation. Each loaded drawing takes its own memory: prefer drawings at the size you need.
 
 ## Contributing
 

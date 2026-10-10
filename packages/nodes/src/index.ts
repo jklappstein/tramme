@@ -26,6 +26,7 @@ export { DEFAULT_SHADER } from './shader.ts';
 export { receiptRows, rowStarts } from './events.ts';
 export { CAP } from './text.ts';
 export { localTime } from './comp.ts';
+export { drawingRect } from './sequence.ts';
 
 /** a registry holding every built-in node, effect and quality check */
 export function builtinRegistry(): Registry {

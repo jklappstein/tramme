@@ -5,7 +5,8 @@
 
 import { signal } from '@preact/signals';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Evaluator, layerActive, propKind, anchorShift, movePathVertex, setPathTangent, insertPathVertex, removePathVertex, nearestOnPath, pathD, type Composition, type TrammeDoc, type EvaluatedLayer, type Handle, type PathValue, type Rect, type Vec2 } from '@tramme/core';
+import { Evaluator, layerActive, propKind, anchorShift, movePathVertex, setPathTangent, insertPathVertex, removePathVertex, nearestOnPath, pathD, localFrame, neighbourDrawings, type Composition, type TrammeDoc, type EvaluatedLayer, type Handle, type PathValue, type Rect, type Vec2 } from '@tramme/core';
+import { drawingRect } from '@tramme/nodes';
 import { localMatrix } from '@tramme/render';
 import { comp, commit, draft, cancelDraft, S, select, viewDoc, previewDoc, toast } from '../state.ts';
 import { decide } from './Assistant.tsx';
@@ -404,10 +405,35 @@ export function Viewport() {
     ...[0.25, 0.5, 1, 2].map((z) => ({ label: `${z * 100} %`, onClick: () => { zoom.value = z; } })),
   ]);
 
+  /** the onion skin of a selected drawn-animation layer: the drawings either side of the current one, tinted, at rest only */
+  const onionSkin = () => {
+    if (!onion || S.playing.value || S.draft.value || !geo) return null;
+    const id = selected[0];
+    if (c.layers[id]?.type !== 'sequence') return null;
+    const p = geo.layer.props as unknown as { frames: string[]; hold: number; sheet: string; loop: 'loop' | 'once' | 'pingpong'; offset: number; drawing: number; size: [number, number]; fit: 'contain' | 'cover' | 'fill' | 'none' };
+    if (!Array.isArray(p.frames) || !p.frames.length) return null;
+    const { prev, next } = neighbourDrawings({ ...p, count: p.frames.length }, localFrame(now, c.layers[id].in ?? 0, c.fps));
+    const side = (di: number, filter: string, key: string) => {
+      if (di < 0) return null;
+      const asset = p.frames[di];
+      const img = assetData(asset) as { width: number; height: number } | undefined;
+      if (!img?.width || !img?.height) return null;
+      let url: string;
+      try { url = preview.renderer!.assets.url(asset); } catch { return null; }
+      const r = drawingRect(p.fit, p.size[0], p.size[1], img.width, img.height);
+      if (!r) return null;
+      return <image key={key} href={url} x={r.x} y={r.y} width={r.w} height={r.h}
+        transform={`matrix(${geo.matrix.a}, ${geo.matrix.b}, ${geo.matrix.c}, ${geo.matrix.d}, ${geo.matrix.e}, ${geo.matrix.f})`}
+        style={{ opacity: 0.4, filter }} />;
+    };
+    // the convention: what came before in red, what comes next in green
+    return <g>{side(prev, 'grayscale(1) sepia(1) hue-rotate(-45deg) saturate(5)', 'p')}{side(next, 'grayscale(1) sepia(1) hue-rotate(60deg) saturate(4)', 'n')}</g>;
+  };
+
   const hoverGeo = hover ? geometry(ev, c, compId, hover, now) : null;
   const pending = S.proposal.value?.status === 'pending' && previewDoc.value;
   const handleR = (coarse ? 11 : 5) / scale;
-  const grid = S.grid.value, safe = S.safe.value;
+  const grid = S.grid.value, safe = S.safe.value, onion = S.onion.value;
 
   return (
     <div class="viewport" data-tour="viewport" ref={host} onWheel={onWheel} onPointerDownCapture={touchDown} onPointerMove={touchMove} onPointerUp={touchUp} onPointerCancel={touchUp} style={{ cursor: spaceDown ? 'grab' : undefined }}>
@@ -416,6 +442,7 @@ export function Viewport() {
         <span class="sep" />
         <button class={`icon-btn sm${safe ? ' on' : ''}`} title={t('viewport.safeZones')} onClick={() => { S.safe.value = !safe; }}><Icon name="safe" /></button>
         <button class={`icon-btn sm${grid ? ' on' : ''}`} title={t('viewport.grid')} onClick={() => { S.grid.value = !grid; }}><Icon name="grid" /></button>
+        <button class={`icon-btn sm${onion ? ' on' : ''}`} title={t('viewport.onionSkin')} onClick={() => { S.onion.value = !onion; }}><Icon name="onion" /></button>
         <span class="sep" />
         <QualityButton />
       </div>
@@ -431,6 +458,7 @@ export function Viewport() {
             <rect class="safe-line" x={z.rect.x} y={z.rect.y} width={z.rect.w} height={z.rect.h} />
             <text class="safe-label" x={z.rect.x + 6 / scale} y={z.rect.y - 6 / scale} style={{ fontSize: 10 / scale }}>{z.label}</text>
           </g>)}
+          {onionSkin()}
           {hoverGeo && <polygon class="gizmo-hover" points={poly(corners(hoverGeo.bounds).map((p) => apply(hoverGeo.matrix, p)))} />}
           {selected.length > 1 && selected.map((id) => { const g = geometry(ev, c, compId, id, now); return g && <polygon key={id} class="gizmo-box" points={poly(corners(g.bounds).map((p) => apply(g.matrix, p)))} />; })}
           {geo && (() => {

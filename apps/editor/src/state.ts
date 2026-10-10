@@ -47,6 +47,8 @@ export const S = {
   keys: signal<string[]>([]),
   safe: signal(false),
   grid: signal(false),
+  /** the onion skin of the selected drawn-animation layer, at rest (display only: never in the document) */
+  onion: signal(false),
   save: signal<'saved' | 'dirty' | 'saving' | 'error'>('saved'),
   version: signal(0),
   renderError: signal<string | null>(null),

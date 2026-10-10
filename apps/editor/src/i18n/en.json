@@ -867,6 +867,7 @@
     "zoomCtrlWheel": "Zoom (Ctrl+wheel)",
     "safeZones": "Safe zones",
     "grid": "Grid",
+    "onionSkin": "Onion skin (previous red, next green, at rest)",
     "loadingAssets": "Loading assets…",
     "proposalPreview": "Proposal preview",
     "proposalHidden": "Proposal hidden",

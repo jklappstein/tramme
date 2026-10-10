@@ -35,15 +35,20 @@ export const sequence: NodeType<SequenceProps> = {
     canvas2d(ctx, p, host) {
       const d = drawingAt({ ...p, count: p.frames.length }, localFrame(host.t, host.layerIn ?? 0, host.fps));
       if (d < 0) return;
-      const [w, h] = p.size;
-      if (w <= 0 || h <= 0) return;
       const img = host.asset<Img>(p.frames[d]);
       const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-      if (!iw || !ih) return;
-      if (p.fit === 'fill') { ctx.drawImage(img, -w / 2, -h / 2, w, h); return; }
-      const s = p.fit === 'cover' ? Math.max(w / iw, h / ih) : p.fit === 'contain' ? Math.min(w / iw, h / ih) : 1;
-      if (p.fit === 'cover') { ctx.beginPath(); ctx.rect(-w / 2, -h / 2, w, h); ctx.clip(); }
-      ctx.drawImage(img, (-iw * s) / 2, (-ih * s) / 2, iw * s, ih * s);
+      const r = drawingRect(p.fit, p.size[0], p.size[1], iw, ih);
+      if (!r) return;
+      if (r.clip) { ctx.beginPath(); ctx.rect(-p.size[0] / 2, -p.size[1] / 2, p.size[0], p.size[1]); ctx.clip(); }
+      ctx.drawImage(img, r.x, r.y, r.w, r.h);
     },
   },
 };
+
+/** where a drawing sits in the layer's frame (local, centred on the origin); null when there is nothing to draw */
+export function drawingRect(fit: 'contain' | 'cover' | 'fill' | 'none', w: number, h: number, iw: number, ih: number): { x: number; y: number; w: number; h: number; clip: boolean } | null {
+  if (w <= 0 || h <= 0 || !iw || !ih) return null;
+  if (fit === 'fill') return { x: -w / 2, y: -h / 2, w, h, clip: false };
+  const s = fit === 'cover' ? Math.max(w / iw, h / ih) : fit === 'contain' ? Math.min(w / iw, h / ih) : 1;
+  return { x: (-iw * s) / 2, y: (-ih * s) / 2, w: iw * s, h: ih * s, clip: fit === 'cover' };
+}

@@ -88,3 +88,23 @@ export function drawingAt(p: SequenceTiming, frame: number): number {
   } else i = ((f % n) + n) % n;
   return list[i];
 }
+
+/**
+ * The nearest drawings distinct from the current one, a frame at a time on
+ * each side (the onion skin's neighbours); -1 when the side has none — the
+ * end of a 'once' loop, or a forced drawing that never changes. A full cycle
+ * at most: the sequence repeats after its sheet's length.
+ */
+export function neighbourDrawings(p: SequenceTiming, frame: number): { prev: number; next: number } {
+  const d = drawingAt(p, frame);
+  if (d < 0) return { prev: -1, next: -1 };
+  const cap = 2 * p.count + 2;
+  const find = (step: 1 | -1) => {
+    for (let k = 1; k <= cap; k++) {
+      const x = drawingAt(p, frame + step * k);
+      if (x >= 0 && x !== d) return x;
+    }
+    return -1;
+  };
+  return { prev: find(-1), next: find(1) };
+}

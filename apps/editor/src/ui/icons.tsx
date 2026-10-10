@@ -9,6 +9,7 @@ const P: Record<string, string> = {
   upload: 'M8 10.5V3M5 6l3-3 3 3M3 10.5v2.5h10v-2.5',
   edit: 'M10.5 3 13 5.5 6 12.5H3.5V10zM9 4.5 11.5 7',
   grid4: 'M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z',
+  onion: 'M4.5 5.5h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1zM9.5 2.5h4a1 1 0 0 1 1 1v4',
   pause: 'M5.5 3.5v9M10.5 3.5v9',
   start: 'M4 3.5v9M12.5 3.5 6.5 8l6 4.5z',
   end: 'M12 3.5v9M3.5 3.5 9.5 8l-6 4.5z',

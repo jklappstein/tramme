@@ -867,6 +867,7 @@
     "zoomCtrlWheel": "Zoom (Ctrl+molette)",
     "safeZones": "Zones sûres",
     "grid": "Grille",
+    "onionSkin": "Pelure d'oignon (le précédent en rouge, le suivant en vert, à l'arrêt)",
     "loadingAssets": "Chargement des assets…",
     "proposalPreview": "Aperçu de la proposition",
     "proposalHidden": "Proposition masquée",

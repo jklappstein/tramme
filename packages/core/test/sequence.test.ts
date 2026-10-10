@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawingAt, exposureSheet, localFrame, sheetIssues, type SequenceTiming } from '../src/index.ts';
+import { drawingAt, exposureSheet, localFrame, neighbourDrawings, sheetIssues, type SequenceTiming } from '../src/index.ts';
 
 const base: SequenceTiming = { count: 4, hold: 2, sheet: '', loop: 'loop', offset: 0, drawing: 0 };
 const run = (p: Partial<SequenceTiming>, frames: number) => Array.from({ length: frames }, (_, f) => drawingAt({ ...base, ...p }, f));
@@ -32,5 +32,19 @@ describe('image sequence', () => {
     // the sub-frames of motion blur (around a frame time) keep that frame's drawing
     expect(localFrame(0.5 + 1 / 24 - 0.3 / 24, 0.5, 24)).toBe(1);
     expect(localFrame(0.5 + 1 / 24 + 0.3 / 24, 0.5, 24)).toBe(1);
+  });
+
+  it('the neighbours of a drawing, for the onion skin', () => {
+    // hold 2: frame 0 sits in drawing 0; looping, what came before is the last drawing
+    expect(neighbourDrawings(base, 0)).toEqual({ prev: 3, next: 1 });
+    // frame 5 sits in drawing 2, held over frames 4 and 5
+    expect(neighbourDrawings(base, 5)).toEqual({ prev: 1, next: 3 });
+    // a sheet with a blank end, played once: nothing after the last drawing (looping would come back to the first)
+    const sheet = { ...base, sheet: '1,2,x', count: 2, hold: 1, loop: 'once' as const };
+    expect(neighbourDrawings(sheet, 1)).toEqual({ prev: 0, next: -1 });
+    // a forced drawing never changes: no neighbour
+    expect(neighbourDrawings({ ...base, drawing: 2 }, 3)).toEqual({ prev: -1, next: -1 });
+    // nothing on screen, no neighbour
+    expect(neighbourDrawings({ ...base, count: 0 }, 0)).toEqual({ prev: -1, next: -1 });
   });
 });

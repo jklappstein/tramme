@@ -14,6 +14,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 - With a finger, a long press opens the same menus as a right click: a keyframe's curve and delete, the layers, the compositions, the assets, the tokens and the project cards. A press held still never moves a key or a layer.
 - Dragging over the timeline's tracks or the curve editor's background draws a lasso that selects the keyframes it covers, across layers and properties. Shift adds to the selection, Ctrl/Cmd flips it, and a selected group moves in one undo entry. With a finger the drag still scrolls.
 - A path's vertices and tangents are manipulable in the viewport, for any node that declares a `path` property: drag a vertex (its tangents follow), drag a tangent with Shift held to keep the two mirrored, Alt+click the stroke to add a vertex, Delete to remove the selected one. An animated path gets a keyframe at the current time. The anchor cross drags too: the layer stays put on screen (the position compensates), Alt moves the anchor alone, and an animated or driven transform refuses with an explanation.
+- An onion skin for drawn animation: with a sequence layer selected, the toolbar's onion button shows the previous drawing in red and the next in green over the picture, following the playhead at rest (hidden while playing or dragging). Never part of the document or the exports.
 
 ## [0.4.0] - 2026-10-10
 
