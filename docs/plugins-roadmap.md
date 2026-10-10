@@ -140,7 +140,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 - [x] `meta` manifest (`name`, `version`, `description`, `api`), the API version checked at load (`PLUGIN_API`): a newer plugin is refused with a clear message.
 - [x] `@tramme/plugin` (`packages/plugin`): every type a plugin exports and `definePlugin()`.
 - [x] A library of plugins shared between projects (`/api/library` in the Worker, R2 `library/plugins/`); tools `library-add` and `library-use` (assistant and `/` menu); a plugin is copied into the project when used, so archives stay self-contained.
-- [ ] Isolation of untrusted plugins (worker with OffscreenCanvas) for projects from unknown sources.
+- [ ] Isolation of untrusted plugins (worker with OffscreenCanvas) for projects from unknown sources — a design note with the options, their costs and a staged recommendation is written ([plugin-isolation.md](plugin-isolation.md)); the code is not moved until the author picks.
 - [x] Audio processing (gain curves, fades, low and high cut, equaliser in three bands, reverb, speed) with one mixer for the preview and every export ([sound-roadmap.md](sound-roadmap.md), step 7); a compressor left.
 
 ## Flagship results and what they need
