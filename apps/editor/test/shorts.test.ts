@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { builtinRegistry } from '@tramme/nodes';
 import { applyOps, validate, type Subjects, type ToolContext, type ToolOutput, type Transcript, type TrammeDoc } from '@tramme/core';
 import { newProject } from '@tramme/project';
-import { candidatesOf, focusTrack, SHORTS_TOOLS } from '../src/shorts.ts';
+import { brandOf, candidatesOf, focusTrack, keywordAt, shortsOf, SHORTS_TOOLS, titleSpan } from '../src/shorts.ts';
 
 const shorts = SHORTS_TOOLS[0];
 const run = (input: unknown, ctx: ToolContext) => shorts.run(input as never, ctx) as Promise<ToolOutput>;
@@ -147,5 +147,68 @@ describe('the shorts tool', () => {
     // the second passage is under 2 s: skipped, only the first stands
     expect(Object.keys(next.compositions).filter((id) => id.startsWith('short-'))).toHaveLength(1);
     expect(out.text).toContain('1 short(s) built');
+  });
+
+  it('lists the built shorts for the batch (export queue, contact sheet)', async () => {
+    const d = doc();
+    const out = await run({ asset: 'talk', plan: [{ from: 2, to: 8, title: 'One thing' }, { from: 8, to: 10, title: 'Another' }] }, ctxOf(d));
+    const next = applyOps(d, out.ops!).doc;
+    expect(shortsOf(next).map((s) => s.name)).toEqual(['One thing', 'Another']);
+    expect(shortsOf(d)).toEqual([]); // the ops are a proposal: the document is untouched
+  });
+});
+
+describe('the hook', () => {
+  it('the title lands no later than the first word and holds to the first sentence, capped', () => {
+    const t = wordsOf([[0.5, 'Everything changed when this happened.'], [3, 'Let me explain how.']]);
+    const span = titleSpan(t);
+    expect(span.at).toBeLessThanOrEqual(0.5);
+    expect(span.at).toBeGreaterThan(0);
+    // the first sentence ends at 0.5 + 5 words' span: held past it, capped at 3.5 s
+    expect(span.duration).toBeGreaterThan(1.2);
+    expect(span.duration).toBeLessThanOrEqual(3.5);
+    // speech already at 0: the title is there from the first frame
+    expect(titleSpan(wordsOf([[0, 'No air before this one.']])).at).toBe(0);
+  });
+
+  it('the keyword pops when it is said, and says so when it is not', async () => {
+    const t = wordsOf([[2, 'This is the big idea and it lands here.']]);
+    expect(keywordAt(t, 'big')).toBeCloseTo(2.9);
+    expect(keywordAt(t, 'idea')).toBeCloseTo(3.2);
+    expect(keywordAt(t, 'silence')).toBeNull();
+    const d = doc();
+    const out = await run({ asset: 'talk', plan: [{ from: 2, to: 10, title: 'The big idea', keyword: 'idea' }] }, ctxOf(d));
+    const next = applyOps(d, out.ops!).doc;
+    expect(validate(next, builtinRegistry())).toEqual([]);
+    const c = next.compositions['short-the-big-idea'];
+    const kw = Object.values(c.layers).find((l) => l.type === 'text' && String(l.name).includes('Keyword'));
+    // said 3.2 s into the file, 2 s into the passage
+    expect(kw?.in).toBeCloseTo(3.2 - 2, 1);
+    // a keyword not said: nothing placed, the answer says it
+    const miss = await run({ asset: 'talk', plan: [{ from: 2, to: 10, title: 'The big idea', keyword: 'elephant' }] }, ctxOf(doc()));
+    expect(miss.text).toContain('not said in their passage');
+    expect(miss.text).toContain('elephant');
+    const c2 = applyOps(doc(), miss.ops!).doc.compositions['short-the-big-idea'];
+    expect(Object.values(c2.layers).filter((l) => l.type === 'text' && String(l.name).includes('Keyword'))).toHaveLength(0);
+  });
+
+  it('the brand brings the progress bar and the end card, and the end card lengthens the short', async () => {
+    const d = doc();
+    d.tokens.plate = { type: 'color', value: '#0B132B' };
+    d.tokens.ink = { type: 'color', value: '#FFFFFF' };
+    expect(brandOf(d)).toEqual({ plate: '#0B132B', ink: '#FFFFFF' });
+    const out = await run({ asset: 'talk', plan: [{ from: 2, to: 10, title: 'Branded' }] }, ctxOf(d));
+    const next = applyOps(d, out.ops!).doc;
+    expect(validate(next, builtinRegistry())).toEqual([]);
+    const c = next.compositions['short-branded'];
+    expect(c.duration).toBeCloseTo(10.5); // 8 s of passage + 2.5 s of card
+    expect(Object.values(c.layers).some((l) => String(l.name).includes('Progress bar'))).toBe(true);
+    expect(Object.values(c.layers).some((l) => String(l.name).includes('End card'))).toBe(true);
+    // no brand: neither appears, and the short keeps the passage's length
+    expect(brandOf(doc())).toBeNull();
+    const plain = applyOps(doc(), (await run({ asset: 'talk', plan: [{ from: 2, to: 10, title: 'Plain' }] }, ctxOf(doc()))).ops!).doc;
+    const pc = plain.compositions['short-plain'];
+    expect(pc.duration).toBeCloseTo(8);
+    expect(Object.values(pc.layers).some((l) => String(l.name).includes('Progress bar'))).toBe(false);
   });
 });

@@ -5,8 +5,9 @@
 // an ordinary composition: editable, checked, exported like any other
 // (docs/shorts-roadmap.md).
 
-import { applyOps, isSubjects, isTranscript, pointer, remapTranscript, transcriptIdOf, type Composition, type Layer, type Op, type Subjects, type ToolContext, type ToolType, type Transcript, type TrammeDoc } from '@tramme/core';
+import { applyOps, isSubjects, isTranscript, pointer, remapTranscript, runChecks, transcriptIdOf, type Composition, type Layer, type Op, type Subjects, type ToolContext, type ToolType, type Transcript, type TrammeDoc } from '@tramme/core';
 import { TEMPLATES } from './templates.ts';
+import { sheetOf } from './review.ts';
 import { clip, freshId, slug } from './model.ts';
 import { t } from './i18n/index.ts';
 
@@ -92,22 +93,53 @@ export function focusTrack(subjects: Subjects, from: number, to: number): { t: n
   return out;
 }
 
+// ── the hook ─────────────────────────────────────────────────
+/** the title's span on the remapped transcript: it lands no later than the first word and holds to the end of the first sentence, capped */
+export function titleSpan(t: Transcript, cap = 3.5): { at: number; duration: number } {
+  const w = t.words[0];
+  if (!w) return { at: 0.2, duration: 2.5 };
+  const at = Math.max(0, +(w.s - 0.15).toFixed(2));
+  const sentence = t.words.find((x) => /[.!?…]$/.test(x.w));
+  const duration = Math.max(1.2, Math.min(cap, +((sentence?.e ?? w.s + 2.5) + 0.4 - at).toFixed(2)));
+  return { at, duration };
+}
+
+const bare = (w: string) => w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+
+/** when the strong word is said (composition time), first occurrence as whole words; null when it is not in the passage */
+export function keywordAt(t: Transcript, keyword: string): number | null {
+  const parts = keyword.trim().toLowerCase().split(/\s+/).map(bare).filter(Boolean);
+  if (!parts.length) return null;
+  for (let i = 0; i + parts.length <= t.words.length; i++) {
+    if (parts.every((p, k) => bare(t.words[i + k].w) === p)) return +t.words[i].s.toFixed(2);
+  }
+  return null;
+}
+
+/** the project's brand, when it has one: the plate and ink tokens a kit brings */
+export function brandOf(doc: TrammeDoc): { plate: string; ink: string } | null {
+  const color = (name: string) => (doc.tokens?.[name]?.type === 'color' ? String(doc.tokens[name].value) : null);
+  const plate = color('plate'), ink = color('ink');
+  return plate && ink ? { plate, ink } : null;
+}
+
 // ── build ────────────────────────────────────────────────────
-interface PlanItem { from: number; to: number; title?: string }
+interface PlanItem { from: number; to: number; title?: string; keyword?: string }
 interface Made { comp: string; title: string; duration: number; framed: boolean }
 
-/** one composition per passage: the video filling the frame, the transcript remapped and captioned, the title on top */
-async function build(ctx: ToolContext, assetId: string, plan: PlanItem[], format: Format): Promise<{ ops: Op[]; made: Made[] }> {
+/** one composition per passage: the video filling the frame, the transcript remapped and captioned, the title, the keyword, the brand's progress bar and end card */
+async function build(ctx: ToolContext, assetId: string, plan: PlanItem[], format: Format): Promise<{ ops: Op[]; made: Made[]; doc: TrammeDoc; missed: { title: string; keyword: string }[] }> {
   const { t: src } = await transcriptOf(ctx, assetId);
   const subjects = await subjectsOf(ctx, assetId);
   const [w, h] = FORMATS[format];
   const fps = ctx.doc.compositions[ctx.compId]?.fps ?? 30;
   const tid = transcriptIdOf(assetId);
+  const brand = brandOf(ctx.doc);
   const taken: Record<string, unknown> = { ...ctx.doc.compositions };
-  const ops: Op[] = [], made: Made[] = [];
+  const ops: Op[] = [], made: Made[] = [], missed: { title: string; keyword: string }[] = [];
   let doc: TrammeDoc = ctx.doc;
   for (let n = 1; n <= plan.length; n++) {
-    const { from, to, title } = plan[n - 1];
+    const { from, to, title, keyword } = plan[n - 1];
     const lo = Math.max(0, Number(from) || 0), hi = Math.min(src.duration, Number(to) || 0), dur = hi - lo;
     if (!(dur >= 2)) continue;
     const cs = (title ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
@@ -116,8 +148,9 @@ async function build(ctx: ToolContext, assetId: string, plan: PlanItem[], format
     const name = title ?? `Short ${n}`;
     const vid = freshId({ footage: 1 }, 'footage');
     const track = subjects ? focusTrack(subjects, lo, hi) : [];
+    const card = brand ? 2.5 : 0;
     const video: Layer = { type: 'video', name, in: 0, out: +dur.toFixed(3), transform: { position: [w / 2, h / 2] }, props: { video: assetId, start: +lo.toFixed(3), size: [w, h], fit: 'cover', ...(track.length ? { focus: { $k: track.map(({ t, v }) => ({ t: +(t - lo).toFixed(3), v })) } } : {}) } };
-    const comp: Composition = { name, width: w, height: h, fps, duration: +dur.toFixed(3), layers: { [vid]: video }, order: [vid] };
+    const comp: Composition = { name, width: w, height: h, fps, duration: +(dur + card).toFixed(3), layers: { [vid]: video }, order: [vid] };
     ops.push({ op: 'add', path: pointer('compositions', cid), value: comp });
     // the transcript of the passage, composition time: the captions read it
     const remapped = remapTranscript(src, [{ from: lo, to: hi }], 0);
@@ -130,20 +163,40 @@ async function build(ctx: ToolContext, assetId: string, plan: PlanItem[], format
     ops.push(...captions.ops);
     sd = applyOps(sd, captions.ops).doc;
     if (title) {
-      const head = TEMPLATES.title.build(sd, cid, { at: 0.2, duration: 2.5, text: title, place: 'top' });
+      // the title lands with the first sentence, not at a fixed 0.2 s
+      const span = titleSpan(remapped);
+      const head = TEMPLATES.title.build(sd, cid, { at: span.at, duration: span.duration, text: title, place: 'top' });
       ops.push(...head.ops);
       sd = applyOps(sd, head.ops).doc;
     }
+    if (keyword) {
+      const at = keywordAt(remapped, keyword);
+      // a keyword that is not said is said back, not placed in silence
+      if (at === null) missed.push({ title: name, keyword });
+      else {
+        const kw = TEMPLATES.keyword.build(sd, cid, { at, text: keyword });
+        ops.push(...kw.ops);
+        sd = applyOps(sd, kw.ops).doc;
+      }
+    }
+    if (brand) {
+      const bar = TEMPLATES.progress.build(sd, cid, { at: 0 });
+      ops.push(...bar.ops);
+      sd = applyOps(sd, bar.ops).doc;
+      const end = TEMPLATES['end-card'].build(sd, cid, { at: +dur.toFixed(3), duration: card, text: title ?? name });
+      ops.push(...end.ops);
+      sd = applyOps(sd, end.ops).doc;
+    }
     doc = sd;
-    made.push({ comp: cid, title: name, duration: dur, framed: !!subjects });
+    made.push({ comp: cid, title: name, duration: dur + card, framed: !!subjects });
   }
   if (!made.length) throw new Error('no passage of the plan is usable (from and to in the file, 2 s at least)');
-  return { ops, made };
+  return { ops, made, doc, missed };
 }
 
 // ── the tool ─────────────────────────────────────────────────
 const shorts: ToolType<{ asset: string; format?: Format; min?: number; max?: number; count?: number; plan?: PlanItem[] }> = {
-  name: 'shorts', title: 'Cut shorts', description: 'a long video as shorts: lists the passages that stand alone (candidates), or builds one composition per passage of a plan — the video framed for the format, captions on the remapped transcript, a title',
+  name: 'shorts', title: 'Cut shorts', description: 'a long video as shorts: lists the passages that stand alone (candidates), or builds one composition per passage of a plan — the video framed for the format, captions on the remapped transcript, the title landing with the first sentence, a keyword on the strong word, a progress bar and an end card where the project has a brand',
   input: {
     type: 'object',
     properties: {
@@ -153,16 +206,16 @@ const shorts: ToolType<{ asset: string; format?: Format; min?: number; max?: num
       max: { type: 'number', minimum: 10, maximum: 180, title: 'Longest (s)', description: 'candidates: 45 s by default' },
       count: { type: 'integer', minimum: 1, maximum: 12, title: 'Candidates', description: 'how many to list, 3 by default' },
       plan: {
-        type: 'array', title: 'Plan', description: 'build: the passages to turn into shorts, in file time, each with its title',
-        items: { type: 'object', properties: { from: { type: 'number', title: 'From (s)' }, to: { type: 'number', title: 'To (s)' }, title: { type: 'string', title: 'Title' } }, required: ['from', 'to'] },
+        type: 'array', title: 'Plan', description: 'build: the passages to turn into shorts, in file time, each with its title and the strong word it turns on',
+        items: { type: 'object', properties: { from: { type: 'number', title: 'From (s)' }, to: { type: 'number', title: 'To (s)' }, title: { type: 'string', title: 'Title' }, keyword: { type: 'string', title: 'Keyword', description: 'the strong word of the passage, said in it: it pops on screen the moment it is said' } }, required: ['from', 'to'] },
       },
     },
     required: ['asset'],
   },
   ai: {
-    when: 'a long video of someone speaking (an interview, a talk, a stream): first the candidates, then build the picked ones with a plan — one call, one plan, and the user sees the whole proposal. The frame follows the speaker when a subjects analysis of the video exists (use_tool "subjects" first when the format crops the picture)',
-    avoid: 'building without reading the candidates; a passage that starts mid-idea (it is skipped, not rescued); titles that promise what the passage does not keep',
-    example: { asset: 'talk', plan: [{ from: 132.5, to: 171, title: 'The one idea that changed everything' }] },
+    when: 'a long video of someone speaking (an interview, a talk, a stream): first the candidates, then build the picked ones with a plan — one call, one plan, and the user sees the whole proposal. Each passage takes a title and the strong word it turns on (keyword: said in the passage). The frame follows the speaker when a subjects analysis of the video exists (use_tool "subjects" first when the format crops the picture)',
+    avoid: 'building without reading the candidates; a passage that starts mid-idea (it is skipped, not rescued); titles that promise what the passage does not keep; a keyword that is not said in the passage (the build says so back and places nothing)',
+    example: { asset: 'talk', plan: [{ from: 132.5, to: 171, title: 'The one idea that changed everything', keyword: 'everything' }] },
   },
   async run({ asset, format = 'vertical', min = 15, max = 45, count = 3, plan }, ctx) {
     const a = ctx.doc.assets[asset];
@@ -173,17 +226,40 @@ const shorts: ToolType<{ asset: string; format?: Format; min?: number; max?: num
       if (!cands.length) return { text: `No passage of ${min} s or more in the transcript (${src.duration.toFixed(1)} s, ${src.words.length} words).`, notice: t('shorts.nothing') };
       const list = cands.slice(0, count);
       return {
-        text: [`${cands.length} passage(s) that stand alone:`, ...list.map((c, i) => `${i + 1}. [${c.from.toFixed(1)}–${c.to.toFixed(1)} s, ${c.words} words] ${clip(c.text, 160)}`), 'Pick the ones that hook in their first sentence and end on a point — a short that starts mid-idea is skipped, not rescued — then call shorts again with plan: [{ from, to, title }] (file time, the title in a few words). Say which you would pick and why.'].join('\n'),
+        text: [`${cands.length} passage(s) that stand alone:`, ...list.map((c, i) => `${i + 1}. [${c.from.toFixed(1)}–${c.to.toFixed(1)} s, ${c.words} words] ${clip(c.text, 160)}`), 'Pick the ones that hook in their first sentence and end on a point — a short that starts mid-idea is skipped, not rescued — then call shorts again with plan: [{ from, to, title, keyword }] (file time, the title in a few words, the keyword the strong word said in the passage). Say which you would pick and why.'].join('\n'),
         notice: t('shorts.candidates', { n: list.length }),
       };
     }
-    const { ops, made } = await build(ctx, asset, plan, format);
+    const { ops, made, doc, missed } = await build(ctx, asset, plan, format);
+    // each short, seen as the checks see it (the sound is left to check, run per composition)
+    const lines: string[] = [];
+    for (const m of made) {
+      const issues = await runChecks(doc, ctx.registry, m.comp);
+      lines.push(`- ${m.comp}: "${m.title}", ${m.duration.toFixed(1)} s (${format}${m.framed ? ', the frame follows the speaker' : ''}) — ${issues.length ? `${issues.length} note(s): ${issues.slice(0, 3).map((i) => i.message).join('; ')}${issues.length > 3 ? '…' : ''}` : 'nothing to fix at first read'}`);
+    }
+    // a contact sheet, one cell per short, when there are several
+    let images: { url: string; caption: string }[] | undefined;
+    if (made.length > 1 && typeof Image !== 'undefined') {
+      const cells: { image: HTMLImageElement; label: string }[] = [];
+      for (const m of made) {
+        const image = new Image();
+        image.src = await ctx.renderStill(Math.min(1, m.duration / 2), m.comp);
+        await image.decode();
+        cells.push({ image, label: m.title });
+      }
+      const cw = 250, ch = Math.round((cw * doc.compositions[made[0].comp].height) / doc.compositions[made[0].comp].width);
+      images = [{ url: sheetOf(cells, cw, ch, 3), caption: t('shorts.sheet', { n: made.length }) }];
+    }
     return {
-      ops, label: made.length > 1 ? `Shorts ×${made.length}` : made[0].title,
-      text: [`${made.length} short(s) built as compositions:`, ...made.map((m) => `- ${m.comp}: "${m.title}", ${m.duration.toFixed(1)} s (${format}${m.framed ? ', the frame follows the speaker' : ''})`), ...(made.some((m) => m.framed) ? [] : [`The frame keeps the centre of the picture: run subjects on "${asset}" first when the format crops the speaker out, and build again.`]), 'Each is an ordinary composition: check it (check, after switching to it), export it like any other.'].join('\n'),
+      ops, label: made.length > 1 ? `Shorts ×${made.length}` : made[0].title, images,
+      text: [`${made.length} short(s) built as compositions:`, ...lines, ...(missed.length ? [`Keyword(s) not said in their passage, nothing placed: ${missed.map((m) => `"${m.keyword}" (${m.title})`).join(', ')} — pick one that is said, or drop it.`] : []), ...(made.some((m) => m.framed) ? [] : [`The frame keeps the centre of the picture: run subjects on "${asset}" first when the format crops the speaker out, and build again.`]), 'Each is an ordinary composition: check it (check, after switching to it), export it like any other (the export offers all the shorts at once).'].join('\n'),
       notice: t('shorts.built', { n: made.length }),
     };
   },
 };
 
 export const SHORTS_TOOLS: ToolType[] = [shorts];
+
+/** the document's shorts: the compositions the build named short-, in build order */
+export const shortsOf = (doc: TrammeDoc): { id: string; name: string; duration: number }[] =>
+  Object.entries(doc.compositions).filter(([id]) => id.startsWith('short-')).map(([id, c]) => ({ id, name: c.name, duration: c.duration }));

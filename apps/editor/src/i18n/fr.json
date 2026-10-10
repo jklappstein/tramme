@@ -132,7 +132,8 @@
   "shorts": {
     "candidates": "{n} passage(s) qui se tiennent seuls.",
     "built": "{n} short(s) construit(s) en compositions.",
-    "nothing": "Aucun passage assez long dans le transcript."
+    "nothing": "Aucun passage assez long dans le transcript.",
+    "sheet": "Planche contact des {n} shorts"
   },
   "attachments": {
     "nameImageSoundVideo": "{name} : image, son, vidéo, PDF ou JSON attendus",
@@ -246,7 +247,10 @@
     "lowerThirdBar": "Bandeau · trait",
     "lowerThirdName": "Bandeau · nom",
     "lowerThirdRole": "Bandeau · fonction",
-    "lowerThirdText": "Bandeau « {text} »"
+    "lowerThirdText": "Bandeau « {text} »",
+    "progress": "Barre de progression",
+    "endCard": "Carte de fin",
+    "endCardText": "Carte de fin « {text} »"
   },
   "tours": {
     "assistant": {
@@ -847,7 +851,9 @@
     "undoCtrlZ": "Annuler (Ctrl+Z)",
     "redoActionCtrlShift": "Rétablir : {action} (Ctrl+Maj+Z)",
     "redoCtrlShiftZ": "Rétablir (Ctrl+Maj+Z)",
-    "moreOptions": "Plus d'options"
+    "moreOptions": "Plus d'options",
+    "exportAllShorts": "Exporter tous les shorts ({n})",
+    "shortOfN": "{name} · {i}/{n}"
   },
   "viewport": {
     "socialSafeZoneReels": "Zone sûre réseaux (Reels, TikTok)",

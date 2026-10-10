@@ -2,7 +2,7 @@
 
 How a long video becomes shorts: an hour of someone speaking holds its best moments out of order, and cutting them by hand is an evening of scrubbing, reframing and re-titling. Here the assistant reads the transcript, picks the passages that stand alone, and the tool builds one composition per short — the video framed for the format, the captions on it, a title. Each short is an ordinary composition of the project: editable, checked, exported like any other.
 
-Status: step 1 done. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: steps 1 to 4 done (step 2 keeps its open zoom line, step 4 keeps the per-short sound checks to the check tool). What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -33,11 +33,11 @@ Done when: asked to cut 3 shorts from a long talk, the assistant lists the candi
 
 ### Step 3. The hook
 
-- [ ] The first two seconds decide whether a short is watched: the title lands while the first sentence is still starting, a keyword pops on the strong word, the guide says what a good short opens with (a claim, a number, a question — never "in this video"). A progress bar and an end card where the project has a brand.
+- [x] The first two seconds decide whether a short is watched: the title lands no later than the first word and holds to the end of the first sentence (capped, from the remapped transcript), a keyword pops the moment its word is said (plan items take `keyword`; a word never said comes back in the answer, nothing placed), the guide says what a good short opens with (a claim, a number, a question — never "in this video"). A progress bar and an end card where the project has a brand (the plate and ink tokens a kit brings): the end card lengthens the composition of its 2.5 s.
 
 ### Step 4. The batch
 
-- [ ] A contact sheet of the shorts side by side (the check tool's sheet, one cell per short), the checks run on each composition, and an export queue: all the shorts, in one go, named after their titles.
+- [x] A contact sheet of the shorts side by side (the check tool's sheetOf, one cell per short at ~1 s, in the build's answer), the picture checks run on each composition with a one-line summary per short (the sound stays with the check tool, per composition), and an export queue: all the shorts, in one go, exported one by one for the memory, named after their titles, each kept in renders/ like any export.
 
 ### Step 5. Candidates without speech
 

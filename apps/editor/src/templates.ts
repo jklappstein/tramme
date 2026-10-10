@@ -143,4 +143,41 @@ export const TEMPLATES: Record<string, Template> = {
       return { label: t('templates.lowerThirdText', { text: a.text ?? '' }), ops: done() };
     },
   },
+
+  progress: {
+    title: 'Progress bar',
+    description: 'a thin bar at the bottom that draws itself over the composition (default: its whole length)',
+    build(doc, compId, a) {
+      const { c, add, done } = adder(doc, compId);
+      const { accent } = look(doc);
+      const h = Math.max(4, Math.round(Math.min(c.width, c.height) * 0.006)), y = c.height - h;
+      const end = a.at + (a.duration ?? c.duration - a.at);
+      add('progress', {
+        type: 'shape.rect', name: t('templates.progress'), in: a.at,
+        transform: { position: [0, y], anchor: [0, h / 2], opacity: 0.92 },
+        props: { size: { $k: [{ t: a.at, v: [0, h], ease: 'linear' }, { t: end, v: [c.width, h] }] }, fill: accent },
+      });
+      return { label: t('templates.progress'), ops: done() };
+    },
+  },
+
+  'end-card': {
+    title: 'End card',
+    description: 'a plate in the brand\'s colours (the plate and ink tokens) with a line of text and the accent bar, for the end of a piece',
+    build(doc, compId, a) {
+      const { c, add, done } = adder(doc, compId);
+      const { accent, font } = look(doc);
+      const token = (name: string, fallback: string) => (doc.tokens?.[name]?.type === 'color' ? `@${name}` : fallback);
+      const plate = token('plate', '#0B0F12'), ink = token('ink', '#FFFFFF');
+      const u = Math.min(c.width, c.height), end = a.at + (a.duration ?? 2.5), size = Math.round(u * 0.075);
+      add('end-card-plate', { type: 'shape.rect', name: t('templates.endCard'), in: a.at, out: end, transform: { position: [c.width / 2, c.height / 2] }, props: { size: [c.width, c.height], fill: plate } });
+      add('end-card-bar', {
+        type: 'shape.rect', name: t('templates.bar'), in: a.at + 0.1, out: end,
+        transform: { position: [c.width / 2, Math.round(c.height / 2 - size * 0.9)], opacity: fade(a.at + 0.1, end) },
+        props: { size: { $k: [{ t: a.at + 0.1, v: [0, Math.round(u * 0.008)], ease: OUT }, { t: a.at + 0.7, v: [Math.round(u * 0.14), Math.round(u * 0.008)] }] }, radius: Math.round(u * 0.004), fill: accent },
+      });
+      add('end-card-text', { type: 'text', name: `${t('templates.endCard')} · ${a.text ?? ''}`, in: a.at + 0.15, out: end, transform: { position: [c.width / 2, Math.round(c.height / 2 + size * 0.1)], opacity: fade(a.at + 0.15, end) }, props: { text: a.text ?? t('templates.title'), size, weight: 800, align: 'center', color: ink, tracking: -0.01, ...(font ? { font } : {}) } });
+      return { label: t('templates.endCardText', { text: a.text ?? '' }), ops: done() };
+    },
+  },
 };

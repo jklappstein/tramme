@@ -7,6 +7,7 @@ import { saveBlob } from '../download.ts';
 import { safeName, takenPaths, upload } from '../files.ts';
 import { canRedo, canUndo, comp, commit, redo, redoLabel, S, saveNow, toast, undo, undoLabel } from '../state.ts';
 import { fmtSeconds } from '../model.ts';
+import { shortsOf } from '../shorts.ts';
 import { openMenu, Popover, Select, type MenuItem } from './controls.tsx';
 import { VIDEO, WEB_FORMATS, type WebFormat } from '../formats.ts';
 import { Icon } from './icons.tsx';
@@ -31,9 +32,13 @@ function ExportPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => vo
   const [format, setFormat] = useState<WebFormat>('mp4');
   const [samples, setSamples] = useState('doc');
   const [state, setState] = useState<{ done: number; total: number } | Done | { error: string } | null>(null);
+  const [batch, setBatch] = useState<{ i: number; n: number; name: string } | null>(null);
   const abort = useRef<AbortController | null>(null);
-  const running = state !== null && 'total' in state;
+  const stopAll = useRef(false);
+  const running = (state !== null && 'total' in state) || batch !== null;
   const video = VIDEO.has(format);
+  // the shorts of the document, named short-* by the build: exported one by one, in the format chosen above
+  const shorts = shortsOf(S.doc.value);
   const run = async () => {
     const t0 = performance.now(), at = S.time.peek();
     abort.current = new AbortController();
@@ -51,6 +56,29 @@ function ExportPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => vo
     } catch (e) {
       setState((e as Error).name === 'AbortError' ? null : { error: (e as Error).message });
     } finally { abort.current = null; }
+  };
+  // all the shorts, one after another for the memory's sake, each named after its title
+  const exportAll = async () => {
+    stopAll.current = false;
+    abort.current = new AbortController();
+    try {
+      const { exportInBrowser } = await import('../webexport.ts');
+      for (let i = 0; i < shorts.length; i++) {
+        if (stopAll.current) break;
+        const { id: cid, name } = shorts[i];
+        setBatch({ i: i + 1, n: shorts.length, name });
+        setState(null);
+        const r = await exportInBrowser(S.doc.peek(), new URL(S.docUrl.peek(), location.href).href, format, {
+          compId: cid, registry: S.registry.peek(), signal: abort.current.signal,
+          samples: samples === 'doc' ? undefined : Number(samples),
+        });
+        const file = `${safeName(name)}.${r.ext}`;
+        await saveBlob(r.blob, file);
+        try { await upload(await takenPaths(), `renders/${name.replace(/\.png\.zip$/, '.zip')}`, r.blob); } catch { /* the file is on disk anyway */ }
+      }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setState({ error: (e as Error).message });
+    } finally { setBatch(null); abort.current = null; }
   };
   // a copy in the project's renders/ folder (kept out of .tramme archives)
   const keep = async (done: Done) => {
@@ -70,6 +98,15 @@ function ExportPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => vo
         ))}
       </div>
       <div class="row"><span class="muted">{t('common.image')}</span><span class="mono">{c.width}×{c.height} · {t('common.nFps', { n: c.fps })} · {fmtSeconds(c.duration)}</span></div>
+      {shorts.length > 1 && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {batch
+          ? <>
+            <div class="progress"><i style={{ width: `${(100 * (batch.i - 1)) / batch.n}%` }} /></div>
+            <div class="faint mono" style={{ fontSize: 11 }}>{t('topbar.shortOfN', { name: batch.name, i: batch.i, n: batch.n })}</div>
+            <button class="btn" onClick={() => { stopAll.current = true; abort.current?.abort(); }}><Icon name="stop" />{t('topbar.cancelExport')}</button>
+          </>
+          : <button class="btn" disabled={running} onClick={exportAll}><Icon name="film" />{t('topbar.exportAllShorts', { n: shorts.length })}</button>}
+      </div>}
       {video && <div class="row"><span class="muted">{t('topbar.blur')}</span>
         <Select value={samples} options={[['doc', t('topbar.documentSetting')], ['1', t('topbar.noBlurFast')], ['8', t('topbar.nSubFrames', { n: 8 })], ['16', t('topbar.nSubFrames', { n: 16 })]]} onChange={setSamples} />
       </div>}

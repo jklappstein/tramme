@@ -132,7 +132,8 @@
   "shorts": {
     "candidates": "{n} passage(s) that stand alone.",
     "built": "{n} short(s) built as compositions.",
-    "nothing": "No passage long enough in the transcript."
+    "nothing": "No passage long enough in the transcript.",
+    "sheet": "Contact sheet of the {n} shorts"
   },
   "attachments": {
     "nameImageSoundVideo": "{name}: image, sound, video, PDF or JSON expected",
@@ -246,7 +247,10 @@
     "lowerThirdBar": "Lower third · bar",
     "lowerThirdName": "Lower third · name",
     "lowerThirdRole": "Lower third · role",
-    "lowerThirdText": "Lower third \"{text}\""
+    "lowerThirdText": "Lower third \"{text}\"",
+    "progress": "Progress bar",
+    "endCard": "End card",
+    "endCardText": "End card \"{text}\""
   },
   "tours": {
     "assistant": {
@@ -847,7 +851,9 @@
     "undoCtrlZ": "Undo (Ctrl+Z)",
     "redoActionCtrlShift": "Redo: {action} (Ctrl+Shift+Z)",
     "redoCtrlShiftZ": "Redo (Ctrl+Shift+Z)",
-    "moreOptions": "More options"
+    "moreOptions": "More options",
+    "exportAllShorts": "Export all the shorts ({n})",
+    "shortOfN": "{name} · {i}/{n}"
   },
   "viewport": {
     "socialSafeZoneReels": "Social safe zone (Reels, TikTok)",
