@@ -52,9 +52,14 @@ jobs:
             echo tag=v$version >> "$GITHUB_OUTPUT"
           fi
 
+  # the suite must pass before anything is built or released (.github/workflows/ci.yml)
+  checks:
+    name: Checks
+    uses: ./.github/workflows/ci.yml
+
   build:
     name: Build (${{ matrix.name }})
-    needs: plan
+    needs: [plan, checks]
     if: needs.plan.outputs.build == 'true'
     strategy:
       fail-fast: false
@@ -75,21 +80,9 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup
         with:
-          node-version: 22
-          cache: npm
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.rust-targets }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri
-      - name: Linux libraries (WebKitGTK, the keychain over D-Bus)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils libdbus-1-dev pkg-config
+          rust-targets: ${{ matrix.rust-targets }}
       - run: npm ci
       - name: Build the editor and the app
         run: npm run desktop:build -- ${{ matrix.args }}

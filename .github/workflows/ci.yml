@@ -1,0 +1,38 @@
+# The test suite and the typecheck on every push and pull request. The desktop
+# workflow calls it too (job `checks`), so no release goes out if the suite
+# fails.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    env:
+      # this machine has Rust: the storage test must fail, never skip
+      TRAMME_REQUIRE_DESKTOP_TESTS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  site:
+    name: Site build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm ci
+      # the site cuts the README by headings: a renamed heading must break here
+      - run: npm run site:build

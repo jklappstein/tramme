@@ -1,0 +1,32 @@
+# Shared setup of the workflows: Node 22 with the npm cache, Rust stable with
+# its cache over the desktop crate, and on Linux the system libraries that
+# crate needs (WebKitGTK for the webview, D-Bus for the keychain).
+
+name: Set up tramme
+description: Node 22, Rust stable, and the Linux libraries of the desktop crate.
+
+inputs:
+  rust-targets:
+    description: Extra Rust targets to install, comma separated (for the universal macOS build)
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ inputs.rust-targets }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: apps/desktop/src-tauri
+    - name: Linux libraries (WebKitGTK, the keychain over D-Bus)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils libdbus-1-dev pkg-config
