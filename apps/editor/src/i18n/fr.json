@@ -179,7 +179,13 @@
     "nameATrammeProject": "{name} : un projet .tramme, une animation Lottie (.json) ou une vidéo est attendu",
     "noSources": "aucune image, vidéo, son ou document PDF parmi ces fichiers",
     "sources": "Ressources",
-    "invalidSourcesProject": "projet de ressources invalide"
+    "invalidSourcesProject": "projet de ressources invalide",
+    "codeTitle": "Exécuter le code de ce projet ?",
+    "codeText": "Ce projet contient {code}. Ce code s'exécute avec les droits de l'éditeur : n'acceptez que les projets de quelqu'un en qui vous avez confiance.",
+    "codePlugins": "{n} plugin(s) qui étendent l'éditeur (nœuds, effets, outils)",
+    "codeExpressions": "{n} expression(s), par exemple {address}",
+    "codeYes": "L'exécuter",
+    "codeRefused": "Import arrêté : le code du projet n'a pas été accepté"
   },
   "app": {
     "backToProjects": "Retour aux projets",

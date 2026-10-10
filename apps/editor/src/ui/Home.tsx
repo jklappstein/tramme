@@ -16,6 +16,7 @@ import { MenuHost, Modal, openMenu } from './controls.tsx';
 import { Icon } from './icons.tsx';
 import { LogoMark } from './Logo.tsx';
 import { Toasts } from './App.tsx';
+import { QuestionDialog } from './QuestionDialog.tsx';
 import { SettingsDialog } from './Settings.tsx';
 import { HelpButton } from './Help.tsx';
 import { WindowControls, windowBar } from './WindowControls.tsx';
@@ -227,7 +228,8 @@ export function Home() {
   const useExample = (x: Example) => run(t('home.copyingTheExampleName', { name: t(x.name) }), async (p) => {
     const r = await fetch(`/examples/${x.file}`);
     if (!r.ok) throw new Error(t('home.exampleNotFoundHttp', { status: r.status }));
-    return importArchive(await r.blob(), p);
+    // shipped with the app, checked: their code never asks
+    return importArchive(await r.blob(), p, { ask: null });
   });
   const menu = (e: MouseEvent, m: Manifest) => openMenu(e, [
     { label: t('common.open'), icon: 'folder', onClick: () => open(m.id) },
@@ -316,6 +318,8 @@ export function Home() {
       <SettingsDialog />
       <MenuHost />
       <Toasts />
+      {/* last, over the import's progress: the question waits on top of it */}
+      <QuestionDialog />
     </div>
   );
 }

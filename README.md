@@ -156,7 +156,7 @@ Transcription runs first on the Worker (Workers AI, Whisper large v3 turbo), oth
 
 - Layer rendering has a single backend, Canvas2D; the compositor and shaders use WebGL2. A WebGL or WebGPU layer backend remains to be written.
 - Without a layer effect, a group's opacity applies to each child; with an effect, the group is composited as one block.
-- Expressions are isolated to stay deterministic; this is not a security sandbox: a document from an unknown source should be evaluated in a worker. The plugins of an imported project run in the editor.
+- Expressions are isolated to stay deterministic; this is not a security sandbox. Importing a project that carries plugins or expressions asks first, and lists what it would run: they execute with the editor's rights, so only accept projects from someone you trust.
 - Lottie: a single weight per text, no finishing effects, no motion blur, no nodes drawn by code. SVG: the same, as a still image.
 - Browser export: no ProRes (the CLI does it); GIF is computed frame by frame, slow at large sizes.
 - A single user, no accounts: access is controlled by Cloudflare Access. Files of 95 MB at most (the Workers request limit), except sounds and videos uploaded in parts (4 GiB).

@@ -47,7 +47,8 @@ The format's code is in [packages/project](../packages/project/src/format.ts).
 Before a project enters storage (archive import, `tramme unpack`, `tramme pack`):
 
 1. **Structure**: allowed paths and extensions, sizes, a valid manifest, a document matching the `tramme/1` schema, every asset of the document present in the project (relative `src`, never leaving the project), every plugin declared by a `module` asset.
-2. **Meaning**: the plugins are loaded, then the document is validated against the full vocabulary (node types, properties, references, expressions, nested compositions without cycles).
+2. **Code, asked about**: if the archive carries code — plugins, or expressions in the document — the import lists them (the plugins with their file and size, the expressions with their first addresses) and asks before any of it runs. A refusal stops the import and nothing enters storage. The editor's own examples skip the question.
+3. **Meaning**: the plugins are loaded, then the document is validated against the full vocabulary (node types, properties, references, expressions, nested compositions without cycles).
 
 The server checks the document's structure again on every write.
 

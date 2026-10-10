@@ -1,15 +1,16 @@
 // Bringing files into storage as new projects: a .tramme archive (checked
-// for structure, then for meaning with its plugins loaded), a Lottie
-// animation, an example, a video, or the sources of a video to make
-// (pictures, footage, sounds, documents, a whole folder with its kit).
-// Nothing reaches storage before the checks pass.
+// for structure, its code asked about, then for meaning with its plugins
+// loaded), a Lottie animation, an example, a video, or the sources of a
+// video to make (pictures, footage, sounds, documents, a whole folder with
+// its kit). Nothing reaches storage before the checks pass.
 
 import { stringifyDoc, validate, type TrammeDoc, type Registry } from '@tramme/core';
 import { fromLottie } from '@tramme/interop';
 import { builtinRegistry } from '@tramme/nodes';
-import { checkProject, DOCUMENT, MANIFEST, newProject, pathIssue, srcPath, unpackProject, type Issue, type Manifest } from '@tramme/project';
+import { checkProject, codeInventory, DOCUMENT, MANIFEST, newProject, pathIssue, srcPath, unpackProject, type CodeInventory, type Issue, type Manifest } from '@tramme/project';
 import { probeVideo } from '@tramme/render';
 import { api } from './api.ts';
+import { confirmWith } from './confirm.ts';
 import { freePath, safeName } from './files.ts';
 import { BRIEF_PATH } from './brief.ts';
 import { applyKit, briefOfKit, FONT_FILE, KIT_PATH, namesOf, readKit, relink, type Kit } from './kit.ts';
@@ -23,6 +24,18 @@ export class ImportError extends Error {
 }
 
 export type Progress = (done: number, total: number, label: string) => void;
+
+/** asked before the code an archive carries runs; null skips the question (the shipped examples) */
+export type CodeAsk = (inv: CodeInventory) => Promise<boolean>;
+
+/** the import's question, as a dialog over the editor */
+const askInEditor: CodeAsk = async (inv) => {
+  const code = [
+    inv.plugins.length ? t('importer.codePlugins', { n: inv.plugins.length }) : '',
+    inv.expressions ? t('importer.codeExpressions', { n: inv.expressions, address: inv.addresses[0] ?? '' }) : '',
+  ].filter(Boolean).join(', ');
+  return confirmWith(t('importer.codeTitle'), t('importer.codeText', { code }), t('importer.codeYes'));
+};
 
 /** the document's plugins, imported from the archive's own files */
 async function registryOf(doc: TrammeDoc, files: Map<string, Uint8Array>): Promise<Registry> {
@@ -39,13 +52,21 @@ async function registryOf(doc: TrammeDoc, files: Map<string, Uint8Array>): Promi
   return reg;
 }
 
-/** the files of an archive, checked: structure, then the document's meaning */
-export async function readArchive(data: Uint8Array): Promise<{ files: Map<string, Uint8Array>; manifest: Manifest; doc: TrammeDoc }> {
+/**
+ * The files of an archive, checked: structure, then the meaning. The code it
+ * carries (plugins, expressions) is inventoried before anything runs, and
+ * nothing runs until the ask says yes.
+ */
+export async function readArchive(data: Uint8Array, ask?: CodeAsk | null): Promise<{ files: Map<string, Uint8Array>; manifest: Manifest; doc: TrammeDoc }> {
   let files: Map<string, Uint8Array>;
   try { files = unpackProject(data); } catch (e) { throw new ImportError((e as Error).message); }
   for (const k of [...files.keys()]) if (k.startsWith('renders/')) files.delete(k);
   const { issues, manifest, doc } = checkProject(files);
   if (issues.length || !manifest || !doc) throw new ImportError(t('importer.thisFileIsNot'), issues);
+  const inv = codeInventory(doc, files);
+  if ((inv.plugins.length || inv.expressions) && ask !== null && !await (ask ?? askInEditor)(inv)) {
+    throw new ImportError(t('importer.codeRefused'));
+  }
   const meaning = validate(doc, await registryOf(doc, files)).map((i) => ({ path: `${DOCUMENT}${i.path}`, message: i.message }));
   if (meaning.length) throw new ImportError(t('importer.theProjectSDocument'), meaning);
   return { files, manifest, doc };
@@ -77,9 +98,9 @@ async function fill(project: Manifest, files: Map<string, Uint8Array | string>, 
   }
 }
 
-/** a .tramme archive as a new project (always a new id: nothing is overwritten) */
-export async function importArchive(file: Blob, progress?: Progress): Promise<Manifest> {
-  const { files, manifest, doc } = await readArchive(new Uint8Array(await file.arrayBuffer()));
+/** a .tramme archive as a new project (always a new id: nothing is overwritten); ask null skips the code question */
+export async function importArchive(file: Blob, progress?: Progress, opts?: { ask?: CodeAsk | null }): Promise<Manifest> {
+  const { files, manifest, doc } = await readArchive(new Uint8Array(await file.arrayBuffer()), opts?.ask);
   const root = doc.compositions[doc.root];
   const project = await api.create({ name: manifest.name, created: manifest.created, width: root?.width, height: root?.height, fps: root?.fps, duration: root?.duration, empty: true });
   return fill(project, files, progress);

@@ -4,9 +4,7 @@
 import { useEffect } from 'preact/hooks';
 import { S, undo, redo, frameStep, setTime, comp, saveNow, toast, select, selectAll } from '../state.ts';
 import { Assistant } from './Assistant.tsx';
-import { MenuHost, Modal, useSize } from './controls.tsx';
-import { answer, chatShown, question } from '../confirm.ts';
-import { away, notify } from '../notify.ts';
+import { MenuHost, useSize } from './controls.tsx';
 import { Icon } from './icons.tsx';
 import { Inspector } from './Inspector.tsx';
 import { deleteSelection, duplicateSelection, LeftPanel } from './LeftPanel.tsx';
@@ -17,6 +15,7 @@ import { transcriptions } from '../speech.ts';
 import { SettingsDialog } from './Settings.tsx';
 import { prefs, settingsOpen } from '../settings.ts';
 import { Viewport } from './Viewport.tsx';
+import { QuestionDialog } from './QuestionDialog.tsx';
 import { t } from '../i18n/index.ts';
 
 function useShortcuts() {
@@ -65,25 +64,6 @@ export function Toasts() {
       ))}
       {S.toasts.value.map((x) => <div key={x.id} class={`toast ${x.kind ?? ''}`}>{x.text}</div>)}
     </div>
-  );
-}
-
-/** a question the editor waits an answer for (a sound that costs money); the user told when elsewhere */
-function QuestionDialog() {
-  const q = question.value;
-  useEffect(() => { if (q && away()) notify(q.title, q.text); }, [q]);
-  // asked during a turn of the assistant: in the conversation, when one is on screen
-  if (!q || (q.inChat && chatShown.value > 0)) return null;
-  return (
-    <Modal title={q.title} onClose={() => answer(false)}>
-      <div class="modal-body">
-        <p>{q.text}</p>
-        <div class="modal-foot">
-          <button class="btn ghost" onClick={() => answer(false)}>{t('common.cancel')}</button>
-          <button class="btn primary" onClick={() => answer(true)}>{q.yes}</button>
-        </div>
-      </div>
-    </Modal>
   );
 }
 
