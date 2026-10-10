@@ -11,6 +11,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 ### Added
 
 - Importing a `.tramme` project that carries code — plugins, or expressions — now asks first, listing what it would run (the plugins with their file and size, the expressions with where they are). Nothing runs before the yes, and a refusal writes nothing. The shipped examples skip the question.
+- With a finger, a long press opens the same menus as a right click: a keyframe's curve and delete, the layers, the compositions, the assets, the tokens and the project cards. A press held still never moves a key or a layer.
 
 ## [0.4.0] - 2026-10-10
 

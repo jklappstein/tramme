@@ -12,7 +12,7 @@ import { safeName } from '../files.ts';
 import { ago } from '../model.ts';
 import { droppedOf, importArchive, ImportError, importFile, importSources, isSourceFile, isVideoFile, pickedOf, type Picked, type Progress } from '../importer.ts';
 import { toast } from '../state.ts';
-import { MenuHost, Modal, openMenu } from './controls.tsx';
+import { MenuHost, Modal, longPress, openMenu } from './controls.tsx';
 import { Icon } from './icons.tsx';
 import { LogoMark } from './Logo.tsx';
 import { Toasts } from './App.tsx';
@@ -159,10 +159,11 @@ function Failure({ error, onClose }: { error: ImportError | Error; onClose: () =
   );
 }
 
-function Card({ m, onMenu }: { m: Manifest; onMenu: (e: MouseEvent) => void }) {
+function Card({ m, onMenu }: { m: Manifest; onMenu: (e: MouseEvent | { clientX: number; clientY: number }) => void }) {
   const [broken, setBroken] = useState(false);
   return (
-    <div class="card" role="button" tabIndex={0} onClick={() => open(m.id)} onKeyDown={(e) => e.key === 'Enter' && open(m.id)} onContextMenu={(e) => { e.preventDefault(); onMenu(e); }}>
+    <div class="card" role="button" tabIndex={0} onClick={() => open(m.id)} onKeyDown={(e) => e.key === 'Enter' && open(m.id)}
+      onPointerDown={(e) => longPress(e, onMenu)} onContextMenu={(e) => { e.preventDefault(); onMenu(e); }}>
       <div class="card-thumb">
         {m.thumbnail && !broken
           ? <img src={`${api.fileUrl(m.id, m.thumbnail)}?v=${encodeURIComponent(m.modified)}`} alt="" loading="lazy" onError={() => setBroken(true)} />
@@ -231,7 +232,7 @@ export function Home() {
     // shipped with the app, checked: their code never asks
     return importArchive(await r.blob(), p, { ask: null });
   });
-  const menu = (e: MouseEvent, m: Manifest) => openMenu(e, [
+  const menu = (e: MouseEvent | { clientX: number; clientY: number }, m: Manifest) => openMenu(e, [
     { label: t('common.open'), icon: 'folder', onClick: () => open(m.id) },
     { label: t('common.rename'), icon: 'edit', onClick: () => setDialog({ kind: 'rename', m }) },
     { label: t('common.duplicate'), icon: 'copy', onClick: async () => { try { await api.duplicate(m.id); refresh(); } catch (x) { toast(t('home.couldNotDuplicateError', { error: (x as Error).message }), 'error'); } } },

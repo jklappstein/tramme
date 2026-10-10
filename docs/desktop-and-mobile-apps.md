@@ -92,7 +92,7 @@ Ways to cover the gaps:
 ## Mobile specifics
 
 - The touch work is done: tabbed panels, compact header, pinch to zoom, two-finger pan, larger targets (see the 0.1.0 entry in the [changelog](../CHANGELOG.md)).
-- Still missing for touch: the keyframe context menu (curve, delete) only opens with a right click. Add a long press or a toolbar action.
+- Still missing for touch: nothing for the menus (a long press opens the same menu as the right click, on the keys, the layers, the compositions, the assets, the tokens and the project cards).
 - Safe areas: the CSS already uses `env(safe-area-inset-*)`; check them in a real notched device.
 - Store requirements: app icons in PNG at the required sizes (today there is only an SVG icon), privacy labels (the assistant sends data to the chosen provider), and review rules on downloaded code (project plugins run JS).
 

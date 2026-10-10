@@ -5,7 +5,7 @@ import { useRef, useState } from 'preact/hooks';
 import { addLayer, applyOps, layerActive, moveLayer, pointer, removeLayer, type Asset, type TrammeDoc, type Layer, type NodeType, type Op, type PresetType, type TokenType } from '@tramme/core';
 import { clickSelect, comp, commit, foldAll, S, select, toggleFold, viewDoc, toast, uiTime } from '../state.ts';
 import { flatTree, freshId, layerName, parentOf, SOUND_GROUP, soundGroupOf, subtree, topLayers, commonStem, folderOf, imagesIn } from '../model.ts';
-import { ColorField, openMenu, Swatch, TextInput, resolveColor, type MenuItem } from './controls.tsx';
+import { ColorField, longPress, openMenu, Swatch, TextInput, resolveColor, type MenuItem } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
 import { preview } from '../preview.ts';
 import { fromLottie } from '@tramme/interop';
@@ -197,7 +197,11 @@ function LayerTree() {
     if (e.button !== 0 || renaming) return;
     const y0 = e.clientY;
     let dragging = false, target: typeof drop = null;
+    // a long press of a finger opens the row's menu and ends the drag
+    let menued = false;
+    const stopPress = longPress(e, (pos) => { menued = true; rowMenu(pos, id); });
     const move = (ev: PointerEvent) => {
+      if (menued) return;
       if (!dragging && Math.abs(ev.clientY - y0) < 4) return;
       dragging = true;
       const row = (document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest('[data-layer]') as HTMLElement | null;
@@ -210,9 +214,10 @@ function LayerTree() {
       setDrop(target);
     };
     const up = () => {
+      stopPress();
       removeEventListener('pointermove', move); removeEventListener('pointerup', up);
       setDrop(null);
-      if (!dragging || !target) return;
+      if (menued || !dragging || !target) return;
       const doc = S.doc.peek();
       let place: { parent?: string; index?: number };
       if (target.where === 'inside') place = { parent: target.id };
@@ -228,8 +233,8 @@ function LayerTree() {
     addEventListener('pointermove', move); addEventListener('pointerup', up);
   };
 
-  const rowMenu = (e: MouseEvent, id: string) => {
-    e.preventDefault();
+  const rowMenu = (e: MouseEvent | { clientX: number; clientY: number }, id: string) => {
+    if ('preventDefault' in e) e.preventDefault();
     if (!sel.includes(id)) select([id]);
     const l = c.layers[id];
     openMenu(e, [
@@ -381,8 +386,8 @@ function Compositions() {
       S.compId.value = id; select([]);
     }
   };
-  const menu = (e: MouseEvent, id: string) => {
-    e.preventDefault();
+  const menu = (e: MouseEvent | { clientX: number; clientY: number }, id: string) => {
+    if ('preventDefault' in e) e.preventDefault();
     const c = doc.compositions[id];
     openMenu(e, [
       { label: t('common.open'), icon: 'comp', onClick: () => { S.compId.value = id; select([]); } },
@@ -396,7 +401,8 @@ function Compositions() {
     <div>
       <div class="section-label" style={{ display: 'flex', alignItems: 'center' }}>{t('panel.compositions')}<span style={{ flex: 1 }} /><button class="icon-btn xs" title={t('panel.newComposition')} onClick={create}><Icon name="plus" /></button></div>
       {Object.entries(doc.compositions).map(([id, c]) => (
-        <div key={id} class={`list-row${id === active ? ' on' : ''}`} onClick={() => { S.compId.value = id; select([]); }} onContextMenu={(e) => menu(e, id)}>
+        <div key={id} class={`list-row${id === active ? ' on' : ''}`} onClick={() => { S.compId.value = id; select([]); }}
+          onPointerDown={(e) => longPress(e, (pos) => menu(pos, id))} onContextMenu={(e) => menu(e, id)}>
           <span class="thumb"><Icon name={doc.root === id ? 'film' : 'comp'} /></span>
           <span class="name">{c.name}</span>
           <span class="meta mono">{c.width}×{c.height} · {c.duration} s</span>
@@ -422,6 +428,15 @@ function Assets() {
   const byType = new Map<string, [string, Asset][]>();
   for (const e of Object.entries(doc.assets)) { if (!byType.has(e[1].type)) byType.set(e[1].type, []); byType.get(e[1].type)!.push(e); }
   const url = (id: string) => { try { return preview.renderer?.assets.url(id) ?? ''; } catch { return ''; } };
+  const assetMenu = (e: MouseEvent | { clientX: number; clientY: number }, id: string, a: Asset) => {
+    if ('preventDefault' in e) e.preventDefault();
+    openMenu(e, [
+      ...(a.type === 'image' || a.type === 'audio' || a.type === 'video' ? [{ label: t('panel.createALayer'), icon: 'plus' as const, onClick: () => use(id, a) }] : []),
+      ...(a.type === 'audio' || a.type === 'video' ? [{ label: doc.assets[transcriptIdOf(id)] ? t('panel.transcribeAgain') : t('panel.transcribeSpeech'), icon: 'text' as const, onClick: () => { transcribeAsset(id).catch((x) => toast(t('common.couldNotTranscribeError', { error: (x as Error).message }), 'error', 9000)); } }] : []),
+      ...(a.type === 'image' ? [{ label: t('panel.animateTheFolderN', { n: imagesIn(doc, folderOf(a.src)).length }), icon: 'film' as const, onClick: () => animateFolder(folderOf(a.src)) }] : []),
+      { label: t('panel.removeFromProject'), icon: 'trash', onClick: () => commit(t('common.removeName', { name: a.name || id }), [{ op: 'remove', path: pointer('assets', id) }]) },
+    ]);
+  };
   const use = (id: string, a: Asset) => {
     const reg = S.registry.peek();
     if (a.type === 'image') insertLayer(newLayer(doc, S.compId.peek(), reg.node('image'), { name: a.name || id, props: { image: id, size: [600, 600], fit: 'contain' } }), id);
@@ -440,12 +455,7 @@ function Assets() {
           <div class="section-label">{ASSET_LABEL[type] ? t(ASSET_LABEL[type]) : type}</div>
           {list.map(([id, a]) => (
             <div key={id} class="list-row" title={a.src} onDblClick={() => use(id, a)}
-              onContextMenu={(e) => { e.preventDefault(); openMenu(e, [
-                ...(a.type === 'image' || a.type === 'audio' || a.type === 'video' ? [{ label: t('panel.createALayer'), icon: 'plus' as const, onClick: () => use(id, a) }] : []),
-                ...(a.type === 'audio' || a.type === 'video' ? [{ label: doc.assets[transcriptIdOf(id)] ? t('panel.transcribeAgain') : t('panel.transcribeSpeech'), icon: 'text' as const, onClick: () => { transcribeAsset(id).catch((x) => toast(t('common.couldNotTranscribeError', { error: (x as Error).message }), 'error', 9000)); } }] : []),
-                ...(a.type === 'image' ? [{ label: t('panel.animateTheFolderN', { n: imagesIn(doc, folderOf(a.src)).length }), icon: 'film' as const, onClick: () => animateFolder(folderOf(a.src)) }] : []),
-                { label: t('panel.removeFromProject'), icon: 'trash', onClick: () => commit(t('common.removeName', { name: a.name || id }), [{ op: 'remove', path: pointer('assets', id) }]) },
-              ]); }}>
+              onPointerDown={(e) => longPress(e, (pos) => assetMenu(pos, id, a))} onContextMenu={(e) => assetMenu(e, id, a)}>
               <span class="thumb" style={a.type === 'image' ? { backgroundImage: `url("${url(id)}")`, backgroundSize: 'contain', backgroundColor: 'var(--media)' } : undefined}>
                 {a.type !== 'image' && (a.type === 'font' ? <span style={{ fontFamily: `"${a.family}"`, color: 'var(--text)', fontSize: 13 }}>Aa</span> : <Icon name={ASSET_ICON[a.type]} />)}
               </span>
@@ -478,7 +488,9 @@ function Tokens() {
     commit(t('panel.newToken'), [{ op: 'add', path: pointer('tokens', id), value: { type: 'color', value: '#2EC4B6' } }]);
     setEditing(id);
   };
-  const tokenMenu = (e: MouseEvent, name: string) => { e.preventDefault(); openMenu(e, [
+  const tokenMenu = (e: MouseEvent | { clientX: number; clientY: number }, name: string) => {
+    if ('preventDefault' in e) e.preventDefault();
+    openMenu(e, [
     { label: t('panel.edit'), icon: 'palette', onClick: () => setEditing(name) },
     { label: t('common.delete'), icon: 'trash', onClick: () => commit(t('panel.deleteName3', { name }), [{ op: 'remove', path: pointer('tokens', name) }]) },
   ]); };
@@ -488,7 +500,7 @@ function Tokens() {
       {colors.length === 0 && <div class="faint" style={{ padding: '0 10px 8px' }}>{t('panel.noBrandColors')}</div>}
       <div class="token-grid">
         {colors.map(([name, t]) => (
-          <div class="token" key={name} title={t.description ?? ''} onContextMenu={(e) => tokenMenu(e, name)} onDblClick={() => setEditing(name)}>
+          <div class="token" key={name} title={t.description ?? ''} onPointerDown={(e) => longPress(e, (pos) => tokenMenu(pos, name))} onContextMenu={(e) => tokenMenu(e, name)} onDblClick={() => setEditing(name)}>
             <Swatch color={resolveColor(`@${name}`, doc.tokens)} onClick={() => setEditing(editing === name ? null : name)} />
             <div style={{ minWidth: 0 }}><div class="tname">{name}</div><div class="tval">{String(t.value)}</div></div>
           </div>
@@ -505,7 +517,7 @@ function Tokens() {
       {eases.length === 0 && <div class="faint" style={{ padding: '0 10px 8px' }}>{t('panel.noNamedCurves')}</div>}
       <div class="token-grid">
         {eases.map(([name, t]) => (
-          <div class="token" key={name} title={t.description ?? ''} onContextMenu={(e) => tokenMenu(e, name)}>
+          <div class="token" key={name} title={t.description ?? ''} onPointerDown={(e) => longPress(e, (pos) => tokenMenu(pos, name))} onContextMenu={(e) => tokenMenu(e, name)}>
             <EaseThumb v={t.value} />
             <div style={{ minWidth: 0 }}><div class="tname">{name}</div><div class="tval">{Array.isArray(t.value) ? (t.value as number[]).join(' ') : String(t.value)}</div></div>
           </div>

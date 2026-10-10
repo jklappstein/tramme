@@ -23,6 +23,31 @@ export function openMenu(e: { clientX: number; clientY: number } | DOMRect, item
   menuState.value = { x, y, items };
 }
 
+/**
+ * A menu that also opens on a finger's long press, the same one as the right
+ * click: Safari iOS never sends contextmenu. Touch only (mouse and pen have
+ * the right click); ~500 ms held still, cancelled when the finger moves over
+ * ~6 px or lifts. Returns the cleanup, for the drags that start on the same
+ * press and must not survive the menu.
+ */
+export function longPress(e: { pointerType: string; clientX: number; clientY: number }, fire: (pos: { clientX: number; clientY: number }) => void): () => void {
+  if (e.pointerType !== 'touch') return () => {};
+  const x0 = e.clientX, y0 = e.clientY;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const move = (ev: PointerEvent) => { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > 6) stop(); };
+  const stop = () => {
+    clearTimeout(timer);
+    removeEventListener('pointermove', move, true);
+    removeEventListener('pointerup', stop, true);
+    removeEventListener('pointercancel', stop, true);
+  };
+  timer = setTimeout(() => { stop(); fire({ clientX: x0, clientY: y0 }); }, 500);
+  addEventListener('pointermove', move, true);
+  addEventListener('pointerup', stop, true);
+  addEventListener('pointercancel', stop, true);
+  return stop;
+}
+
 export function MenuHost() {
   const m = menuState.value;
   const ref = useRef<HTMLDivElement>(null);

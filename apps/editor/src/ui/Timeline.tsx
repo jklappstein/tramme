@@ -7,7 +7,7 @@ import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { layerActive, pointer, staticValue, type Composition, type Keyframe, type Layer, type Op } from '@tramme/core';
 import { clickSelect, comp, commit, draft, cancelDraft, S, select, setTime, frameStep, toggleFold, uiTime, viewDoc } from '../state.ts';
 import { animatedProps, flatTree, keysOf, layerName, parentOf, parseTime, propPath, rawProp, rulerLabel, shiftLayerOps, snap, subtree, timecode, topLayers, type TreeItem } from '../model.ts';
-import { openMenu, useSize } from './controls.tsx';
+import { longPress, openMenu, useSize } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
 import { preview } from '../preview.ts';
 import { GraphEditor } from './GraphEditor.tsx';
@@ -216,13 +216,20 @@ export function Timeline() {
     S.keys.value = chosen;
     const x0 = e.clientX, d0 = S.doc.peek();
     let ops: Op[] = [];
+    // a long press of a finger opens the menu and ends the drag: the press
+    // itself moves nothing, and neither does the finger once the menu is up
+    let menued = false;
+    const stopPress = longPress(e, (pos) => { menued = true; keyMenu(pos, id, name, i); });
     const move = (ev: PointerEvent) => {
+      if (menued) return;
       const dt = snap((ev.clientX - x0) / k, fps);
       ops = dt ? moveKeysOps(d0, compId, chosen, dt) : [];
       if (ops.length) draft(ops); else cancelDraft();
     };
     const up = () => {
+      stopPress();
       removeEventListener('pointermove', move); removeEventListener('pointerup', up);
+      if (menued) return;
       if (ops.length) {
         commit(chosen.length > 1 ? t('timeline.moveNKeyframes', { n: chosen.length }) : t('timeline.moveKeyframe'), ops);
         // indexes change once keys are re-sorted: clear the selection
@@ -232,8 +239,8 @@ export function Timeline() {
     addEventListener('pointermove', move); addEventListener('pointerup', up);
   };
 
-  const keyMenu = (e: MouseEvent, id: string, name: string, i: number) => {
-    e.preventDefault();
+  const keyMenu = (e: MouseEvent | { clientX: number; clientY: number }, id: string, name: string, i: number) => {
+    if ('preventDefault' in e) e.preventDefault();
     const kid = keyId(id, name, i);
     const chosen = keySel.includes(kid) ? keySel : [kid];
     S.keys.value = chosen;
