@@ -7,6 +7,7 @@ export * from './expr.ts';
 export * from './evaluate.ts';
 export * from './ops.ts';
 export * from './edit.ts';
+export * from './path.ts';
 export * from './schema.ts';
 export * from './validate.ts';
 export * from './format.ts';

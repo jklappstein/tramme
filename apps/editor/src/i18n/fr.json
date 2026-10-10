@@ -872,7 +872,11 @@
     "proposalHidden": "Proposition masquée",
     "showOriginal": "Voir l'original",
     "showProposal": "Voir la proposition",
-    "editName": "Modifier {name}"
+    "editName": "Modifier {name}",
+    "moveAnchor": "Déplacer l'ancrage",
+    "anchorStaysPut": "L'ancrage bouge sans compensation : la position, la rotation ou l'échelle de ce calque est animée ou pilotée. Alt+glisser déplace l'ancrage seul.",
+    "addAVertex": "Ajouter un sommet",
+    "removeAVertex": "Retirer un sommet"
   },
   "export": {
     "exportCancelled": "export annulé",

@@ -872,7 +872,11 @@
     "proposalHidden": "Proposal hidden",
     "showOriginal": "Show original",
     "showProposal": "Show proposal",
-    "editName": "Edit {name}"
+    "editName": "Edit {name}",
+    "moveAnchor": "Move the anchor",
+    "anchorStaysPut": "The anchor moves without compensation: position, rotation or scale of this layer is animated or driven. Alt-drag moves the anchor alone.",
+    "addAVertex": "Add a vertex",
+    "removeAVertex": "Remove a vertex"
   },
   "export": {
     "exportCancelled": "export cancelled",

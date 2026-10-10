@@ -62,6 +62,12 @@ export function layerMatrix(tr: { anchor: Vec2; position: Vec2; scale: Vec2; rot
   return matMul([c * sx, s * sx, -s * sy, c * sy, x, y], [1, 0, 0, 1, -ax, -ay]);
 }
 
+/** where the position goes when the anchor moves by d (local space) and the layer must stay put on screen: p' = p + RS·d */
+export function anchorShift(rotation: number, scale: Vec2, d: Vec2): Vec2 {
+  const r = (rotation * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+  return [c * scale[0] * d[0] - s * scale[1] * d[1], s * scale[0] * d[0] + c * scale[1] * d[1]];
+}
+
 export const applyMat = (m: Mat2D, [x, y]: Vec2): Vec2 => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
 
 /** the inverse of a matrix, null when it flattens the plane (a scale of 0) */

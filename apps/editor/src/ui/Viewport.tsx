@@ -5,7 +5,7 @@
 
 import { signal } from '@preact/signals';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Evaluator, layerActive, propKind, type Composition, type TrammeDoc, type EvaluatedLayer, type Handle, type Rect, type Vec2 } from '@tramme/core';
+import { Evaluator, layerActive, propKind, anchorShift, movePathVertex, setPathTangent, insertPathVertex, removePathVertex, nearestOnPath, pathD, type Composition, type TrammeDoc, type EvaluatedLayer, type Handle, type PathValue, type Rect, type Vec2 } from '@tramme/core';
 import { localMatrix } from '@tramme/render';
 import { comp, commit, draft, cancelDraft, S, select, viewDoc, previewDoc, toast } from '../state.ts';
 import { decide } from './Assistant.tsx';
@@ -156,6 +156,8 @@ export function Viewport() {
 
   const selected = S.selection.value.filter((id) => c.layers[id]);
   const geo = selected.length === 1 ? geometry(ev, c, compId, selected[0], now) : null;
+  const [vertex, setVertex] = useState<number | null>(null);
+  useEffect(() => { setVertex(null); }, [selected[0]]);
 
   const canEdit = (id: string, name: string) => {
     const raw = rawProp(S.doc.peek(), compId, id, name);
@@ -232,6 +234,100 @@ export function Viewport() {
       draft(opsFor(id, h.prop, last));
     }, () => { if (last !== null) commit(t('viewport.editName', { name: t(g.layer.node.props[h.prop]?.label ?? h.prop) }), opsFor(id, h.prop, last)); else cancelDraft(); });
   };
+
+  // ── a path property's vertices and tangents, and the anchor ──
+  /** the path properties of the selected layer's node, with their value at the current time */
+  const pathsOf = (g: Geo): [string, PathValue][] => {
+    const out: [string, PathValue][] = [];
+    for (const [name, def] of Object.entries(g.layer.node.props)) {
+      if (def.type !== 'path') continue;
+      const pv = g.layer.props[name] as PathValue | undefined;
+      if (pv && Array.isArray(pv.v) && pv.v.length) out.push([name, pv]);
+    }
+    return out;
+  };
+
+  const dragVertex = (e: PointerEvent, g: Geo, prop: string, pv: PathValue, i: number) => {
+    const id = selected[0];
+    if (!canEdit(id, prop)) return;
+    e.stopPropagation();
+    setVertex(i);
+    const inv = g.matrix.inverse();
+    const a = inv.transformPoint(new DOMPoint(...toComp(e)));
+    let last: PathValue | null = null;
+    track((ev2) => {
+      const q = inv.transformPoint(new DOMPoint(...toComp(ev2)));
+      last = movePathVertex(pv, i, [q.x - a.x, q.y - a.y]);
+      draft(opsFor(id, prop, last));
+    }, () => { if (last) commit(t('viewport.editName', { name: t(g.layer.node.props[prop]?.label ?? prop) }), opsFor(id, prop, last)); else cancelDraft(); });
+  };
+
+  const dragTangent = (e: PointerEvent, g: Geo, prop: string, pv: PathValue, i: number, which: 'i' | 'o') => {
+    const id = selected[0];
+    if (!canEdit(id, prop)) return;
+    e.stopPropagation();
+    setVertex(i);
+    const inv = g.matrix.inverse();
+    const a = inv.transformPoint(new DOMPoint(...toComp(e)));
+    const t0 = (which === 'i' ? pv.i?.[i] : pv.o?.[i]) ?? [0, 0];
+    let last: PathValue | null = null;
+    track((ev2) => {
+      const q = inv.transformPoint(new DOMPoint(...toComp(ev2)));
+      // Shift keeps the two tangents mirrored
+      last = setPathTangent(pv, i, which, [t0[0] + q.x - a.x, t0[1] + q.y - a.y], ev2.shiftKey);
+      draft(opsFor(id, prop, last));
+    }, () => { if (last) commit(t('viewport.editName', { name: t(g.layer.node.props[prop]?.label ?? prop) }), opsFor(id, prop, last)); else cancelDraft(); });
+  };
+
+  /** the anchor cross: without Alt the layer stays put on screen (position compensates); Alt moves the anchor alone */
+  const dragAnchor = (e: PointerEvent, g: Geo, alone: boolean) => {
+    const id = selected[0];
+    if (!canEdit(id, 'transform.anchor')) return;
+    e.stopPropagation();
+    const driven = ['transform.position', 'transform.rotation', 'transform.scale', 'transform.anchor']
+      .some((n) => { const k = propKind(rawProp(S.doc.peek(), compId, id, n)); return k === 'keyframes' || k === 'expression' || k === 'link'; });
+    if (driven && !alone) { toast(t('viewport.anchorStaysPut')); return; }
+    const tr = g.layer.transform;
+    const inv = g.matrix.inverse();
+    const a = inv.transformPoint(new DOMPoint(...toComp(e)));
+    let ops: ReturnType<typeof opsFor> | null = null;
+    track((ev2) => {
+      const q = inv.transformPoint(new DOMPoint(...toComp(ev2)));
+      const d: Vec2 = [Math.round((q.x - a.x) * 10) / 10, Math.round((q.y - a.y) * 10) / 10];
+      const anchor: Vec2 = [Math.round((tr.anchor[0] + d[0]) * 10) / 10, Math.round((tr.anchor[1] + d[1]) * 10) / 10];
+      const s = anchorShift(tr.rotation, tr.scale, d);
+      const position: Vec2 = [Math.round((tr.position[0] + s[0]) * 10) / 10, Math.round((tr.position[1] + s[1]) * 10) / 10];
+      ops = [...opsFor(id, 'transform.anchor', anchor), ...(alone ? [] : opsFor(id, 'transform.position', position))];
+      draft(ops);
+    }, () => { if (ops) commit(t('viewport.moveAnchor'), ops); else cancelDraft(); });
+  };
+
+  /** Alt+click on the path's stroke adds a vertex there; Delete takes the selected one out */
+  const addVertex = (e: PointerEvent, g: Geo, prop: string, pv: PathValue) => {
+    if (!canEdit(selected[0], prop)) return;
+    e.stopPropagation();
+    const q = g.matrix.inverse().transformPoint(new DOMPoint(...toComp(e)));
+    const hit = nearestOnPath(pv, [q.x, q.y]);
+    if (!hit) return;
+    commit(t('viewport.addAVertex'), opsFor(selected[0], prop, insertPathVertex(pv, hit.seg, hit.u)));
+    setVertex(hit.seg + 1);
+  };
+
+  // Delete takes the selected path vertex out, before the layers' own shortcut sees the key
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (vertex === null || !geo || e.key !== 'Delete' && e.key !== 'Backspace') return;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
+      const [prop, pv] = pathsOf(geo)[0] ?? [];
+      if (!prop || !pv) return;
+      e.stopPropagation();
+      commit(t('viewport.removeAVertex'), opsFor(selected[0], prop, removePathVertex(pv, vertex)));
+      setVertex(null);
+    };
+    addEventListener('keydown', key, true);
+    return () => removeEventListener('keydown', key, true);
+  });
 
   /** move the view; `tap` runs when the pointer was released without moving (a tap on the background) */
   const dragPan = (e: PointerEvent, tap?: () => void) => {
@@ -358,9 +454,34 @@ export function Viewport() {
                 const p = apply(geo.matrix, h.at);
                 return <rect key={`h${i}`} class="gizmo-handle node-handle" x={p[0] - handleR} y={p[1] - handleR} width={handleR * 2} height={handleR * 2} transform={`rotate(45 ${p[0]} ${p[1]})`} style={{ cursor: 'move' }} onPointerDown={(e) => dragHandle(e as unknown as PointerEvent, geo, h)}><title>{t(geo.layer.node.props[h.prop]?.label ?? h.prop)}</title></rect>;
               })}
-              <circle class="gizmo-anchor" cx={anchor[0]} cy={anchor[1]} r={4 / scale} />
-              <line class="gizmo-anchor" x1={anchor[0] - 7 / scale} y1={anchor[1]} x2={anchor[0] + 7 / scale} y2={anchor[1]} />
-              <line class="gizmo-anchor" x1={anchor[0]} y1={anchor[1] - 7 / scale} x2={anchor[0]} y2={anchor[1] + 7 / scale} />
+              {pathsOf(geo).map(([prop, pv]) => <g key={prop}>
+                {/* the outline itself; a fat invisible stroke over it catches the Alt+click that adds a vertex */}
+                <path class="gizmo-outline" d={pathD(pv)} transform={`matrix(${geo.matrix.a}, ${geo.matrix.b}, ${geo.matrix.c}, ${geo.matrix.d}, ${geo.matrix.e}, ${geo.matrix.f})`} />
+                <path d={pathD(pv)} transform={`matrix(${geo.matrix.a}, ${geo.matrix.b}, ${geo.matrix.c}, ${geo.matrix.d}, ${geo.matrix.e}, ${geo.matrix.f})`}
+                  fill="none" stroke="transparent" stroke-width={12} style={{ pointerEvents: 'stroke', cursor: 'crosshair' }}
+                  onPointerDown={(e) => { if (e.altKey) addVertex(e as unknown as PointerEvent, geo, prop, pv); }} />
+                {pv.v.map((pt, i) => {
+                  const p = apply(geo.matrix, pt);
+                  return <rect key={`v${i}`} class={`gizmo-handle path-handle${vertex === i ? ' on' : ''}`} x={p[0] - handleR} y={p[1] - handleR} width={handleR * 2} height={handleR * 2} transform={`rotate(45 ${p[0]} ${p[1]})`} style={{ cursor: 'move' }}
+                    onPointerDown={(e) => dragVertex(e as unknown as PointerEvent, geo, prop, pv, i)}><title>{`${prop} · ${i + 1}`}</title></rect>;
+                })}
+                {vertex !== null && pv.v[vertex] && (['i', 'o'] as const).map((which) => {
+                  const t = (which === 'i' ? pv.i?.[vertex] : pv.o?.[vertex]) ?? [0, 0];
+                  const from = apply(geo.matrix, pv.v[vertex]);
+                  const to = apply(geo.matrix, [pv.v[vertex][0] + t[0], pv.v[vertex][1] + t[1]]);
+                  return <g key={which}>
+                    <line class="gizmo-tangent" x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} />
+                    <circle class="gizmo-handle tangent-handle" cx={to[0]} cy={to[1]} r={handleR * 0.8} style={{ cursor: 'move' }}
+                      onPointerDown={(e) => dragTangent(e as unknown as PointerEvent, geo, prop, pv, vertex, which)} />
+                  </g>;
+                })}
+              </g>)}
+              <g style={{ cursor: 'move' }} onPointerDown={(e) => dragAnchor(e as unknown as PointerEvent, geo, e.altKey)}>
+                <circle class="gizmo-anchor" cx={anchor[0]} cy={anchor[1]} r={4 / scale} />
+                <line class="gizmo-anchor" x1={anchor[0] - 7 / scale} y1={anchor[1]} x2={anchor[0] + 7 / scale} y2={anchor[1]} />
+                <line class="gizmo-anchor" x1={anchor[0]} y1={anchor[1] - 7 / scale} x2={anchor[0]} y2={anchor[1] + 7 / scale} />
+                <circle cx={anchor[0]} cy={anchor[1]} r={Math.max(handleR, 8 / scale)} fill="transparent" stroke="none" />
+              </g>
             </g>;
           })()}
         </svg>

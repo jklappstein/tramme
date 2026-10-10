@@ -104,7 +104,7 @@ examples/
 - Languages: English and French (settings, Appearance; automatic from the browser). Plugins can bring their own translations: [docs/i18n.md](docs/i18n.md).
 - Guided tours (? button): the home screen and the editor introduce themselves the first time they open; other tours (drawn animation, assistant) wait in the help menu. A plugin or a script can add its own: [docs/tours.md](docs/tours.md).
 - Settings (gear, Ctrl+,): dark, light gray or system theme; preview quality per computer, while playing (automatic from the frame rate reached, full, half, quarter) and when still (displayed size or full resolution), preview motion blur (document, limited, off), playback at the composition's frames; the assistant's model and access. Exports always stay at full quality. The preview stays sharp when still, and its final image is computed in slices without freezing the interface.
-- Viewport: the engine's preview, zoom (Ctrl+wheel), pan (Space or middle button), safe zones, grid, click to select, move, scale and rotate handles.
+- Viewport: the engine's preview, zoom (Ctrl+wheel), pan (Space or middle button), safe zones, grid, click to select, move, scale and rotate handles. A path's vertices drag with their tangents (Shift keeps the two tangents mirrored; Alt+click on the stroke adds a vertex, Delete takes the selected one out), and the anchor cross moves with the layer staying put on screen (Alt moves the anchor alone).
 - Transport and timeline: playback with sound, editable timecode, layer bars to move or trim, keyframes to drag, curves by right click, markers.
 - Curves: values over time, Bézier handles per segment, curve presets and tokens, final curve with modifiers.
 - Inspector generated from the schemas: each property can be fixed, animated, an expression or a link; stackable modifiers and layer effects.
@@ -162,7 +162,6 @@ Transcription runs first on the Worker (Workers AI, Whisper large v3 turbo), oth
 - A single user, no accounts: access is controlled by Cloudflare Access. Files of 95 MB at most (the Workers request limit), except sounds and videos uploaded in parts (4 GiB).
 - Video: the browser must be able to decode the codec (H.264, VP9, AV1 depending on the case; no ProRes). No crossfade between takes; automatic reframing on the subject (the biggest person, from a subjects analysis) happens in shorts only, not in the editor.
 - Drawn animation: no brush or onion skin in the editor yet (drawings come from a drawing app), and no bone or mesh deformation. Each loaded drawing takes its own memory: prefer drawings at the size you need.
-- Editor: path points and the anchor cannot be manipulated in the viewport yet (inspector only).
 
 ## Contributing
 
