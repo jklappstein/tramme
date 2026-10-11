@@ -91,6 +91,9 @@ const barNode = {
       const stagger = data.length > 12 ? 0.03 : 0.09;
       const max = p.max > 0 ? p.max : niceMax(Math.max(...data.map((d) => d.value)));
       const values = data.map((d) => Math.max(0, d.value));
+      // the layer's origin is its centre: draw in the chart's own 0..w × 0..h box, moved there
+      ctx.save();
+      ctx.translate(-w / 2, -h / 2);
       ctx.font = FONT(p, host, labelSize);
       ctx.textBaseline = 'alphabetic';
 
@@ -127,6 +130,7 @@ const barNode = {
         if (p.showValues && barProgress(t, i, stagger) > 0.55) { ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.textAlign = 'center'; ctx.fillText(fmt(d.value), bx + barW / 2, baseline - bh - u * 0.02); }
         if (i % every === 0) { ctx.fillStyle = 'rgba(128,128,128,0.9)'; ctx.textAlign = 'center'; ctx.fillText(d.label, bx + barW / 2, baseline + labelSize); }
       });
+      ctx.restore();
     },
   },
 };
@@ -158,11 +162,14 @@ const lineNode = {
       const t = host.t - (host.layerIn ?? 0);
       const max = p.max > 0 ? p.max : niceMax(Math.max(...data.map((d) => d.value)));
       const pts = linePoints(w, h - u * 0.06, data.map((d) => Math.max(0, d.value)), max);
-      const top = -h / 2, revealed = Math.min(1, t / Math.max(0.001, p.drawFor));
+      const revealed = Math.min(1, t / Math.max(0.001, p.drawFor));
+      // the layer's origin is its centre: draw in the chart's own 0..w × 0..h box, moved there
+      ctx.save();
+      ctx.translate(-w / 2, -h / 2);
 
       ctx.save();
       // the draw-on: the line is clipped to the fraction of the width its progress covers
-      ctx.beginPath(); ctx.rect(-w / 2, top, w * revealed, h); ctx.clip();
+      ctx.beginPath(); ctx.rect(0, 0, w * revealed, h); ctx.clip();
       ctx.beginPath();
       ctx.moveTo(pts[0][0], pts[0][1]);
       if (p.smooth === 'smooth') {
@@ -174,7 +181,7 @@ const lineNode = {
       } else for (const [x, y] of pts.slice(1)) ctx.lineTo(x, y);
       if (p.area) {
         ctx.save();
-        ctx.lineTo(pts[pts.length - 1][0], h / 2); ctx.lineTo(pts[0][0], h / 2); ctx.closePath();
+        ctx.lineTo(pts[pts.length - 1][0], h - u * 0.06); ctx.lineTo(pts[0][0], h - u * 0.06); ctx.closePath();
         ctx.globalAlpha = 0.16; ctx.fillStyle = p.fill; ctx.fill();
         ctx.restore();
         ctx.beginPath();
@@ -194,7 +201,8 @@ const lineNode = {
       }
       ctx.restore();
       // the last value, when the line is fully drawn
-      if (revealed >= 1) { ctx.font = FONT(p, host, u * 0.055, 800); ctx.fillStyle = 'rgba(255,255,255,0.94)'; ctx.textAlign = pts[pts.length - 1][0] > w / 2 - u * 0.08 ? 'right' : 'left'; ctx.fillText(fmt(data[data.length - 1].value), Math.min(w / 2 - u * 0.01, pts[pts.length - 1][0] + u * 0.015), pts[pts.length - 1][1] - u * 0.03); }
+      if (revealed >= 1) { ctx.font = FONT(p, host, u * 0.055, 800); ctx.fillStyle = 'rgba(255,255,255,0.94)'; ctx.textAlign = pts[pts.length - 1][0] > w - u * 0.12 ? 'right' : 'left'; ctx.fillText(fmt(data[data.length - 1].value), Math.min(w - u * 0.01, pts[pts.length - 1][0] + u * 0.015), pts[pts.length - 1][1] - u * 0.03); }
+      ctx.restore();
     },
   },
 };

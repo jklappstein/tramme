@@ -93,6 +93,7 @@ examples/
   showreel/    "Showreel": made by the assistant, kinetic type, shapes, a counter, a shader smoke, particles, a camera look
   showcase/    shader, particles, nested compositions, layer effects, modifiers
   anime/       "Evening Breeze": example anime, frame by frame drawings in sequences, three shots (made by scripts/anime-example.ts)
+  packs/       "Packs": charts, kinetic type, physics and a UI walkthrough — the shipped plugin packs at work (screens made by scripts/packs-screens.ts)
 ```
 
 ## The editor

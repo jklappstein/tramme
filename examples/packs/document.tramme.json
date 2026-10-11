@@ -1,0 +1,56 @@
+{
+  "schema": "tramme/1",
+  "meta": {
+    "title": "Packs",
+    "description": "What the shipped plugin packs do: charts from a data set, kinetic type, deterministic physics, and a UI walkthrough with a clicking cursor."
+  },
+  "tokens": {
+    "accent": { "type": "color", "value": "#2EC4B6" },
+    "ink": { "type": "color", "value": "#F5F7FA" },
+    "plate": { "type": "color", "value": "#0E1116" }
+  },
+  "assets": {
+    "charts": { "type": "module", "src": "plugins/charts.js", "name": "Charts" },
+    "kinetic": { "type": "module", "src": "plugins/kinetic.js", "name": "Kinetic type" },
+    "physics": { "type": "module", "src": "plugins/physics.js", "name": "Physics" },
+    "walkthrough": { "type": "module", "src": "plugins/walkthrough.js", "name": "UI walkthrough" },
+    "a11y": { "type": "module", "src": "plugins/a11y.js", "name": "Accessibility checks" },
+    "localize": { "type": "module", "src": "plugins/localize.js", "name": "Localization" },
+    "teams": { "type": "json", "src": "assets/data/teams.json", "name": "Teams this week" },
+    "screen-home": { "type": "image", "src": "assets/screens/home.png", "name": "Screen · home" },
+    "screen-stats": { "type": "image", "src": "assets/screens/stats.png", "name": "Screen · stats" },
+    "screen-profile": { "type": "image", "src": "assets/screens/profile.png", "name": "Screen · profile" }
+  },
+  "compositions": {
+    "main": {
+      "name": "Packs",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "duration": 25.5,
+      "background": "#0E1116",
+      "layers": {
+        "kinetic-title": { "type": "text.kinetic", "name": "Opening", "in": 0, "out": 2.6, "transform": { "position": [960, 540] }, "props": { "text": "Six packs. One editor.", "mode": "scatter", "size": 116, "color": "@ink" } },
+        "label-charts": { "type": "text", "name": "Charts label", "in": 2.4, "out": 8.4, "transform": { "position": [960, 130] }, "props": { "text": "Charts — straight from a JSON file", "size": 46, "weight": 700, "align": "center", "color": "#8B98A5" } },
+        "chart-bar": { "type": "chart.bar", "name": "Teams this week", "in": 2.4, "out": 8.4, "transform": { "position": [960, 600] }, "props": { "data": "teams", "size": [1150, 580], "fill": "@accent" } },
+        "label-donut": { "type": "text", "name": "Donut label", "in": 8.4, "out": 12.4, "transform": { "position": [960, 130] }, "props": { "text": "Donut — parts of a whole", "size": 46, "weight": 700, "align": "center", "color": "#8B98A5" } },
+        "chart-donut": { "type": "chart.donut", "name": "Where the time goes", "in": 8.4, "out": 12.4, "transform": { "position": [960, 600] }, "props": { "values": [{ "label": "Animating", "value": 42 }, { "label": "Cutting", "value": 26 }, { "label": "Sound", "value": 19 }, { "label": "Coffee", "value": 13 }], "size": [560, 560], "innerLabel": "25.5 s" } },
+        "label-physics": { "type": "text", "name": "Physics label", "in": 12.4, "out": 15.4, "transform": { "position": [960, 130] }, "props": { "text": "Physics — a pure function of t", "size": 46, "weight": 700, "align": "center", "color": "#8B98A5" } },
+        "boom": { "type": "phys.text-drop", "name": "BOOM", "in": 12.4, "out": 15.4, "transform": { "position": [960, 600] }, "props": { "text": "BOOM", "size": 240, "color": "@ink" } },
+        "confetti": { "type": "phys.confetti", "name": "Confetti", "in": 12.4, "out": 15.4, "transform": { "position": [960, 540] }, "props": { "size": [1920, 1080], "count": 140 } },
+        "label-walkthrough": { "type": "text", "name": "Walkthrough label", "in": 15.4, "out": 22.3, "transform": { "position": [960, 130] }, "props": { "text": "UI walkthrough — your screenshots", "size": 46, "weight": 700, "align": "center", "color": "#8B98A5" } },
+        "screen-1": { "type": "ui.device", "name": "Screen · home", "in": 15.4, "out": 17.7, "transform": { "position": [620, 590] }, "props": { "screen": "screen-home", "device": "phone", "size": [400, 800], "scroll": { "$k": [{ "t": 15.4, "v": 0 }, { "t": 17.6, "v": 0.24 }] } } },
+        "screen-2": { "type": "ui.device", "name": "Screen · stats", "in": 17.7, "out": 20, "transform": { "position": [620, 590] }, "props": { "screen": "screen-stats", "device": "phone", "size": [400, 800], "scroll": { "$k": [{ "t": 17.7, "v": 0 }, { "t": 19.9, "v": 0.3 }] } } },
+        "screen-3": { "type": "ui.device", "name": "Screen · profile", "in": 20, "out": 22.3, "transform": { "position": [620, 590] }, "props": { "screen": "screen-profile", "device": "phone", "size": [400, 800], "scroll": { "$k": [{ "t": 20, "v": 0 }, { "t": 22.2, "v": 0.18 }] } } },
+        "cap-1": { "type": "text", "name": "Step 1", "in": 15.55, "out": 17.7, "transform": { "position": [1330, 520] }, "props": { "text": "Your screens,\nin a phone", "size": 62, "weight": 800, "align": "center", "color": "@ink" } },
+        "cap-2": { "type": "text", "name": "Step 2", "in": 17.85, "out": 20, "transform": { "position": [1330, 520] }, "props": { "text": "Scroll as you\ntalk", "size": 62, "weight": 800, "align": "center", "color": "@ink" } },
+        "cap-3": { "type": "text", "name": "Step 3", "in": 20.15, "out": 22.3, "transform": { "position": [1330, 520] }, "props": { "text": "Key the taps\nwhere they land", "size": 62, "weight": 800, "align": "center", "color": "@ink" } },
+        "cursor": { "type": "ui.cursor", "name": "Cursor", "in": 15.4, "out": 22.3, "transform": { "position": [0, 0] }, "props": { "pos": { "$k": [{ "t": 15.5, "v": [700, 700] }, { "t": 16.7, "v": [660, 620] }, { "t": 18.9, "v": [560, 480] }, { "t": 21.1, "v": [680, 760] }] }, "click": { "$k": [{ "t": 16.8, "v": 0 }, { "t": 16.92, "v": 1 }, { "t": 17.24, "v": 0 }, { "t": 19.02, "v": 0 }, { "t": 19.14, "v": 1 }, { "t": 19.46, "v": 0 }, { "t": 21.22, "v": 0 }, { "t": 21.34, "v": 1 }, { "t": 21.66, "v": 0 }] } } },
+        "kinetic-end": { "type": "text.kinetic", "name": "Closing", "in": 22.3, "out": 25.5, "transform": { "position": [960, 540] }, "props": { "text": "Everything above? A plugin.", "mode": "typewriter", "size": 100, "color": "@ink" } }
+      },
+      "order": ["kinetic-title", "label-charts", "chart-bar", "label-donut", "chart-donut", "label-physics", "boom", "confetti", "label-walkthrough", "screen-1", "screen-2", "screen-3", "cap-1", "cap-2", "cap-3", "cursor", "kinetic-end"]
+    }
+  },
+  "root": "main",
+  "plugins": ["charts", "kinetic", "physics", "walkthrough", "a11y", "localize"]
+}
