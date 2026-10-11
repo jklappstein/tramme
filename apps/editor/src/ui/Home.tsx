@@ -269,7 +269,7 @@ export function Home() {
         ])}><Icon name="plus" /><span class="label">{t('common.newProject')}</span></button>
         <input ref={input} type="file" accept=".tramme,.trame,.emotion,.zip,.json,application/json" hidden onChange={(e) => openFiles(chosen(e))} />
         <input ref={video} type="file" accept="video/*,.mp4,.mov,.webm,.mkv" hidden onChange={(e) => openFiles(chosen(e))} />
-        <input ref={sources} type="file" multiple accept="image/*,video/*,audio/*,.pdf,application/pdf,.json,.ttf,.otf,.woff,.woff2" hidden onChange={(e) => { const list = chosen(e); if (list.length) fromSources(list); }} />
+        <input ref={sources} type="file" multiple accept="image/*,video/*,audio/*,.pdf,application/pdf,.md,.markdown,.json,.ttf,.otf,.woff,.woff2" hidden onChange={(e) => { const list = chosen(e); if (list.length) fromSources(list); }} />
         {/* a whole folder (the kit prompt's tramme/, say): its files and its kit */}
         <input ref={folder} type="file" multiple hidden {...{ webkitdirectory: true }} onChange={(e) => { const list = chosen(e); if (list.length) fromSources(list); }} />
         <WindowControls />

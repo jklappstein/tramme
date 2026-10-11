@@ -1,12 +1,12 @@
 // The sources of a project: the material a video is made from — pictures,
-// footage, sounds and documents (PDF) — brought in at once from the home
-// screen (assets/sources/), joined to a message (assets/chat/), or the video
-// a project was made from (assets/video/). The sources tool lists them with a
-// contact sheet, then reads each one for the assistant: a document page by
-// page (its text, and its pages as pictures), a video as frames across its
-// length with what is said, a sound by what is said, a picture as it is. What
-// the assistant learns goes into the brief (about, sources), so every later
-// conversation starts from it.
+// footage, sounds and documents (PDF, markdown) — brought in at once from the
+// home screen (assets/sources/), joined to a message (assets/chat/), or the
+// video a project was made from (assets/video/). The sources tool lists them
+// with a contact sheet, then reads each one for the assistant: a document page
+// by page (its text, and its pages as pictures), a markdown document whole, a
+// video as frames across its length with what is said, a sound by what is
+// said, a picture as it is. What the assistant learns goes into the brief
+// (about, sources), so every later conversation starts from it.
 
 import type { ToolContext, ToolType, TrammeDoc } from '@tramme/core';
 import { srcPath } from '@tramme/project';
@@ -23,13 +23,13 @@ export const SOURCES_DIR = 'assets/sources/';
 
 export type FileKind = 'image' | 'audio' | 'video' | 'document' | 'file';
 
-/** what a file holds, by its type or its extension: a picture, a sound, a video, a document (PDF) */
+/** what a file holds, by its type or its extension: a picture, a sound, a video, a document (PDF, markdown) */
 export function kindOf(f: { name: string; type?: string }): FileKind {
   const ext = f.name.toLowerCase().split('.').pop() ?? '', type = f.type ?? '';
   if (type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif', 'svg'].includes(ext)) return 'image';
   if (type.startsWith('audio/') || ['wav', 'mp3', 'ogg', 'm4a', 'flac'].includes(ext)) return 'audio';
   if (type.startsWith('video/') || ['mp4', 'webm', 'mov'].includes(ext)) return 'video';
-  if (type === 'application/pdf' || ext === 'pdf') return 'document';
+  if (type === 'application/pdf' || ext === 'pdf' || ext === 'md' || ext === 'markdown') return 'document';
   return 'file';
 }
 
@@ -58,7 +58,7 @@ export function sourcesOf(doc: TrammeDoc, files: { path: string; size: number }[
     out.push({ ref: id, kind: a.type, name: a.name ?? id, path, size: sizes.get(path) ?? 0, asset: id });
   }
   for (const f of files) {
-    if (/\.pdf$/i.test(f.path)) out.push({ ref: f.path, kind: 'document', name: f.path.split('/').pop()!.replace(/\.pdf$/i, ''), path: f.path, size: f.size });
+    if (/\.(pdf|md|markdown)$/i.test(f.path)) out.push({ ref: f.path, kind: 'document', name: f.path.split('/').pop()!.replace(/\.(pdf|md|markdown)$/i, ''), path: f.path, size: f.size });
   }
   return out;
 }
@@ -71,6 +71,8 @@ const LOOK = 1024;
 const CELL_W = 240, CELL_H = 180;
 /** text read from one page at most */
 const PAGE_TEXT = 8000;
+/** text read from a markdown document at most; the rest with read_file */
+const MD_TEXT = 50_000;
 
 /** a picture shrunk to fit w × h, centred on dark bands (no stretching) */
 function fitted(image: CanvasImageSource, iw: number, ih: number, w: number, h: number): HTMLCanvasElement {
@@ -121,6 +123,10 @@ async function glance(s: Source, ctx: ToolContext): Promise<Look> {
     } finally { v.dispose(); }
   }
   if (s.kind === 'audio') return { line: `(${where})` };
+  if (/\.(md|markdown)$/i.test(s.path)) {
+    const text = await ctx.readText(s.path);
+    return { line: `${text ? `${text.length} characters of markdown` : 'empty'} (${where})` };
+  }
   const doc = await openPdf(ctx.fileUrl(s.path));
   const title = await pdfTitle(doc);
   const first = await pageImage(doc, 1, 2 * CELL_H);
@@ -149,7 +155,7 @@ async function inventory(list: Source[], ctx: ToolContext, kit: boolean) {
   const summary = (['document', 'image', 'video', 'audio'] as SourceKind[]).filter(count).map((k) => `${count(k)} ${KIND_WORD[k]}${count(k) > 1 ? 's' : ''}`).join(', ');
   return {
     text: [...(kit ? [KIT_NOTE, ''] : []), `${list.length} source${list.length > 1 ? 's' : ''} (${summary})${cells.length ? ', the visual ones on the contact sheet, numbered as below' : ''}:`, ...lines, '',
-      'Read each one with source (its "source" above): documents page by page, videos and sounds with what is said. Then write what you learned in the brief (use_tool "brief" with about and sources).'].join('\n'),
+      'Read each one with source (its "source" above): PDFs page by page, markdown documents whole, videos and sounds with what is said. Then write what you learned in the brief (use_tool "brief" with about and sources).'].join('\n'),
     images: cells.length ? [{ url: sheetOf(cells, CELL_W, CELL_H, Math.min(4, cells.length)), caption: t('sources.sheet', { n: list.length }) }] : [],
     notice: t('sources.listed', { n: list.length }),
   };
@@ -157,6 +163,7 @@ async function inventory(list: Source[], ctx: ToolContext, kit: boolean) {
 
 /** a document's pages: their text, the pages with text on a sheet, the pages without (scans) each large enough to read */
 async function readDocument(s: Source, pages: string | undefined, textOnly: boolean, ctx: ToolContext) {
+  if (/\.(md|markdown)$/i.test(s.path)) return readMarkdown(s, ctx);
   const doc: PDFDocumentProxy = await openPdf(ctx.fileUrl(s.path));
   const total = doc.numPages, wanted = pageRange(pages, total, textOnly ? 30 : 4).slice(0, textOnly ? 30 : 6);
   const parts: string[] = [], sheet: { image: CanvasImageSource; label: string }[] = [], scans: { url: string; caption: string }[] = [];
@@ -181,6 +188,18 @@ async function readDocument(s: Source, pages: string | undefined, textOnly: bool
     text: `Document "${s.name}" (${s.path}): ${total} page${total > 1 ? 's' : ''}; pages ${wanted.join(', ')} below${images.length ? ' (the text, and the pages as pictures for their layout, pictures and colours)' : ''}.${next}\n\n${parts.join('\n\n')}`,
     images,
     notice: t('sources.readDocument', { name: s.name, pages: wanted.join(', ') }),
+  };
+}
+
+/** a markdown document whole: its text (a long one continues with read_file, from the offset given) */
+async function readMarkdown(s: Source, ctx: ToolContext) {
+  const text = await ctx.readText(s.path);
+  if (text == null) throw new Error(`unreadable: ${s.path}`);
+  const shown = clip(text, MD_TEXT);
+  const rest = shown.length < text.length ? ` The rest of it, with read_file (offset ${shown.length}).` : '';
+  return {
+    text: `Document "${s.name}" (${s.path}): markdown, ${text.length} characters.\n\n${shown}${rest}`,
+    notice: t('sources.readOne', { name: s.name }),
   };
 }
 
@@ -219,13 +238,13 @@ async function readSound(s: Source, ctx: ToolContext) {
 
 const sources: ToolType<{ source?: string; pages?: string; text?: boolean }> = {
   name: 'sources', title: 'Read the sources',
-  description: "the material of the project (pictures, videos, sounds and PDF documents brought in): without source, lists them with a contact sheet; with one, reads it: a document's pages as text and pictures, a video's frames across its length and what is said, a sound's words, a picture as it is",
+  description: "the material of the project (pictures, videos, sounds and documents, PDF or markdown): without source, lists them with a contact sheet; with one, reads it: a PDF's pages as text and pictures, a markdown document whole, a video's frames across its length and what is said, a sound's words, a picture as it is",
   input: {
     type: 'object',
     properties: {
       source: { type: 'string', title: 'Source', description: 'the asset id or the file path the list gives; none: the list' },
-      pages: { type: 'string', title: 'Pages', description: 'a document: the pages to read, as "1-4", "2,5,7" or "6-" (the first four by default, six at most with their pictures)' },
-      text: { type: 'boolean', title: 'Text only', description: 'a document: the text of the pages without their pictures, thirty pages at a time' },
+      pages: { type: 'string', title: 'Pages', description: 'a PDF: the pages to read, as "1-4", "2,5,7" or "6-" (the first four by default, six at most with their pictures)' },
+      text: { type: 'boolean', title: 'Text only', description: 'a PDF: the text of the pages without their pictures, thirty pages at a time' },
     },
   },
   ai: {

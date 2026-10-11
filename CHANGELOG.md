@@ -8,6 +8,10 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+### Added
+
+- Markdown documents (`.md`, `.markdown`) come in with the sources now: dropped on the home screen, chosen with "From sources (files)" or a whole repository folder, or joined to a message. The assistant reads them whole with the sources tool (a long one continues with `read_file`), the way it reads a PDF page by page; a folder's `README.md` alone is enough to open a project from its sources.
+
 ### Changed
 
 - The local companion runs the Antigravity CLI (`agy`, a Google login) in place of the Gemini CLI, which Google retired for personal accounts on June 18, 2026. The model menu offers it as "Antigravity", with the models it lists for the login (`agy models`: Gemini 3.1 Pro, Gemini Flash, Claude…), apart from the Gemini models of an API key; its default model takes an effort level. It runs with a home of its own under `~/.tramme/engines/antigravity`, so the user's plugins, skills and MCP servers stay out; it gets tramme's tools, and of its own only the reading of the images joined to the message. A model chosen for the Gemini CLI becomes Antigravity's default.

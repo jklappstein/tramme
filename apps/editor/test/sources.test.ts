@@ -17,17 +17,19 @@ describe('the sources of a project', () => {
     const files = [
       { path: 'assets/sources/logo.png', size: 2000 },
       { path: 'assets/sources/deck.pdf', size: 3_000_000 },
+      { path: 'assets/sources/README.md', size: 4000 },
       { path: 'assets/chat/notes.pdf', size: 1000 },
       { path: 'assets/images/sky.png', size: 9 },
     ];
     const list = sourcesOf(doc, files);
     expect(list.map((s) => [s.ref, s.kind])).toEqual([
       ['logo', 'image'], ['talk', 'video'], ['voice', 'audio'],
-      ['assets/sources/deck.pdf', 'document'], ['assets/chat/notes.pdf', 'document'],
+      ['assets/sources/deck.pdf', 'document'], ['assets/sources/README.md', 'document'], ['assets/chat/notes.pdf', 'document'],
     ]);
     expect(list[0].size).toBe(2000);
     expect(list[2].name).toBe('voice');
     expect(list[3].name).toBe('deck');
+    expect(list[4].name).toBe('README');
   });
 
   it('reads the pages asked, within the document', () => {
@@ -44,6 +46,8 @@ describe('the sources of a project', () => {
   it('knows a file by its type or its extension', () => {
     expect(kindOf({ name: 'Brochure 2026.PDF' })).toBe('document');
     expect(kindOf({ name: 'scan', type: 'application/pdf' })).toBe('document');
+    expect(kindOf({ name: 'README.md' })).toBe('document');
+    expect(kindOf({ name: 'notes.MARKDOWN' })).toBe('document');
     expect(kindOf({ name: 'logo.svg' })).toBe('image');
     expect(kindOf({ name: 'clip.mov' })).toBe('video');
     expect(kindOf({ name: 'voice.m4a' })).toBe('audio');
@@ -53,6 +57,8 @@ describe('the sources of a project', () => {
   it('a document is a file of the project', () => {
     expect(pathIssue('assets/sources/deck.pdf')).toBeNull();
     expect(mimeOf('assets/sources/deck.pdf')).toBe('application/pdf');
+    expect(pathIssue('assets/sources/README.md')).toBeNull();
+    expect(mimeOf('assets/sources/README.md')).toBe('text/markdown; charset=utf-8');
     expect(pathIssue('plugins/deck.pdf')).not.toBeNull();
   });
 });

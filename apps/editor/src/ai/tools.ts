@@ -22,7 +22,7 @@ import { t } from '../i18n/index.ts';
 
 const text =(s: string, isError = false): ToolResult => ({ content: [{ type: 'text', text: s }], isError });
 const STILL_WIDTH = 768;
-const TEXT_FILE = /\.(js|mjs|json|svg)$/i;
+const TEXT_FILE = /\.(js|mjs|json|svg|md|markdown)$/i;
 /** a file read in parts of this many characters (about 15k tokens) */
 const READ_PART = 50_000;
 
@@ -346,7 +346,7 @@ ${r.content[0].type === 'text' ? r.content[0].text : ''}`);
     if (path === DOCUMENT) return text('read the document with get_document', true);
     const bad = pathIssue(path);
     if (bad) return text(`${path}: ${bad}`, true);
-    if (!TEXT_FILE.test(path) || path === MANIFEST || isChatPath(path)) return text('only .js, .mjs, .json and .svg text files can be read', true);
+    if (!TEXT_FILE.test(path) || path === MANIFEST || isChatPath(path)) return text('only .js, .mjs, .json, .svg and .md text files can be read', true);
     const f = await api.readText(S.project.peek().id, path);
     if (!f) return text(`file not found: ${path}`, true);
     if (offset === 0 && f.text.length <= READ_PART) return text(f.text);

@@ -668,7 +668,7 @@ export function Assistant({ style }: { style?: Record<string, string | number> }
             onKeyDown={keyDown} />
           <div class="bar">
             <button class="icon-btn sm" title={t('assistant.attachImagesSoundsOr')} disabled={!available} onClick={() => files.current?.click()}><Icon name="attach" /></button>
-            <input ref={files} type="file" multiple hidden accept="image/*,audio/*,video/*,.pdf,application/pdf,.json,.svg" onChange={(e) => { join((e.target as HTMLInputElement).files); (e.target as HTMLInputElement).value = ''; }} />
+            <input ref={files} type="file" multiple hidden accept="image/*,audio/*,video/*,.pdf,application/pdf,.md,.markdown,.json,.svg" onChange={(e) => { join((e.target as HTMLInputElement).files); (e.target as HTMLInputElement).value = ''; }} />
             <div class="grow"><span class="chip" title={t('assistant.contextSentWithThe')}><Icon name="target" />{ctx.text}</span></div>
             {busy
               ? <button class="send stop" title={t('assistant.stop')} onClick={stop}><Icon name="stop" /></button>

@@ -86,6 +86,7 @@ const EXT: [(&str, &[&str]); 3] = [
         &[
             "png", "jpg", "jpeg", "webp", "gif", "avif", "svg", "ttf", "otf", "woff", "woff2",
             "wav", "mp3", "ogg", "m4a", "flac", "mp4", "webm", "mov", "json", "js", "mjs", "pdf",
+            "md", "markdown",
         ],
     ),
     ("plugins", &["js", "mjs"]),
@@ -107,6 +108,7 @@ pub fn mime_of(path: &str) -> &'static str {
         "woff" => "font/woff",
         "woff2" => "font/woff2",
         "pdf" => "application/pdf",
+        "md" | "markdown" => "text/markdown; charset=utf-8",
         "wav" => "audio/wav",
         "mp3" => "audio/mpeg",
         "ogg" => "audio/ogg",
@@ -376,7 +378,15 @@ mod tests {
         assert_eq!(mime_of("assets/images/x.svg"), "image/svg+xml");
         assert_eq!(mime_of("assets/fonts/x.woff2"), "font/woff2");
         assert_eq!(mime_of("assets/sources/x.pdf"), "application/pdf");
+        assert_eq!(mime_of("assets/sources/README.MD"), "text/markdown; charset=utf-8");
         assert_eq!(mime_of("x.unknown"), "application/octet-stream");
+    }
+
+    #[test]
+    fn markdown_is_a_file_of_assets() {
+        assert_eq!(path_issue("assets/sources/README.md"), None);
+        assert_eq!(path_issue("assets/sources/notes.markdown"), None);
+        assert!(path_issue("assets/sources/notes.txt").is_some());
     }
 
     #[test]

@@ -166,7 +166,7 @@ export async function importVideo(file: File, progress?: Progress): Promise<Mani
 
 export const isVideoFile = (f: File) => f.type.startsWith('video/') || /\.(mp4|m4v|webm|mov|mkv)$/i.test(f.name);
 
-/** a file a video can be made from: a picture, a video, a sound, a document (PDF) */
+/** a file a video can be made from: a picture, a video, a sound, a document (PDF, markdown) */
 export const isSourceFile = (f: File) => kindOf(f) !== 'file';
 
 /** a file brought in with its path in the folder chosen or dropped (its name alone when it came by itself) */

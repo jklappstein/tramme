@@ -89,7 +89,10 @@ export function describe(atts: Attachment[], doc: TrammeDoc): string[] {
       const t = a.asset ? transcriptIdOf(a.asset) : '';
       const state = t && doc.assets[t] ? `transcript ready (asset "${t}")` : transcriptions.peek().some((j) => j.id === a.asset) ? 'transcription in progress' : 'not transcribed yet';
       lines.push(`- ${a.kind === 'video' ? 'video' : 'sound'} ${a.name} (${where}, ${mb(a.size)}): ${state}. Read what is said with get_transcript, see the video with media_frame.`);
-    } else if (a.kind === 'document') lines.push(`- document ${a.name} (${where}, ${mb(a.size)}): read it page by page with use_tool "sources" (source "${a.path}").`);
+    } else if (a.kind === 'document') {
+      const md = /\.(md|markdown)$/i.test(a.name);
+      lines.push(`- document ${a.name} (${where}, ${mb(a.size)}): read it ${md ? 'whole' : 'page by page'} with use_tool "sources" (source "${a.path}").`);
+    }
     else lines.push(`- file ${a.name} (${where}): readable with read_file.`);
   }
   return lines;

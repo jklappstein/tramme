@@ -24,6 +24,8 @@ describe('project format', () => {
     expect(pathIssue('/etc/passwd')).toMatch(/absolute/);
     expect(pathIssue('assets/virus.exe')).toMatch(/extension/);
     expect(pathIssue('elsewhere/x.png')).toMatch(/not allowed/);
+    expect(pathIssue('assets/sources/README.md')).toBeNull();
+    expect(pathIssue('assets/sources/notes.markdown')).toBeNull();
     expect(srcPath('assets/./a/../b.png')).toBe('assets/b.png');
     expect(srcPath('../hors.png')).toBeNull();
     expect(srcPath('/pubs/x.png')).toBeNull();
