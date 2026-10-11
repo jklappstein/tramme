@@ -3,7 +3,7 @@
 // (through the little HTTP mirror of the Rust store).
 
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
-import { accessSync, constants, mkdtempSync, rmSync } from 'node:fs';
+import { accessSync, constants, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,9 @@ import { httpBucket } from './http-bucket.ts';
 
 // where the storage example would be built from
 const TAURI = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src-tauri');
+// the editor's build, which tauri.conf.json's frontendDist names: the crate does not compile
+// without the folder, and the storage server does not need what is in it
+const EDITOR_DIST = path.join(TAURI, '..', '..', 'editor', 'dist');
 const EXE = path.join(TAURI, 'target', 'debug', 'examples', process.platform === 'win32' ? 'tramme-storage-server.exe' : 'tramme-storage-server');
 
 // is cargo on the PATH, or in the default ~/.cargo/bin install?
@@ -60,6 +63,7 @@ describe.skipIf(!hasCargo && !REQUIRE_DESKTOP)('desktop storage', () => {
         return execFileSync(fallback, args, { cwd: TAURI, stdio: 'pipe' });
       }
     };
+    mkdirSync(EDITOR_DIST, { recursive: true });
     cargo('build', '--example', 'tramme-storage-server');
 
     home = mkdtempSync(path.join(tmpdir(), 'tramme-contract-'));
