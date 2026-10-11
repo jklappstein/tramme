@@ -57,6 +57,6 @@ The server checks the document's structure again on every write.
 A zip of the project's files, without `renders/`. Media that is already compressed is stored as is. On reading, entries that are too large are refused before decompression; an archive whose whole content sits in a single folder (a zip made by hand) is accepted.
 
 ```sh
-tramme pack examples/showcase --out showcase.tramme
-tramme unpack showcase.tramme --out showcase
+tramme pack examples/launch-film --out launch-film.tramme
+tramme unpack launch-film.tramme --out launch-film
 ```

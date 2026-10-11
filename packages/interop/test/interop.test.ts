@@ -10,7 +10,7 @@ const load = (p: string): TrammeDoc => JSON.parse(fs.readFileSync(path.join(root
 const reg = builtinRegistry();
 
 describe('export Lottie', () => {
-  const { lottie, warnings } = toLottie(load('examples/showcase/document.tramme.json'), reg);
+  const { lottie, warnings } = toLottie(load('packages/interop/test/fixtures/showcase.tramme.json'), reg);
   const byName = (layers: any[], nm: string) => layers.find((l) => l.nm === nm);
 
   it('header, nested compositions as precomps, background as a solid', () => {
@@ -31,7 +31,7 @@ describe('export Lottie', () => {
   });
 
   it('modifiers and expressions baked frame by frame, within 0.01', () => {
-    const doc = load('examples/showcase/document.tramme.json');
+    const doc = load('packages/interop/test/fixtures/showcase.tramme.json');
     const ev = new Evaluator(doc, reg);
     const rot = byName(lottie.layers, 'Badge 2').ks.r;
     expect(rot.a).toBe(1);
@@ -52,7 +52,7 @@ describe('export Lottie', () => {
 
 describe('import Lottie', () => {
   it('round trip: a valid document, same visible layers, same keyframes', () => {
-    const doc = load('examples/showcase/document.tramme.json');
+    const doc = load('packages/interop/test/fixtures/showcase.tramme.json');
     const { lottie } = toLottie(doc, reg);
     const back = fromLottie(lottie);
     expect(validate(back.doc, reg)).toEqual([]);
@@ -89,7 +89,7 @@ describe('export SVG', () => {
     expect(svg).toMatch(/<rect x="-120" y="-300" width="240" height="600" rx="24"/);
     expect(svg).toMatch(/<ellipse cx="0" cy="0"/);
     expect(svg).toMatch(/<text x="0" y="0"[^>]*text-anchor="middle"[^>]*>Hello<\/text>/);
-    const showcase = toSvg(load('examples/showcase/document.tramme.json'), reg, 2);
+    const showcase = toSvg(load('packages/interop/test/fixtures/showcase.tramme.json'), reg, 2);
     expect(showcase.svg).toMatch(/<feGaussianBlur in="SourceGraphic" stdDeviation="/);
     expect(showcase.svg).toMatch(/<feDropShadow/);
     expect(showcase.warnings.join('\n')).toMatch(/shader/);

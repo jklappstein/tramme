@@ -1279,7 +1279,6 @@
     "Shadows": "Ombres",
     "Shape": "Forme",
     "Shapes": "Formes",
-    "Showcase": "Vitrine",
     "Launch film": "Film de lancement",
     "A 45 s launch film for tramme, made in tramme: a ball on the beat, kinetic type, the document, modifiers, shaders, particles, a 2.5D camera, nested compositions, sound-reactive motion, the assistant, the mark. Music and sound written as code.": "Un film de lancement de 45 s pour tramme, fait dans tramme : une balle sur le temps, de la typo cinétique, le document, les modificateurs, des shaders, des particules, une caméra 2.5D, des compositions imbriquées, du mouvement qui suit le son, l'assistant, le logo. Musique et sons écrits en code.",
     "Showreel": "Showreel",
@@ -1662,9 +1661,7 @@
     "Hz: where the mid bell acts": "Hz : là où agit le cloche des médiums",
     "warms the bass, or thins it out (a voice's rumble lives there); 0 leaves it as recorded": "réchauffe les graves, ou les affine (la rumeur d'une voix vit là) ; 0 laisse tel qu'enregistré",
     "pushes or dips the ear's band around the mid frequency: presence, or a nasality tamed": "pousse ou creuse la bande de l'oreille autour de la fréquence des médiums : de la présence, une nasalité calmée",
-    "air and brightness over, or the hiss tamed under; 0 leaves it as recorded": "de l'air et de la brillance au-dessus, le sifflement contenu en dessous ; 0 laisse tel qu'enregistré",
-    "Packs": "Packs",
-    "What the shipped plugin packs do: charts from a data set, kinetic type, deterministic physics, and a UI walkthrough with a clicking cursor.": "Ce que les packs de plugins livrés savent faire : des graphiques depuis un jeu de données, du texte cinétique, de la physique déterministe et une visite guidée avec son curseur."
+    "air and brightness over, or the hiss tamed under; 0 leaves it as recorded": "de l'air et de la brillance au-dessus, le sifflement contenu en dessous ; 0 laisse tel qu'enregistré"
   },
   "personal": {
     "cannotStart": "tramme ne peut pas démarrer ici",

@@ -15,6 +15,6 @@ Each video slot on the page (`components/Media.astro`) shows a placeholder until
 The examples render with the command line, for example:
 
 ```sh
-npm run tramme -- render examples/showcase --format webm --mute
-npm run tramme -- still examples/showcase --t 2.5
+npm run tramme -- render examples/launch-film --format webm --mute
+npm run tramme -- still examples/launch-film --t 2.5
 ```
