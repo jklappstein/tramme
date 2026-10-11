@@ -13,6 +13,7 @@
     ],
     "strict": true,
     "noEmit": true,
+    "allowJs": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
