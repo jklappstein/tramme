@@ -3,10 +3,8 @@ import Media from './Media.astro';
 import AppLink from './AppLink.astro';
 import DownloadLink from './DownloadLink.astro';
 import { docHref } from '../lib/docs';
-import { example } from '../lib/examples';
 
-const show = example('showcase');
-const about = 'A shader sky, particles, nested compositions, layer effects and modifiers.';
+const about = 'The editor at work: the layers, the timeline and the assistant on one document.';
 ---
 
 <section class="hero">
@@ -23,8 +21,8 @@ const about = 'A shader sky, particles, nested compositions, layer effects and m
   </div>
 
   <div class="wrap-wide stage">
-    <Media id="showcase" width={show.width} height={show.height} duration={show.duration} tint={['#0b0d14', '#7390ff']} label={`${show.name}, made with tramme. ${about}`} />
-    <p class="caption"><strong>{show.name}.</strong> {about}</p>
+    <Media id="tramme" width={1920} height={1080} duration={10} tint={['#0b0f12', '#2ec4b6']} label={`tramme. ${about}`} />
+    <p class="caption"><strong>tramme.</strong> {about}</p>
   </div>
 </section>
 
@@ -42,7 +40,7 @@ const about = 'A shader sky, particles, nested compositions, layer effects and m
   /* the clip's light, spilling on the page around it */
   .stage::before {
     content: ''; position: absolute; inset: -18% 4% 30%; z-index: -1; pointer-events: none;
-    background: radial-gradient(50% 50% at 50% 50%, rgba(115, 144, 255, 0.13), transparent 72%);
+    background: radial-gradient(50% 50% at 50% 50%, rgba(46, 196, 182, 0.13), transparent 72%);
   }
   .stage :global(.media) { box-shadow: var(--lift); }
   .caption { margin-top: 16px; }
