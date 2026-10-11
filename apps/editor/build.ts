@@ -158,6 +158,8 @@ fs.writeFileSync(path.join(DIST, 'manifest.webmanifest'), JSON.stringify({
 const examples = writeExamples();
 // the sound library shipped with the editor (CC0 recordings and their catalog, scripts/sound-library.ts)
 fs.cpSync(path.join(ROOT, 'sounds'), path.join(DIST, 'sounds'), { recursive: true });
+// the plugin packs shipped with the editor (the Code section of the left panel adds them to a project)
+fs.cpSync(path.join(ROOT, 'plugins'), path.join(DIST, 'plugins'), { recursive: true });
 // pdf.js parses documents (the sources of a project) in a worker of its own, at a fixed address (src/pdf.ts)
 fs.copyFileSync(createRequire(import.meta.url).resolve('pdfjs-dist/build/pdf.worker.min.mjs'), path.join(DIST, 'pdf.worker.mjs'));
 

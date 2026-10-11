@@ -452,7 +452,11 @@ function Assets() {
       {byType.size === 0 && <div class="empty"><Icon name="folder" />{t('panel.noAssetsDropFiles')}<button class="btn sm" onClick={() => input.current?.click()}><Icon name="plus" />{t('panel.import')}</button></div>}
       {[...byType].map(([type, list]) => (
         <div key={type}>
-          <div class="section-label">{ASSET_LABEL[type] ? t(ASSET_LABEL[type]) : type}</div>
+          <div class="section-label" style={type === 'module' ? { display: 'flex', alignItems: 'center' } : undefined}>
+            {ASSET_LABEL[type] ? t(ASSET_LABEL[type]) : type}
+            {type === 'module' && <span style={{ flex: 1 }} />}
+            {type === 'module' && <button class="icon-btn xs" title={t('panel.addPack')} onClick={(e) => packMenu(e, addPack)}><Icon name="plus" /></button>}
+          </div>
           {list.map(([id, a]) => (
             <div key={id} class="list-row" title={a.src} onDblClick={() => use(id, a)}
               onPointerDown={(e) => longPress(e, (pos) => assetMenu(pos, id, a))} onContextMenu={(e) => assetMenu(e, id, a)}>
@@ -466,8 +470,37 @@ function Assets() {
         </div>
       ))}
       {byType.size > 0 && <div style={{ padding: 10 }}><button class="btn sm ghost" onClick={() => input.current?.click()}><Icon name="plus" />{t('panel.importFiles')}</button></div>}
+      {byType.size === 0 && <div style={{ padding: 10 }}><button class="btn sm ghost" onClick={(e) => packMenu(e, addPack)}><Icon name="plus" />{t('panel.addPack')}</button></div>}
     </div>
   );
+}
+
+// ── the plugin packs shipped with the editor ─────────────────
+interface Pack { file: string; name: string; description?: string }
+let packsCache: Pack[] | null = null;
+const shippedPacks = async (): Promise<Pack[]> =>
+  packsCache ??= await fetch('/plugins/index.json').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+
+/** the shipped packs, one click each: the file enters the project, the document loads it */
+async function addPack(p: Pack) {
+  const text = await fetch(`/plugins/${p.file}`).then((r) => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.text();
+  });
+  const path = await upload(await takenPaths(), `plugins/${p.file}`, new Blob([text], { type: 'text/javascript; charset=utf-8' }));
+  const doc = S.doc.peek();
+  const id = freshId(doc.assets, p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+  const ops: Op[] = [{ op: 'add', path: pointer('assets', id), value: { type: 'module', src: path, name: p.name } }];
+  if (doc.plugins?.length) ops.push({ op: 'add', path: '/plugins/-', value: id });
+  else ops.push({ op: 'add', path: '/plugins', value: [id] });
+  commit(t('panel.packAdded', { name: p.name }), ops);
+}
+
+async function packMenu(e: MouseEvent, add: (p: Pack) => Promise<void>) {
+  const packs = await shippedPacks();
+  openMenu(e, packs.length
+    ? packs.map((p): MenuItem => ({ label: p.name, icon: 'plus', onClick: () => add(p).catch((x) => toast(t('panel.couldNotAddPack', { error: (x as Error).message }), 'error', 9000)) }))
+    : [{ label: t('panel.noPacks'), disabled: true, onClick: () => {} }]);
 }
 
 // ── tokens ───────────────────────────────────────────────────

@@ -1,0 +1,8 @@
+[
+  { "file": "charts.js", "name": "Charts", "description": "Bar, line and donut charts from a data set, animated, with a layout tool and a readability check" },
+  { "file": "kinetic.js", "name": "Kinetic type", "description": "Text that moves letter by letter: typewriter, wave, scatter, drop, mask" },
+  { "file": "physics.js", "name": "Physics", "description": "Confetti, bouncing balls, a rope, and letters that drop and settle — deterministic simulations" },
+  { "file": "walkthrough.js", "name": "UI walkthrough", "description": "A phone or browser frame for screenshots, a clicking cursor, and a tool that lays the walkthrough out" },
+  { "file": "a11y.js", "name": "Accessibility checks", "description": "Text size, contrast, blinking and time-to-read, checked with the others" },
+  { "file": "localize.js", "name": "Localization", "description": "Captions and shorts in other languages: the assistant translates, the tools retime and duplicate" }
+]

@@ -644,7 +644,11 @@
     "invalidJsonValue": "Valeur JSON invalide",
     "assets": "Assets",
     "tokens": "Jetons",
-    "presets": "Préréglages"
+    "presets": "Préréglages",
+    "addPack": "Ajouter un pack",
+    "noPacks": "Aucun pack livré avec cette version",
+    "packAdded": "Pack « {name} » ajouté",
+    "couldNotAddPack": "Impossible d'ajouter le pack : {error}"
   },
   "models": {
     "loading": "Chargement…",
