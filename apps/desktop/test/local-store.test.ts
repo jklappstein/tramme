@@ -67,7 +67,8 @@ describe.skipIf(!hasCargo && !REQUIRE_DESKTOP)('desktop storage', () => {
     cargo('build', '--example', 'tramme-storage-server');
 
     home = mkdtempSync(path.join(tmpdir(), 'tramme-contract-'));
-    server = spawn(EXE, { stdio: ['ignore', 'pipe', 'inherit'] });
+    // its own home, never the machine's Documents (which a CI runner may not have)
+    server = spawn(EXE, { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, TRAMME_HOME: home } });
     const port = await new Promise<number>((ok, err) => {
       let out = '';
       server!.stdout!.on('data', (c: Buffer) => {

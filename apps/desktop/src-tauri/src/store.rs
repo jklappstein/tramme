@@ -36,7 +36,8 @@ pub fn home() -> PathBuf {
     if let Some(h) = configured_home() {
         return h;
     }
-    let mut p = dirs::document_dir().expect("no documents folder on this machine");
+    // a Linux session without XDG user folders has no Documents: the home folder then
+    let mut p = dirs::document_dir().or_else(dirs::home_dir).expect("no home folder on this machine");
     p.push("Tramme");
     p
 }
