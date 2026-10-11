@@ -8,6 +8,8 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-11
+
 ### Added
 
 - Importing a `.tramme` project that carries code — plugins, or expressions — now asks first, listing what it would run (the plugins with their file and size, the expressions with where they are). Nothing runs before the yes, and a refusal writes nothing. The shipped examples skip the question.
@@ -17,6 +19,14 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 - An onion skin for drawn animation: with a sequence layer selected, the toolbar's onion button shows the previous drawing in red and the next in green over the picture, following the playhead at rest (hidden while playing or dragging). Never part of the document or the exports.
 - Shorts: the title of each short lands with its first sentence (not at a fixed 0.2 s), each passage of the plan takes a strong word (keyword) that pops on screen the moment it is said — a word never said comes back in the answer — and a project with a brand (the plate and ink tokens) gets its progress bar and end card, the card lengthening the short. The build answers with a contact sheet of the shorts, a one-line check summary per short, and the export panel offers all the shorts at once, exported one by one, named after their titles and kept in renders/.
 - A three-band equaliser on every sound (Sound layers and the sound of videos): `eqLow` (shelf at 120 Hz), `eqMid` (bell around `eqMidFreq`, 200 Hz to 8 kHz) and `eqHigh` (shelf at 8 kHz), in dB. A band left at 0 builds no filter, so an untouched mix sounds exactly as before.
+
+### Changed
+
+- The home screen's header is one door: a single New project button opens every way to start — blank project, a video, sources from files or from a folder, a `.tramme` or Lottie file. Dropping a file on the page opens it as before.
+
+### Fixed
+
+- The curve editor drew no curves: the path was built with a `W` where an `L` was meant, so keys and handles were there but the line between them never appeared. The background's click and lasso also stop being eaten by the grid and the curves themselves.
 
 ## [0.4.0] - 2026-10-10
 
@@ -176,7 +186,8 @@ First public release.
 
 - Cloudflare Worker serving the editor and the API, projects stored in R2, access protected by Cloudflare Access.
 
-[Unreleased]: ../../compare/v0.4.0...HEAD
+[Unreleased]: ../../compare/v0.5.0...HEAD
+[0.5.0]: ../../compare/v0.4.0...v0.5.0
 [0.4.0]: ../../compare/v0.3.0...v0.4.0
 [0.3.0]: ../../compare/v0.2.0...v0.3.0
 [0.2.0]: ../../compare/v0.1.0...v0.2.0
