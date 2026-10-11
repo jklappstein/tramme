@@ -386,7 +386,7 @@
     "theLocalCompanionIs": "Le compagnon local est lancé, il attend son jeton.",
     "inTheCompanionS": "Dans le terminal du compagnon, copiez la ligne « jeton d'appairage » et collez-la ici. C'est à faire une seule fois sur ce navigateur.",
     "connect": "Connecter",
-    "itRunsClaudeWith": "Il fait tourner l'agent installé sur cet ordinateur (Claude Code, Codex ou Gemini CLI) avec votre propre connexion, sans clé. Lancez-le dans le dossier de Tramme :",
+    "itRunsClaudeWith": "Il fait tourner l'agent installé sur cet ordinateur (Claude Code, Codex ou Antigravity) avec votre propre connexion, sans clé. Lancez-le dans le dossier de Tramme :",
     "itConnectsToThisEditor": "Il se connecte tout seul à cet éditeur.",
     "retry": "Réessayer",
     "newConversationTheOthers": "Nouvelle conversation (les autres restent dans l'historique)",
@@ -415,11 +415,11 @@
     "keysClose": "fermer",
     "manageProviders": "Gérer les fournisseurs",
     "aiAccess": "Accès à l'IA",
-    "companionAdvanced": "Compagnon local (avancé : Claude Code, Codex ou Gemini CLI sur cet ordinateur)",
+    "companionAdvanced": "Compagnon local (avancé : Claude Code, Codex ou Antigravity sur cet ordinateur)",
     "connectAnAi": "Connecter une IA",
     "noAiConnected": "Aucune IA n'est connectée pour l'instant.",
     "connectAnAiHint": "Connectez le compte d'une IA que vous utilisez : Claude, ChatGPT (OpenAI) ou Gemini. Sa clé se colle une fois dans les réglages, puis l'assistant est prêt.",
-    "orTheCompanion": "Ou, sur un ordinateur avec Claude Code, Codex ou Gemini CLI : le compagnon local",
+    "orTheCompanion": "Ou, sur un ordinateur avec Claude Code, Codex ou Antigravity : le compagnon local",
     "companionAgents": "Agents trouvés : {list}"
   },
   "curves": {

@@ -8,6 +8,10 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+### Changed
+
+- The local companion runs the Antigravity CLI (`agy`, a Google login) in place of the Gemini CLI, which Google retired for personal accounts on June 18, 2026. The model menu offers it as "Antigravity", with the models it lists for the login (`agy models`: Gemini 3.1 Pro, Gemini Flash, Claude…), apart from the Gemini models of an API key; its default model takes an effort level. It runs with a home of its own under `~/.tramme/engines/antigravity`, so the user's plugins, skills and MCP servers stay out; it gets tramme's tools, and of its own only the reading of the images joined to the message. A model chosen for the Gemini CLI becomes Antigravity's default.
+
 ## [0.5.0] - 2026-10-11
 
 ### Added

@@ -439,7 +439,7 @@ function Access() {
     );
   }
   const connect = <button class="btn sm primary" onClick={() => openSettings('providers')}><Icon name="link" />{t('assistant.connectAnAi')}</button>;
-  // Codex or the Gemini CLI: the companion, the command line installed and signed in
+  // Codex or Antigravity: the companion, the command line installed and signed in
   const engine = engineOf(set.model);
   if (engine && engine !== 'claude') {
     const setup = CLI_SETUP[engine];

@@ -1,7 +1,7 @@
 // The local companion: `tramme agent` runs the agents installed on this
 // machine, each on the user's own login and without an API key, for the
 // editor open in the browser, deployed or local: Claude (the Agent SDK, the
-// Claude Code login), Codex (a ChatGPT login) or the Gemini CLI (a Google
+// Claude Code login), Codex (a ChatGPT login) or the Antigravity CLI (a Google
 // login), see agents.ts. The editor sends the user's message; the agent's tool
 // calls come back to the editor, which runs them (document, renderer, project
 // files) and posts the results. Nothing here touches the project.
@@ -19,7 +19,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { COMPANION_PORT, ENGINES, MODELS, type Engine, type ToolResult } from '@tramme/assistant';
-import { engines, runEngine, serveTools, type Turn } from './agents.ts';
+import { antigravityModels, engines, runEngine, serveTools, type Turn } from './agents.ts';
 
 const CONFIG = path.join(os.homedir(), '.tramme', 'companion.json');
 /** the pairing kept under the tool's former name: still valid, so the editor stays paired */
@@ -138,6 +138,8 @@ export async function startCompanion(opts: { port?: number; origins?: string[]; 
         const found = await engines();
         json(200, { ok: true, app: 'tramme-companion', version: 2, models: MODELS, engines: Object.fromEntries(ENGINES.map((e) => [e, !!found[e]])), versions: found });
       }
+      // the models a command line lists for its login (Antigravity; Codex has no listing): asked when the model menu opens, slower than /health
+      else if (req.method === 'GET' && url.pathname === '/models') json(200, { antigravity: (await engines()).antigravity ? await antigravityModels() : [] });
       else if (req.method === 'POST' && url.pathname === '/turn') await runTurn(await readJson(req), res);
       else if (req.method === 'POST' && url.pathname === '/tool-result') {
         const b = await readJson(req) as { callId?: string; result?: ToolResult };
@@ -163,7 +165,7 @@ export async function startCompanion(opts: { port?: number; origins?: string[]; 
   });
   await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => resolve()); });
   console.log(`tramme companion ready on http://127.0.0.1:${port}`);
-  engines().then((found) => console.log(`agents: Claude${found.codex ? `, Codex ${found.codex}` : ''}${found.gemini ? `, Gemini CLI ${found.gemini}` : ''}`)).catch(() => {});
+  engines().then((found) => console.log(`agents: Claude${found.codex ? `, Codex ${found.codex}` : ''}${found.antigravity ? `, Antigravity ${found.antigravity}` : ''}`)).catch(() => {});
   if (origins.size) console.log(`automatic pairing for: ${[...origins].join(', ')}`);
   console.log(`pairing token: ${secret}`);
   console.log(`(for another local page: paste it once in the editor, Assistant panel)`);

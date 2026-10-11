@@ -7,13 +7,13 @@
 // shared by all of them.
 
 import { computed, signal } from '@preact/signals';
-import { CLI_DEFAULT, COMPANION_PORT, DEFAULT_MODEL, EFFORTS, effortFor, effortLevels, engineOf, LOCAL_URL, modelLabel, modelName, MODELS, pickModel, PROVIDER_LABEL, providerOf, REMOTE, setTranslator, slotOf, systemPrompt, userPrompt, type Effort, type TurnContext } from '@tramme/assistant';
+import { CLI_DEFAULT, COMPANION_PORT, DEFAULT_MODEL, EFFORTS, effortFor, effortLevels, ENGINE_MODELS, ENGINES, engineOf, LOCAL_URL, modelLabel, modelName, MODELS, pickModel, PROVIDER_LABEL, providerOf, REMOTE, setTranslator, slotOf, systemPrompt, userPrompt, type Effort, type Engine, type TurnContext } from '@tramme/assistant';
 import { CHAT, CHAT_INDEX, chatPath } from '@tramme/project';
 import type { TrammeDoc } from '@tramme/core';
 import reference from '../../../../docs/document.md';
 import { api, type AiEvent, type ChatItem, type KeyedProvider, type KeyStatus } from '../api.ts';
 import { S, toast } from '../state.ts';
-import { companionTurn, NO_ENGINES, pairCompanion, probeCompanion, stopCompanion, type CompanionState, type Engines } from './companion.ts';
+import { companionModels, companionTurn, NO_ENGINES, pairCompanion, probeCompanion, stopCompanion, type CompanionState, type Engines } from './companion.ts';
 import { ServerSession, type Message } from './server.ts';
 import { ToolRunner } from './tools.ts';
 import { runCall, uid } from './calls.ts';
@@ -45,6 +45,8 @@ function loadSettings(): AiSettings {
   try {
     // the settings kept under the tool's former name (model, companion token) are taken over
     const s = { ...d, ...JSON.parse(localStorage.getItem(KEY) ?? localStorage.getItem('emotion.assistant') ?? '{}') } as AiSettings;
+    // the Gemini CLI, retired, gave way to Antigravity (its models have other names)
+    if (typeof s.model === 'string' && s.model.startsWith('gemini-cli:')) s.model = `antigravity:${CLI_DEFAULT}`;
     if (typeof s.model !== 'string' || (providerOf(s.model) === 'anthropic' && !MODELS.some(([id]) => id === s.model))) s.model = d.model;
     const efforts = s.efforts && typeof s.efforts === 'object' ? s.efforts : {};
     s.efforts = Object.fromEntries(Object.entries(efforts).filter(([, e]) => EFFORTS.includes(e)));
@@ -71,7 +73,7 @@ export function setAiSettings(patch: Partial<AiSettings>) {
 
 interface Status {
   companion: 'checking' | CompanionState;
-  /** the agents the companion runs: Claude Code, Codex, the Gemini CLI */
+  /** the agents the companion runs: Claude Code, Codex, Antigravity */
   engines: Engines;
   /** the server's Anthropic key */
   server: boolean | null;
@@ -95,8 +97,8 @@ export const providerLabel = (model: string) => remoteProviders.value.find((p) =
 
 /** effort: the provider says the model reasons, so it takes an effort level (OpenRouter) */
 export interface ModelOption { id: string; label: string; effort?: boolean }
-/** models offered by each provider besides Claude (filled when the model menu opens) */
-export const aiModels = signal<{ remote: Record<string, ModelOption[] | { error: string }>; local: ModelOption[] }>({ remote: {}, local: [] });
+/** models offered by each provider besides Claude, and by the companion's command lines (filled when the model menu opens) */
+export const aiModels = signal<{ remote: Record<string, ModelOption[] | { error: string }>; local: ModelOption[]; engines: Partial<Record<Engine, ModelOption[]>> }>({ remote: {}, local: [], engines: {} });
 
 /** whether OpenRouter's listing says this model reasons */
 function reasons(model: string): boolean {
@@ -122,7 +124,7 @@ export const aiRoute = computed<Route | null>(() => {
   const { companion, engines, server, remote, local } = aiStatus.value, { prefer, model } = aiSettings.value;
   const provider = providerOf(model), engine = engineOf(model);
   if (provider === 'local') return local === 'ok' ? 'local' : null;
-  // Codex and the Gemini CLI: only through the companion, when it has them
+  // Codex and Antigravity: only through the companion, when it has them
   if (engine && engine !== 'claude') return companion === 'ok' && engines[engine] ? 'companion' : null;
   if (provider !== 'anthropic') return remote[slotOf(model)] ? 'remote' : null;
   if (prefer === 'companion') return companion === 'ok' ? 'companion' : null;
@@ -191,11 +193,18 @@ export async function ensureStatus() { if (aiStatus.peek().server === null) awai
 export async function loadModels() {
   // which keys the server has, before asking it for their models
   await ensureStatus();
+  // the command lines' own models (a listing that takes a few seconds), each shown as it comes
+  if (aiStatus.peek().companion === 'ok') {
+    companionModels(link()).then((listed) => {
+      const engines = Object.fromEntries(ENGINES.map((e) => [e, (listed[e] ?? []).map(([id, label]) => ({ id: `${ENGINE_MODELS[e].provider}:${id}`, label }))]));
+      aiModels.value = { ...aiModels.peek(), engines };
+    });
+  }
   const [remote, local] = await Promise.all([
     Object.values(aiStatus.peek().remote).some(Boolean) ? api.models().catch(() => ({})) : Promise.resolve({}),
     localModels(),
   ]);
-  aiModels.value = { remote: remote as never, local: local ?? [] };
+  aiModels.value = { ...aiModels.peek(), remote: remote as never, local: local ?? [] };
   aiStatus.value = { ...aiStatus.peek(), local: local ? 'ok' : 'absent' };
 }
 
@@ -443,12 +452,15 @@ export async function saveCustomProvider(id: string, c: { label: string; base: s
 export async function removeCustomProvider(id: string) { await api.removeCustom(id); await providersChanged(); }
 
 /** what installs each command line the companion runs, and signs it in once */
-export const CLI_SETUP: Record<'codex' | 'gemini', { install: string; login: string }> = {
+export const CLI_SETUP: Record<'codex' | 'antigravity', { install: string; login: string }> = {
   codex: { install: 'npm install -g @openai/codex', login: 'codex login' },
-  gemini: { install: 'npm install -g @google/gemini-cli', login: 'gemini' },
+  antigravity: {
+    install: /Win/.test(navigator.userAgent) ? 'irm https://antigravity.google/cli/install.ps1 | iex' : 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
+    login: 'agy',
+  },
 };
 
-/** why a command line of this computer (Codex, the Gemini CLI) cannot answer, '' when it can */
+/** why a command line of this computer (Codex, Antigravity) cannot answer, '' when it can */
 export function cliUnavailable(model: string): string {
   const engine = engineOf(model), { companion, engines } = aiStatus.peek();
   if (!engine || engine === 'claude') return '';

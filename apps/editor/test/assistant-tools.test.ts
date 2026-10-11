@@ -20,6 +20,10 @@ describe('effort levels', () => {
     expect(effortLevels('local:gpt-oss:20b')).toEqual(['low', 'medium', 'high']);
     expect(effortLevels('local:qwen3:8b')).toEqual([]);
     expect(effortLevels('zai:glm-4-plus')).toEqual([]);
+    // Antigravity: its default takes a level, each listed model holds its own
+    expect(effortLevels('antigravity:default')).toEqual(['low', 'medium', 'high']);
+    expect(effortLevels('antigravity:gemini-3.1-pro-high')).toEqual([]);
+    expect(effortLevels('antigravity:claude-sonnet-4-6')).toEqual([]);
   });
 
   it('follow the choice made for each model; otherwise high for Claude, the model\'s own for the others', () => {

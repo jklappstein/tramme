@@ -386,7 +386,7 @@
     "theLocalCompanionIs": "The local companion is running and waiting for its token.",
     "inTheCompanionS": "In the companion's terminal, copy the \"pairing token\" line and paste it here. You only do this once in this browser.",
     "connect": "Connect",
-    "itRunsClaudeWith": "It runs the agent installed on this computer (Claude Code, Codex or Gemini CLI) with your own login, no key needed. Start it in the Tramme folder:",
+    "itRunsClaudeWith": "It runs the agent installed on this computer (Claude Code, Codex or Antigravity) with your own login, no key needed. Start it in the Tramme folder:",
     "itConnectsToThisEditor": "It connects to this editor on its own.",
     "retry": "Retry",
     "newConversationTheOthers": "New conversation (the others stay in the history)",
@@ -415,11 +415,11 @@
     "keysClose": "close",
     "manageProviders": "Manage providers",
     "aiAccess": "AI access",
-    "companionAdvanced": "Local companion (advanced: Claude Code, Codex or Gemini CLI on this computer)",
+    "companionAdvanced": "Local companion (advanced: Claude Code, Codex or Antigravity on this computer)",
     "connectAnAi": "Connect an AI",
     "noAiConnected": "No AI connected yet.",
     "connectAnAiHint": "Connect the account of an AI you use: Claude, ChatGPT (OpenAI) or Gemini. Its key is pasted once in the settings, then the assistant is ready.",
-    "orTheCompanion": "Or, on a computer with Claude Code, Codex or Gemini CLI: the local companion",
+    "orTheCompanion": "Or, on a computer with Claude Code, Codex or Antigravity: the local companion",
     "companionAgents": "Agents found: {list}"
   },
   "curves": {

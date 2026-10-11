@@ -29,24 +29,24 @@ export const DEFAULT_EFFORT: Effort = 'high';
 // `provider:model` (`openai:gpt-5`, `zai:glm-4-plus`, `local:llama3.1:8b`), of
 // a custom provider `custom:<id>:model` (`custom:deepseek:deepseek-chat`).
 
-export type Provider = 'anthropic' | 'openai' | 'gemini' | 'openrouter' | 'zai' | 'custom' | 'local' | 'codex' | 'gemini-cli';
+export type Provider = 'anthropic' | 'openai' | 'gemini' | 'openrouter' | 'zai' | 'custom' | 'local' | 'codex' | 'antigravity';
 /** the providers built in that are reached through the server */
-export const REMOTE: Record<Exclude<Provider, 'anthropic' | 'custom' | 'local' | 'codex' | 'gemini-cli'>, { label: string }> = {
+export const REMOTE: Record<Exclude<Provider, 'anthropic' | 'custom' | 'local' | 'codex' | 'antigravity'>, { label: string }> = {
   openai: { label: 'OpenAI' },
   gemini: { label: 'Gemini' },
   openrouter: { label: 'OpenRouter' },
   zai: { label: 'Z.AI (GLM)' },
 };
-export const PROVIDER_LABEL: Record<Provider, string> = { anthropic: 'Claude', openai: 'OpenAI', gemini: 'Gemini', openrouter: 'OpenRouter', zai: 'Z.AI (GLM)', custom: 'Custom provider', local: 'Local models', codex: 'ChatGPT (Codex)', 'gemini-cli': 'Gemini CLI' };
+export const PROVIDER_LABEL: Record<Provider, string> = { anthropic: 'Claude', openai: 'OpenAI', gemini: 'Gemini', openrouter: 'OpenRouter', zai: 'Z.AI (GLM)', custom: 'Custom provider', local: 'Local models', codex: 'ChatGPT (Codex)', antigravity: 'Antigravity' };
 
 // ── the companion's engines ──────────────────────────────────
 // The local companion runs a turn with one of the agents installed on the
 // user's computer, each on its own login: Claude Code (the Agent SDK), Codex
-// (a ChatGPT login) or the Gemini CLI (a Google login). A model of the last two
-// is written `codex:<model>` or `gemini-cli:<model>`, `default` leaving the
-// choice to the command line.
+// (a ChatGPT login) or the Antigravity CLI (a Google login; it replaced the
+// Gemini CLI). A model of the last two is written `codex:<model>` or
+// `antigravity:<model>`, `default` leaving the choice to the command line.
 
-export const ENGINES = ['claude', 'codex', 'gemini'] as const;
+export const ENGINES = ['claude', 'codex', 'antigravity'] as const;
 export type Engine = typeof ENGINES[number];
 /** the model a command line picks by itself */
 export const CLI_DEFAULT = 'default';
@@ -55,7 +55,7 @@ export const CLI_DEFAULT = 'default';
 export const ENGINE_MODELS: Record<Engine, { provider: Provider; label: string }> = {
   claude: { provider: 'anthropic', label: 'Claude Code' },
   codex: { provider: 'codex', label: 'ChatGPT (Codex)' },
-  gemini: { provider: 'gemini-cli', label: 'Gemini CLI' },
+  antigravity: { provider: 'antigravity', label: 'Antigravity' },
 };
 
 /** the companion's engine that runs a model, null when the model does not go through the companion */
@@ -70,7 +70,7 @@ export function providerOf(model: string): Provider {
   const i = model.indexOf(':');
   const p = i > 0 ? model.slice(0, i) : '';
   if (p === 'glm') return 'zai';
-  return p === 'openai' || p === 'gemini' || p === 'openrouter' || p === 'zai' || p === 'custom' || p === 'local' || p === 'codex' || p === 'gemini-cli' ? p : 'anthropic';
+  return p === 'openai' || p === 'gemini' || p === 'openrouter' || p === 'zai' || p === 'custom' || p === 'local' || p === 'codex' || p === 'antigravity' ? p : 'anthropic';
 }
 /** where the server finds the model: its provider, or custom:<id> for a custom one */
 export function slotOf(model: string): string {
@@ -114,7 +114,7 @@ const CHAT_EFFORTS: Effort[] = ['low', 'medium', 'high'];
  * Opus and Sonnet: all five. In the chat format, the reasoning models: OpenAI's
  * o-series and GPT-5 (not their chat variants), Gemini 2.5 and later, the
  * OpenRouter models whose listing says they reason (`reasons`), gpt-oss on a
- * local server. Haiku, Z.AI and the other models: none.
+ * local server, Codex, Antigravity's default. Haiku, Z.AI and the other models: none.
  */
 export function effortLevels(model: string, reasons = false): Effort[] {
   const name = modelName(model).toLowerCase().replace(/^models\//, '');
@@ -124,8 +124,9 @@ export function effortLevels(model: string, reasons = false): Effort[] {
     case 'gemini': return /^gemini-(2\.5|[3-9])/.test(name) ? CHAT_EFFORTS : [];
     case 'openrouter': return reasons ? CHAT_EFFORTS : [];
     case 'local': return /gpt-oss/.test(name) ? CHAT_EFFORTS : [];
-    // Codex takes a reasoning effort (model_reasoning_effort); the Gemini CLI none
+    // Codex takes a reasoning effort (model_reasoning_effort); Antigravity for its default model alone (--effort), each of its listed models holding its own level (gemini-3.1-pro-low)
     case 'codex': return CHAT_EFFORTS;
+    case 'antigravity': return name === CLI_DEFAULT ? CHAT_EFFORTS : [];
     default: return [];
   }
 }

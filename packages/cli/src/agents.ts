@@ -1,6 +1,6 @@
 // The engines the companion runs a turn with, each on the user's own login:
 // Claude (the Agent SDK, the Claude Code login), Codex (the Codex CLI, a
-// ChatGPT login) and Gemini (the Gemini CLI, a Google login). Whatever the
+// ChatGPT login) and Antigravity (the Antigravity CLI, a Google login). Whatever the
 // engine, the editor sees the same events (text, thinking, tool calls, errors)
 // and runs the same tools: Claude gets them in process, the two command lines
 // reach them as an MCP server the companion serves for the turn. Each engine
@@ -44,8 +44,11 @@ export interface TurnRequest {
 }
 
 const TOOL_TIMEOUT = 15 * 60_000;
-/** where the command lines run: a folder of their own, so their sessions are found again (Gemini keeps them per folder) */
+/** where the command lines run: a folder of their own, so their sessions are found again */
 const WORKDIR = path.join(os.homedir(), '.tramme', 'engines');
+/** Antigravity's home of its own (the login stays in the system keyring): none of the user's plugins, skills, MCP servers or settings */
+const AGY_HOME = path.join(WORKDIR, 'antigravity', 'home');
+const AGY_ENV = { HOME: AGY_HOME, USERPROFILE: AGY_HOME };
 
 /** a tool call handed to the editor, which runs it and posts the result back */
 export async function callEditor(t: Turn, name: string, input: unknown): Promise<ToolResult> {
@@ -75,20 +78,27 @@ export async function serveTools(t: Turn, req: http.IncomingMessage, res: http.S
 
 // ── which engines this machine has ───────────────────────────
 
-const COMMAND: Record<Exclude<Engine, 'claude'>, string> = { codex: 'codex', gemini: 'gemini' };
+/** agy where its installer puts it, for a companion started from a terminal older than the install (its PATH without it) */
+const AGY_INSTALLED = process.platform === 'win32'
+  ? path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local'), 'agy', 'bin', 'agy.exe')
+  : path.join(os.homedir(), '.local', 'bin', 'agy');
+const COMMAND: Record<Exclude<Engine, 'claude'>, string> = { codex: 'codex', antigravity: fs.existsSync(AGY_INSTALLED) ? AGY_INSTALLED : 'agy' };
 
-/** whether a command line answers, and its version */
-function version(command: string): Promise<string | null> {
+/** what a command line prints, null when it fails or is not there */
+function output(command: string, args: string[], env?: Record<string, string>): Promise<string | null> {
   return new Promise((resolve) => {
     let out = '';
     let child: ReturnType<typeof spawn>;
-    try { child = spawn(command, ['--version'], { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }); } catch { resolve(null); return; }
+    try { child = spawn(command, args, { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }); } catch { resolve(null); return; }
     const timer = setTimeout(() => { kill(child); resolve(null); }, 15_000);
     child.stdout?.on('data', (c: Buffer) => { out += c.toString('utf8'); });
     child.on('error', () => { clearTimeout(timer); resolve(null); });
-    child.on('close', (code) => { clearTimeout(timer); resolve(code === 0 ? out.trim().split(/\r?\n/).pop() || '?' : null); });
+    child.on('close', (code) => { clearTimeout(timer); resolve(code === 0 ? out : null); });
   });
 }
+
+/** whether a command line answers, and its version */
+const version = (command: string) => output(command, ['--version']).then((out) => (out === null ? null : out.trim().split(/\r?\n/).pop() || '?'));
 
 /** the engines installed here (Claude always: the Agent SDK ships with the companion), looked for again at most once a minute */
 let found: { at: number; engines: Promise<Record<Engine, string | null>> } | null = null;
@@ -96,10 +106,28 @@ export function engines(): Promise<Record<Engine, string | null>> {
   if (!found || Date.now() - found.at > 60_000) {
     found = {
       at: Date.now(),
-      engines: Promise.all([version(COMMAND.codex), version(COMMAND.gemini)]).then(([codex, gemini]) => ({ claude: 'agent-sdk', codex, gemini })),
+      engines: Promise.all([version(COMMAND.codex), version(COMMAND.antigravity)]).then(([codex, antigravity]) => ({ claude: 'agent-sdk', codex, antigravity })),
     };
   }
   return found.engines;
+}
+
+/** the models of `agy models`: a name and a label per line */
+export const parseModels = (out: string): [id: string, label: string][] => out.split(/\r?\n/)
+  .map((line) => line.split('\t').map((s) => s.trim()))
+  .filter((p): p is [string, string] => p.length === 2 && !!p[0] && !!p[1]);
+
+/** the models Antigravity offers this login, for the editor's model menu; looked for again at most every ten minutes */
+let listed: { at: number; models: Promise<[string, string][]> } | null = null;
+export function antigravityModels(): Promise<[string, string][]> {
+  if (!listed || Date.now() - listed.at > 10 * 60_000) {
+    fs.mkdirSync(AGY_HOME, { recursive: true });
+    const models = output(COMMAND.antigravity, ['models'], AGY_ENV).then((out) => parseModels(out ?? ''));
+    // an empty listing (offline, signed out) is asked again next time
+    models.then((m) => { if (!m.length) listed = null; });
+    listed = { at: Date.now(), models };
+  }
+  return listed.models;
 }
 
 /** a process and its children stopped (on Windows, the command line runs under cmd.exe) */
@@ -172,7 +200,7 @@ async function runClaude(t: Turn, r: TurnRequest) {
   }
 }
 
-// ── the command lines: Codex and Gemini ──────────────────────
+// ── the command lines: Codex and Antigravity ─────────────────
 
 /** a fresh folder for the turn's files (system prompt, settings, images), removed after it */
 function turnFolder(engine: string): string {
@@ -262,42 +290,53 @@ async function runCodex(t: Turn, r: TurnRequest) {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
-async function runGemini(t: Turn, r: TurnRequest) {
-  const dir = turnFolder('gemini');
-  const home = path.join(WORKDIR, 'gemini');
+async function runAntigravity(t: Turn, r: TurnRequest) {
+  const dir = turnFolder('antigravity');
+  const root = path.join(WORKDIR, 'antigravity'), workspace = path.join(root, 'workspace');
   try {
-    const system = path.join(dir, 'system.md');
-    fs.writeFileSync(system, r.system);
-    // the turn's settings, those of its folder (a settings file elsewhere is refused when the user can write to it):
-    // the allowlist holds tramme's tools only (named mcp_tramme_<tool>): no built-in tool (shell, files, web) is registered, every
-    // other call is denied, and tramme's are allowed without asking; --allowed-mcp-server-names leaves out the user's other servers
-    fs.mkdirSync(path.join(home, '.gemini'), { recursive: true });
-    fs.writeFileSync(path.join(home, '.gemini', 'settings.json'), JSON.stringify({ tools: { core: ['mcp_tramme_*'] }, mcpServers: { tramme: { httpUrl: r.mcpUrl, trust: true, timeout: TOOL_TIMEOUT } } }, null, 2));
-    // images: files of its folder, named in the prompt (@file)
-    const images = writeImages(dir, r.images).map((f) => `@${path.relative(home, f).split(path.sep).join('/')}`);
-    const session = r.sessionId ?? crypto.randomUUID();
-    const args = ['-p', '', '-o', 'stream-json', '--allowed-mcp-server-names', 'tramme',
-      ...(r.sessionId ? ['--resume', r.sessionId] : ['--session-id', session]), ...(r.model ? ['-m', r.model] : [])];
-    let n = 0, open = '';
-    await runLines(t, 'gemini', args, {
-      cwd: home, input: images.length ? `${images.join(' ')}\n\n${r.prompt}` : r.prompt,
-      // its folder trusted from the start, so its settings apply (--skip-trust comes after they are read)
-      env: { GEMINI_SYSTEM_MD: system, GEMINI_CLI_TRUST_WORKSPACE: 'true' },
-      onLine: (ev) => {
-        if (ev.type === 'init') t.send({ type: 'session', id: ev.session_id ?? session, model: ev.model ?? (r.model || 'gemini') });
-        else if (ev.type === 'message' && ev.role === 'assistant' && ev.content) {
-          // the answer comes in pieces; a tool call between two pieces starts another message
-          if (!open) { open = `gemini:${++n}`; t.send({ type: 'text-start', key: open, text: String(ev.content) }); }
-          else t.send({ type: 'text', key: open, delta: String(ev.content) });
-        } else if (ev.type === 'tool_use') open = '';
-        else if (ev.type === 'error') t.send({ type: 'error', message: String(ev.message ?? ev.error?.message ?? 'Gemini stopped') });
-        else if (ev.type === 'result' && ev.status === 'error') t.send({ type: 'error', message: String(ev.error?.message ?? 'Gemini stopped') });
+    // its home's permissions: tramme's tools and the turn's images only; headless, any other call is refused without asking
+    const settings = path.join(AGY_HOME, '.gemini', 'antigravity-cli');
+    fs.mkdirSync(settings, { recursive: true });
+    fs.writeFileSync(path.join(settings, 'settings.json'), JSON.stringify({
+      permissions: {
+        allow: ['mcp(tramme/*)', `read_file(${path.join(root, 'turns')})`],
+        deny: ['command(*)', 'write_file(*)', 'read_url(*)', 'execute_url(*)', 'unsandboxed(*)'],
       },
-    });
+    }, null, 2));
+    // the workspace: tramme's agent (its body is the system prompt; of the built-in tools, view_file alone, for the images) and the turn's MCP address
+    const agents = path.join(workspace, '.agents');
+    fs.mkdirSync(path.join(agents, 'agents'), { recursive: true });
+    fs.writeFileSync(path.join(agents, 'mcp_config.json'), JSON.stringify({ mcpServers: { tramme: { serverUrl: r.mcpUrl } } }, null, 2));
+    fs.writeFileSync(path.join(agents, 'agents', 'tramme.md'), `---\nname: tramme\ndescription: The assistant of the tramme editor\ntools: [view_file]\nsubagent: false\n---\n${r.system}\n`);
+    // images: files of the turn, named in the message (its input takes text only)
+    const images = writeImages(dir, r.images);
+    const text = images.length ? `Images joined to this message (open them with view_file):\n${images.join('\n')}\n\n${r.prompt}` : r.prompt;
+    const level = EFFORTS.find((e) => e === r.effort);
+    const args = ['--agent', 'tramme', '--input-format', 'stream-json', '--output-format', 'stream-json',
+      ...(r.sessionId ? ['--conversation', r.sessionId] : []), ...(r.model ? ['--model', r.model] : []), ...(level ? ['--effort', level] : [])];
+    const open = new Set<number>();
+    let failed = false;
+    await runLines(t, COMMAND.antigravity, args, {
+      cwd: workspace, env: AGY_ENV,
+      input: JSON.stringify({ event: 'user', message: { role: 'user', content: text } }) + '\n',
+      onLine: (ev) => {
+        if (ev.event === 'init' && ev.conversation_id) t.send({ type: 'session', id: ev.conversation_id, model: ev.init?.model ?? (r.model || 'antigravity') });
+        else if (ev.event === 'step_update' && ev.step_update?.step_type === 'agent_response' && ev.step_update.text_delta) {
+          // each step's answer comes in pieces; a tool call in between is another step
+          const s = ev.step_update, key = `antigravity:${s.step_index}`;
+          if (open.has(s.step_index)) t.send({ type: 'text', key, delta: String(s.text_delta) });
+          else { open.add(s.step_index); t.send({ type: 'text-start', key, text: String(s.text_delta) }); }
+        } else if (ev.event === 'result' && ev.result?.status === 'ERROR') {
+          failed = true;
+          t.send({ type: 'error', message: String(ev.result.error || 'Antigravity stopped') });
+        }
+      },
+    // its error already told, the exit code says nothing more
+    }).catch((e) => { if (!failed) throw e; });
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
-const RUN: Record<Engine, (t: Turn, r: TurnRequest) => Promise<void>> = { claude: runClaude, codex: runCodex, gemini: runGemini };
+const RUN: Record<Engine, (t: Turn, r: TurnRequest) => Promise<void>> = { claude: runClaude, codex: runCodex, antigravity: runAntigravity };
 
 /** a turn with the engine asked; the editor reads its events as they come */
 export async function runEngine(engine: Engine, t: Turn, r: TurnRequest) {

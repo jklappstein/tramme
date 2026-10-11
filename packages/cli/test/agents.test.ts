@@ -4,9 +4,16 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { TOOLS } from '@tramme/assistant';
-import { serveTools, type Turn } from '../src/agents.ts';
+import { parseModels, serveTools, type Turn } from '../src/agents.ts';
 
-// the tools as the command lines (Codex, Gemini CLI) reach them: an MCP server
+describe("Antigravity's models", () => {
+  it('are read from `agy models`, a name and a label per line', () => {
+    expect(parseModels('gemini-3.1-pro-high\tGemini 3.1 Pro (High)\r\nclaude-sonnet-4-6\tClaude Sonnet 4.6 (Thinking)\n\nFetching available models...\n'))
+      .toEqual([['gemini-3.1-pro-high', 'Gemini 3.1 Pro (High)'], ['claude-sonnet-4-6', 'Claude Sonnet 4.6 (Thinking)']]);
+  });
+});
+
+// the tools as the command lines (Codex, Antigravity) reach them: an MCP server
 // whose calls go to the editor (here a stand-in that answers at once)
 describe('the tools served to the command lines', () => {
   const sent: Record<string, unknown>[] = [];

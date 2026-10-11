@@ -1,6 +1,6 @@
 // The local path: the companion (`tramme agent`) runs an agent installed on
 // the user's machine, on their own login: Claude Code (the Agent SDK), Codex
-// (ChatGPT) or the Gemini CLI. It streams the turn back as NDJSON; each tool
+// (ChatGPT) or the Antigravity CLI. It streams the turn back as NDJSON; each tool
 // call is run here and its result posted back.
 
 import type { Engine } from '@tramme/assistant';
@@ -16,7 +16,7 @@ const headers = (link: CompanionLink) => ({ authorization: `Bearer ${link.token}
 export type CompanionState = 'ok' | 'unpaired' | 'absent';
 /** the agents the companion found on this machine (an older companion: Claude only) */
 export type Engines = Record<Engine, boolean>;
-export const NO_ENGINES: Engines = { claude: false, codex: false, gemini: false };
+export const NO_ENGINES: Engines = { claude: false, codex: false, antigravity: false };
 
 /** 'ok', 'unpaired' (wrong or missing token), or 'absent' (not running, or refused by the browser), and the agents it runs */
 export async function probeCompanion(link: CompanionLink): Promise<{ state: CompanionState; engines: Engines }> {
@@ -37,6 +37,14 @@ export async function pairCompanion(url: string): Promise<string | null> {
     const { token } = await r.json() as { token?: unknown };
     return typeof token === 'string' && token.length >= 32 ? token : null;
   } catch { return null; }
+}
+
+/** the models the command lines list for their login (Antigravity's, by name and label); none from an older companion */
+export async function companionModels(link: CompanionLink): Promise<Partial<Record<Engine, [string, string][]>>> {
+  try {
+    const r = await fetch(`${link.url}/models`, { headers: headers(link), signal: AbortSignal.timeout(30_000) });
+    return r.ok ? await r.json() : {};
+  } catch { return {}; }
 }
 
 export function stopCompanion(link: CompanionLink) {
