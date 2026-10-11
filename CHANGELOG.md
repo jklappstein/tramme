@@ -8,6 +8,8 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-11
+
 ### Added
 
 - Markdown documents (`.md`, `.markdown`) come in with the sources now: dropped on the home screen, chosen with "From sources (files)" or a whole repository folder, or joined to a message. The assistant reads them whole with the sources tool (a long one continues with `read_file`), the way it reads a PDF page by page; a folder's `README.md` alone is enough to open a project from its sources.
@@ -194,7 +196,8 @@ First public release.
 
 - Cloudflare Worker serving the editor and the API, projects stored in R2, access protected by Cloudflare Access.
 
-[Unreleased]: ../../compare/v0.5.0...HEAD
+[Unreleased]: ../../compare/v0.6.0...HEAD
+[0.6.0]: ../../compare/v0.5.0...v0.6.0
 [0.5.0]: ../../compare/v0.4.0...v0.5.0
 [0.4.0]: ../../compare/v0.3.0...v0.4.0
 [0.3.0]: ../../compare/v0.2.0...v0.3.0
