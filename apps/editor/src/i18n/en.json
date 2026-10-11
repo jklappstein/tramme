@@ -332,10 +332,6 @@
       "createOpenAndFind": "Create, open and find your projects.",
       "welcomeToTramme": "Welcome to Tramme",
       "trammeIsAMotion": "Tramme is a motion design editor where every animation is a **document**: precise, replayable, editable by you and by the assistant.\nThis tour takes a minute.",
-      "chooseAFormatLandscape": "Choose a format (landscape, vertical, square, 4K or custom), a frame rate and a length. The project opens right away.",
-      "startFromAVideo": "Start from a video",
-      "aVideoWhereYou": "A video where you speak becomes a project at its size. The speech is transcribed, then the assistant asks what you want: cuts, captions, titles, keywords.",
-      "aTrammeProjectSaved": "A **.tramme** project saved on your computer, or a **Lottie** animation (.json). You can also drop them anywhere on the page. Every file is checked before it comes in.",
       "yourProjects": "Your projects",
       "mostRecentFirstWith": "Most recent first, with their thumbnail. Each card's menu lets you rename, duplicate, save the .tramme archive to your computer or delete.",
       "startFromAnExample": "Start from an example",
@@ -343,8 +339,7 @@
       "themePreviewQualityFor": "Theme, preview quality for your computer's power, access to the assistant. Shortcut: **Ctrl+,**",
       "replayATour": "Replay a tour",
       "allGuidedToursAre": "All guided tours are here, at any time. Another one awaits you the first time you open a project.",
-      "startFromSources": "Start from your sources",
-      "yourDocumentsPicturesAnd": "Your documents (PDF), pictures, videos and sounds, several at once or a whole folder: the assistant reads them all, says what the video should be, then makes it with you."
+      "everythingStartsHere": "Blank project, a video, sources (files or a whole folder), a .tramme or a Lottie file: every way to start is in this menu. You can also drop a file on the page."
     }
   },
   "assistant": {
@@ -465,7 +460,6 @@
     "couldNotDuplicateError": "Could not duplicate: {error}",
     "saveToComputerTramme": "Save to computer (.tramme)",
     "couldNotExportError": "Could not export: {error}",
-    "aProjectAtThe": "A project at the video's size, ready to be dressed with the assistant",
     "fromAVideo": "From a video",
     "projectsCannotBeRead": "Projects cannot be read: {error}",
     "noProjectsYet": "No projects yet",
@@ -475,11 +469,10 @@
     "dropATrammeProject": "Drop a .tramme project, a Lottie animation, a video, or the sources of a video (documents, pictures, footage, a whole folder)",
     "doneTotalMb": "{done} / {total} MB",
     "doneTotalFileS": "{done} / {total} file(s)",
-    "fromSources": "From sources",
-    "fromSourcesAbout": "Documents (PDF), pictures, videos and sounds, or a whole folder: the assistant reads them all and proposes the video to make",
     "uploadingSources": "Uploading the sources ({n})",
-    "sourcesFiles": "Files…",
-    "sourcesFolder": "A folder…"
+    "blankProject": "Blank project",
+    "fromSourcesFiles": "From sources (files)…",
+    "fromSourcesFolder": "From sources (a folder)…"
   },
   "inspector": {
     "animateName": "Animate {name}",

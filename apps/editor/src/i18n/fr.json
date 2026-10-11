@@ -332,10 +332,6 @@
       "createOpenAndFind": "Créer, ouvrir et retrouver ses projets.",
       "welcomeToTramme": "Bienvenue dans Tramme",
       "trammeIsAMotion": "Tramme est un éditeur de motion design où chaque animation est un **document** : précis, rejouable, modifiable par vous comme par l'assistant.\nCette visite dure une minute.",
-      "chooseAFormatLandscape": "Choisissez un format (paysage, vertical, carré, 4K ou libre), une cadence et une durée. Le projet s'ouvre aussitôt.",
-      "startFromAVideo": "Partir d'une vidéo",
-      "aVideoWhereYou": "Une vidéo où vous parlez devient un projet à sa taille. Sa parole est transcrite, puis l'assistant vous demande ce que vous voulez : coupes, sous-titres, titres, mots clés.",
-      "aTrammeProjectSaved": "Un projet **.tramme** enregistré sur l'ordinateur, ou une animation **Lottie** (.json). Vous pouvez aussi les déposer n'importe où sur la page. Chaque fichier est vérifié avant d'entrer.",
       "yourProjects": "Vos projets",
       "mostRecentFirstWith": "Les plus récents d'abord, avec leur vignette. Le menu de chaque carte permet de renommer, dupliquer, enregistrer l'archive .tramme sur l'ordinateur ou supprimer.",
       "startFromAnExample": "Partir d'un exemple",
@@ -343,8 +339,7 @@
       "themePreviewQualityFor": "Thème, qualité de l'aperçu selon la puissance de votre ordinateur, accès à l'assistant. Raccourci : **Ctrl+,**",
       "replayATour": "Revoir une visite",
       "allGuidedToursAre": "Toutes les visites guidées sont ici, à tout moment. Une autre vous attend à la première ouverture d'un projet.",
-      "startFromSources": "Partir de vos ressources",
-      "yourDocumentsPicturesAnd": "Vos documents (PDF), images, vidéos et sons, plusieurs à la fois ou un dossier entier : l'assistant les lit tous, dit ce que la vidéo devrait être, puis la réalise avec vous."
+      "everythingStartsHere": "Projet vierge, une vidéo, des sources (des fichiers ou un dossier entier), un fichier .tramme ou Lottie : toutes les façons de commencer sont dans ce menu. On peut aussi déposer un fichier sur la page."
     }
   },
   "assistant": {
@@ -465,7 +460,6 @@
     "couldNotDuplicateError": "Duplication impossible : {error}",
     "saveToComputerTramme": "Enregistrer sur l'ordinateur (.tramme)",
     "couldNotExportError": "Export impossible : {error}",
-    "aProjectAtThe": "Un projet à la taille de la vidéo, prêt à être habillé avec l'assistant",
     "fromAVideo": "Depuis une vidéo",
     "projectsCannotBeRead": "Les projets ne peuvent pas être lus : {error}",
     "noProjectsYet": "Aucun projet pour l'instant",
@@ -475,11 +469,10 @@
     "dropATrammeProject": "Déposer un projet .tramme, une animation Lottie, une vidéo, ou les ressources d'une vidéo (documents, images, rushes, un dossier entier)",
     "doneTotalMb": "{done} / {total} Mo",
     "doneTotalFileS": "{done} / {total} fichier(s)",
-    "fromSources": "Depuis des ressources",
-    "fromSourcesAbout": "Documents (PDF), images, vidéos et sons, ou un dossier entier : l'assistant les lit tous et propose la vidéo à faire",
     "uploadingSources": "Envoi des ressources ({n})",
-    "sourcesFiles": "Des fichiers…",
-    "sourcesFolder": "Un dossier…"
+    "blankProject": "Projet vierge",
+    "fromSourcesFiles": "Depuis des sources (fichiers)…",
+    "fromSourcesFolder": "Depuis des sources (un dossier)…"
   },
   "inspector": {
     "animateName": "Animer {name}",

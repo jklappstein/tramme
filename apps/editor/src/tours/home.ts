@@ -18,22 +18,7 @@ registerTour({
     {
       target: 'home-new', side: 'bottom', align: 'end',
       title: m('common.newProject'),
-      body: m('tours.home.chooseAFormatLandscape'),
-    },
-    {
-      target: 'home-video', side: 'bottom', align: 'end',
-      title: m('tours.home.startFromAVideo'),
-      body: m('tours.home.aVideoWhereYou'),
-    },
-    {
-      target: 'home-sources', side: 'bottom', align: 'end',
-      title: m('tours.home.startFromSources'),
-      body: m('tours.home.yourDocumentsPicturesAnd'),
-    },
-    {
-      target: 'home-open', side: 'bottom', align: 'end',
-      title: m('common.openAFile'),
-      body: m('tours.home.aTrammeProjectSaved'),
+      body: m('tours.home.everythingStartsHere'),
     },
     {
       target: 'home-projects', side: 'bottom', align: 'start',

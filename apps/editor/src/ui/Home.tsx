@@ -257,13 +257,16 @@ export function Home() {
         <span class="grow" />
         <HelpButton page="home" />
         <button class="icon-btn" data-tour="settings" title={t('common.settingsCtrl')} onClick={() => { settingsOpen.value = true; }}><Icon name="gear" /></button>
-        <button class="btn" data-tour="home-open" onClick={() => input.current?.click()}><Icon name="upload" /><span class="label">{t('common.openAFile')}</span></button>
-        <button class="btn" data-tour="home-video" title={t('home.aProjectAtThe')} onClick={() => video.current?.click()}><Icon name="film" /><span class="label">{t('home.fromAVideo')}</span></button>
-        <button class="btn" data-tour="home-sources" title={t('home.fromSourcesAbout')} onClick={(e) => openMenu((e.currentTarget as HTMLElement).getBoundingClientRect(), [
-          { label: t('home.sourcesFiles'), icon: 'doc', onClick: () => sources.current?.click() },
-          { label: t('home.sourcesFolder'), icon: 'folder', onClick: () => folder.current?.click() },
-        ])}><Icon name="doc" /><span class="label">{t('home.fromSources')}</span></button>
-        <button class="btn primary" data-tour="home-new" onClick={() => setDialog({ kind: 'new' })}><Icon name="plus" /><span class="label">{t('common.newProject')}</span></button>
+        {/* one door: every way to start, blank or from material (a drop on the page opens a file too) */}
+        <button class="btn primary" data-tour="home-new" onClick={(e) => openMenu((e.currentTarget as HTMLElement).getBoundingClientRect(), [
+          { label: t('home.blankProject'), icon: 'plus', onClick: () => setDialog({ kind: 'new' }) },
+          'sep',
+          { label: t('home.fromAVideo'), icon: 'film', onClick: () => video.current?.click() },
+          { label: t('home.fromSourcesFiles'), icon: 'doc', onClick: () => sources.current?.click() },
+          { label: t('home.fromSourcesFolder'), icon: 'folder', onClick: () => folder.current?.click() },
+          'sep',
+          { label: t('common.openAFile'), icon: 'upload', onClick: () => input.current?.click() },
+        ])}><Icon name="plus" /><span class="label">{t('common.newProject')}</span></button>
         <input ref={input} type="file" accept=".tramme,.trame,.emotion,.zip,.json,application/json" hidden onChange={(e) => openFiles(chosen(e))} />
         <input ref={video} type="file" accept="video/*,.mp4,.mov,.webm,.mkv" hidden onChange={(e) => openFiles(chosen(e))} />
         <input ref={sources} type="file" multiple accept="image/*,video/*,audio/*,.pdf,application/pdf,.json,.ttf,.otf,.woff,.woff2" hidden onChange={(e) => { const list = chosen(e); if (list.length) fromSources(list); }} />
