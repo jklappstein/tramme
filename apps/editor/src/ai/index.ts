@@ -14,7 +14,7 @@ import reference from '../../../../docs/document.md';
 import { api, type AiEvent, type ChatItem, type KeyedProvider, type KeyStatus } from '../api.ts';
 import { S, toast } from '../state.ts';
 import { companionModels, companionTurn, NO_ENGINES, pairCompanion, probeCompanion, stopCompanion, type CompanionState, type Engines } from './companion.ts';
-import { ServerSession, type Message } from './server.ts';
+import { passes, pause, ServerSession, type Message } from './server.ts';
 import { ToolRunner } from './tools.ts';
 import { runCall, uid } from './calls.ts';
 import { clip } from '../model.ts';
@@ -37,11 +37,13 @@ export interface AiSettings {
   notify: boolean;
   /** when the proposals are applied without the preview step (confirmed once in the settings): 'turn' at the end of the turn, 'all' as each one is made */
   apply: 'off' | 'turn' | 'all';
+  /** a turn cut by a failure that passes (network, busy server) goes on by itself, later each time; never after a quota or a key refused */
+  resume: boolean;
 }
 
 const KEY = 'tramme.assistant';
 function loadSettings(): AiSettings {
-  const d: AiSettings = { model: DEFAULT_MODEL, prefer: 'auto', companionUrl: `http://127.0.0.1:${COMPANION_PORT}`, token: '', localUrl: LOCAL_URL, efforts: {}, notify: true, apply: 'off' };
+  const d: AiSettings = { model: DEFAULT_MODEL, prefer: 'auto', companionUrl: `http://127.0.0.1:${COMPANION_PORT}`, token: '', localUrl: LOCAL_URL, efforts: {}, notify: true, apply: 'off', resume: true };
   try {
     // the settings kept under the tool's former name (model, companion token) are taken over
     const s = { ...d, ...JSON.parse(localStorage.getItem(KEY) ?? localStorage.getItem('emotion.assistant') ?? '{}') } as AiSettings;
@@ -51,6 +53,7 @@ function loadSettings(): AiSettings {
     const efforts = s.efforts && typeof s.efforts === 'object' ? s.efforts : {};
     s.efforts = Object.fromEntries(Object.entries(efforts).filter(([, e]) => EFFORTS.includes(e)));
     s.notify = s.notify !== false;
+    s.resume = s.resume !== false;
     // the former boolean becomes 'turn' (applied at the end of the turn, as before)
     const old = s as AiSettings & { autoApply?: boolean };
     s.apply = s.apply === 'turn' || s.apply === 'all' ? s.apply : old.autoApply === true ? 'turn' : 'off';
@@ -413,17 +416,48 @@ export async function* ask(p: AskPayload, signal: AbortSignal): AsyncGenerator<A
   let brief: string | null = null;
   try { brief = (await api.readText(S.project.peek().id, 'assets/brief.json'))?.text ?? null; } catch { brief = null; }
   const system = systemPrompt(reference, brief ?? undefined);
-  if (route === 'companion' && engine) {
-    // Claude by its model id; a command line by its own model name, none for its default
-    const asked = engine === 'claude' ? model : modelName(model) === CLI_DEFAULT ? '' : modelName(model);
-    yield* companionTurn(link(), { engine, prompt, system, model: asked, effort, sessionId: resumed, images }, runner, signal, (id) => { session.companion = `${engine}:${id}`; });
-  }
-  else {
-    const target = route === 'local' ? { url: localBase() } : route === 'remote' ? { url: `/api/llm/${encodeURIComponent(slotOf(model))}` } : undefined;
-    yield* session.server.turn(prompt, model, system, runner, signal, { images, target, effort });
+  const target = route === 'local' ? { url: localBase() } : route === 'remote' ? { url: `/api/llm/${encodeURIComponent(slotOf(model))}` } : undefined;
+  // Claude by its model id; a command line by its own model name, none for its default
+  const asked = engine === 'claude' ? model : modelName(model) === CLI_DEFAULT ? '' : modelName(model);
+  /** one attempt; a later one goes on from the conversation (the companion's session, the server's messages) */
+  const attempt = (again: string | null): AsyncGenerator<AiEvent> => {
+    if (route === 'companion' && engine) {
+      const sessionId = again === null ? resumed : session.companion?.startsWith(`${engine}:`) ? session.companion.slice(engine.length + 1) : undefined;
+      // no session opened yet: the message is sent again whole
+      const text = again === null || !sessionId ? prompt : again;
+      return companionTurn(link(), { engine, prompt: text, system, model: asked, effort, sessionId, images: again === null ? images : [] }, runner, signal, (id) => { session.companion = `${engine}:${id}`; });
+    }
+    return session.server.turn(again ?? prompt, model, system, runner, signal, again === null ? { images, target, effort } : { target, effort });
+  };
+  for (let n = 0, failure = ''; ; n++) {
+    const again = n ? resumeNote(failure) : null;
+    failure = '';
+    try {
+      for await (const ev of attempt(again)) {
+        // an error the turn will get over is held back, told below with the wait
+        if (ev.type === 'error' && resumable(ev.message, n)) failure = ev.message;
+        else yield ev;
+      }
+    } catch (e) {
+      if (signal.aborted || !resumable((e as Error).message, n)) throw e;
+      failure = (e as Error).message;
+    }
+    if (!failure) break;
+    const wait = RESUME_DELAYS[n];
+    yield { type: 'item', item: { id: uid(), role: 'assistant', text: t('ai.resumeIn', { error: failure, s: wait, n: n + 1, max: RESUME_DELAYS.length }) } };
+    await pause(wait * 1000, signal);
   }
   yield { type: 'done' };
 }
+
+/** the waits before each new attempt, in seconds: twice as long each time */
+const RESUME_DELAYS = [2, 4, 8, 16, 32, 60];
+
+/** whether the turn goes on by itself after this failure */
+const resumable = (message: string, n: number) => aiSettings.peek().resume && n < RESUME_DELAYS.length && passes(message);
+
+/** what the model reads when the turn goes on after a failure */
+const resumeNote = (error: string) => `Your previous answer was cut by an error (${error}). Go on from where you stopped: what you already did is kept (your pending proposal, the files you wrote), do not do it again.`;
 
 /** the user decided on the proposal: the tools see the applied document from now on */
 export function decided(id: string) { if (runner.pending?.id === id) runner.clear(); }

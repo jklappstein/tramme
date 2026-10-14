@@ -358,6 +358,9 @@ function Behavior() {
       <Row label={t('settings.notifyDone')} hint={t(NOTIFY_HINT[permission])}>
         <Toggle on={a.notify} onChange={notifyOn} />
       </Row>
+      <Row label={t('settings.resume')} hint={t('settings.resumeHint')}>
+        <Toggle on={a.resume} onChange={(on) => setAiSettings({ resume: on })} />
+      </Row>
       <Row label={t('settings.autoApply')} hint={t('settings.autoApplyHint')}>
         <Seg value={confirming ?? a.apply}
           options={[['off', t('settings.autoApplyOff')], ['turn', t('settings.autoApplyTurn')], ['all', t('settings.autoApplyAll')]]}

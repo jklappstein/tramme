@@ -17,7 +17,8 @@ import { effect, signal } from '@preact/signals';
 import { audioClips, soundMix, type TrammeDoc, type EvaluatedFrame } from '@tramme/core';
 import { editorRegistry } from './vocabulary.ts';
 import { clipChain, masterGainDb, mixBus, playClip, Renderer } from '@tramme/render';
-import { comp, compIdOf, S, setRegistry, setTime, viewDoc } from './state.ts';
+import { comp, compIdOf, S, setRegistry, setTime, toast, viewDoc } from './state.ts';
+import { t } from './i18n/index.ts';
 import { prefs } from './settings.ts';
 import { syncPluginTours } from './tours/index.ts';
 
@@ -68,6 +69,7 @@ class Preview {
       this.renderer = await Renderer.open(S.doc.peek(), editorRegistry(), new URL(S.docUrl.peek(), location.href).href, this.canvas, { compId: compIdOf(S.doc.peek()), raster: 'gpu', scale: S.previewScale.peek(), preserve: false, isolate: true });
       this.applied = S.doc.peek();
       setRegistry(this.renderer.registry);
+      if (this.renderer.compositor.software) toast(t('editor.softwareGpu'), 'error');
       this.pluginTours();
       S.renderError.value = null;
     } catch (e) {

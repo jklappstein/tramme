@@ -6,7 +6,7 @@ import { api } from '../api.ts';
 import { saveBlob } from '../download.ts';
 import { safeName, takenPaths, upload } from '../files.ts';
 import { canRedo, canUndo, comp, commit, redo, redoLabel, S, saveNow, toast, undo, undoLabel } from '../state.ts';
-import { fmtSeconds } from '../model.ts';
+import { contentEnd, fmtSeconds, snap } from '../model.ts';
 import { shortsOf } from '../shorts.ts';
 import { openMenu, Popover, Select, type MenuItem } from './controls.tsx';
 import { VIDEO, WEB_FORMATS, type WebFormat } from '../formats.ts';
@@ -39,6 +39,9 @@ function ExportPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => vo
   const video = VIDEO.has(format);
   // the shorts of the document, named short-* by the build: exported one by one, in the format chosen above
   const shorts = shortsOf(S.doc.value);
+  // time left empty after the last layer: the composition can be brought back to its content before the export
+  const end = snap(contentEnd(c), c.fps), empty = format !== 'svg' && end > 0 && end < c.duration - 0.5 / c.fps;
+  const trim = () => commit(t('topbar.trimToContent'), [{ op: 'replace', path: pointer('compositions', S.compId.peek(), 'duration'), value: end }]);
   const run = async () => {
     const t0 = performance.now(), at = S.time.peek();
     abort.current = new AbortController();
@@ -98,6 +101,7 @@ function ExportPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => vo
         ))}
       </div>
       <div class="row"><span class="muted">{t('common.image')}</span><span class="mono">{c.width}×{c.height} · {t('common.nFps', { n: c.fps })} · {fmtSeconds(c.duration)}</span></div>
+      {empty && <div class="export-trim"><span>{t('topbar.contentEndsAt', { end: fmtSeconds(end), duration: fmtSeconds(c.duration) })}</span><button class="btn sm" disabled={running} onClick={trim}>{t('topbar.trimToContent')}</button></div>}
       {shorts.length > 1 && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {batch
           ? <>

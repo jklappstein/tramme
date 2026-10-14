@@ -418,6 +418,10 @@ input[type=text].plain, input.plain { background: transparent; border: 0; outlin
 .tree { padding: 4px 0; }
 /* the words the tree is narrowed to, kept in view while it scrolls */
 .tree-filter { position: sticky; top: -4px; z-index: 2; display: flex; align-items: center; gap: 6px; height: 28px; margin: -4px 0 2px; padding: 0 6px 0 10px; background: var(--panel); border-bottom: 1px solid var(--line-soft); color: var(--text-3); }
+.comp-trail { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; padding: 4px 8px 6px; margin-bottom: 4px; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; color: var(--text-3); }
+.comp-trail button { border: 0; background: none; padding: 2px 4px; border-radius: 4px; color: var(--accent); cursor: pointer; font: inherit; }
+.comp-trail button:hover { background: var(--field-hover); }
+.comp-trail .here { padding: 2px 4px; color: var(--text); font-weight: 600; }
 .tree-filter input { flex: 1; min-width: 0; height: 22px; border: 0; background: none; color: var(--text); outline: none; font-size: 12px; }
 .tree-none { padding: 8px 12px; font-size: 12px; }
 .tree-row {
@@ -780,6 +784,8 @@ svg.i.flip { transform: rotate(180deg); }
 .export-formats button:hover:not(:disabled) { background: var(--field-hover); }
 .export-formats button.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
 .export-warn { margin: 0; padding-left: 16px; color: var(--key); font-size: 11px; display: flex; flex-direction: column; gap: 2px; max-height: 120px; overflow: auto; }
+.export-trim { display: flex; flex-direction: column; gap: 6px; color: var(--key); font-size: 11px; }
+.export-trim .btn { height: auto; min-height: 28px; padding: 5px 10px; white-space: normal; text-align: center; }
 .export-pop { width: 300px; display: flex; flex-direction: column; gap: 10px; }
 .export-pop .row { display: grid; grid-template-columns: 90px 1fr; gap: 8px; align-items: center; }
 .progress { height: 4px; border-radius: 2px; background: var(--field-active); overflow: hidden; }

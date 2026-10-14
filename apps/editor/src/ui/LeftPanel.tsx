@@ -1,10 +1,11 @@
 // Left column: the layer tree, the assets and the design tokens.
 
 import { signal } from '@preact/signals';
+import { Fragment } from 'preact';
 import { useRef, useState } from 'preact/hooks';
-import { addLayer, applyOps, layerActive, moveLayer, pointer, removeLayer, type Asset, type TrammeDoc, type Layer, type NodeType, type Op, type PresetType, type TokenType } from '@tramme/core';
+import { addLayer, applyOps, layerActive, moveLayer, pointer, propKind, removeLayer, staticValue, type Asset, type KeyframedProp, type Prop, type StaticProp, type Vec2, type TrammeDoc, type Layer, type NodeType, type Op, type PresetType, type TokenType } from '@tramme/core';
 import { clickSelect, comp, commit, foldAll, S, select, toggleFold, viewDoc, toast, uiTime } from '../state.ts';
-import { flatTree, freshId, layerName, parentOf, SOUND_GROUP, soundGroupOf, subtree, topLayers, commonStem, folderOf, imagesIn } from '../model.ts';
+import { flatTree, freshId, layerName, shiftProp, parentOf, SOUND_GROUP, soundGroupOf, subtree, topLayers, commonStem, folderOf, imagesIn } from '../model.ts';
 import { ColorField, longPress, openMenu, Swatch, TextInput, resolveColor, type MenuItem } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
 import { preview } from '../preview.ts';
@@ -179,6 +180,87 @@ export function precompose() {
   if (commit(t('panel.precompose'), ops)) select([layerId]);
 }
 
+const shiftProps = <T extends Record<string, Prop> | undefined>(o: T, dt: number): T => (o && Object.fromEntries(Object.entries(o).map(([k, v]) => [k, shiftProp(v, dt)])) as T);
+
+/**
+ * The reverse of precompose: the selected comp layer becomes a group holding
+ * the layers of its composition, in place and on the same frame (the group
+ * takes the layer's transform, its anchor moved by half the composition, as
+ * a composition is drawn centred on its layer). Its time must run as the
+ * parent's (no speed, loop or override); the composition is removed when no
+ * other layer shows it. Expressions are kept as they are.
+ */
+export function decompose() {
+  const doc = S.doc.peek(), compId = S.compId.peek(), c = doc.compositions[compId];
+  const id = S.selection.peek()[0], l = c.layers[id];
+  const innerId = l?.type === 'comp' && typeof l.props?.comp === 'string' ? l.props.comp as string : null;
+  const inner = innerId ? doc.compositions[innerId] : null;
+  if (!l || !innerId || !inner) return;
+  const p = l.props ?? {}, start = p.start ?? 0, anchor = l.transform?.anchor;
+  if ((p.remap ?? null) !== null || (p.loop ?? false) !== false || (p.speed ?? 1) !== 1 || typeof start !== 'number') { toast(t('panel.decomposeTimed'), 'error'); return; }
+  if (anchor !== undefined && (propKind(anchor) === 'expression' || propKind(anchor) === 'link')) { toast(t('panel.decomposeAnchor'), 'error'); return; }
+  // the composition's time 0 falls at the layer's in point, less its start
+  const dt = (l.in ?? 0) - start;
+  const plus = (v: unknown): Vec2 => { const [x, y] = (v as Vec2 | undefined) ?? [0, 0]; return [x + inner.width / 2, y + inner.height / 2]; };
+  const moved = anchor === undefined ? plus(undefined)
+    : propKind(anchor) === 'keyframes' ? { ...(anchor as KeyframedProp<Vec2>), $k: (anchor as KeyframedProp<Vec2>).$k.map((k) => ({ ...k, v: plus(k.v) })) }
+    : staticValue(anchor) !== anchor ? { ...(anchor as StaticProp<Vec2>), $v: plus(staticValue(anchor)) } : plus(anchor);
+  // the ids of the composition, kept unless the parent already has them
+  const taken: Record<string, unknown> = { ...c.layers }, ids = new Map<string, string>();
+  for (const lid of Object.keys(inner.layers)) { const nid = freshId(taken, lid); taken[nid] = 1; ids.set(lid, nid); }
+  const ops: Op[] = [];
+  for (const [lid, nid] of ids) {
+    const x = structuredClone(inner.layers[lid]);
+    if (x.children) x.children = x.children.map((ch) => ids.get(ch)!);
+    if (x.clip) x.clip = ids.get(x.clip);
+    if (dt) {
+      x.in = Math.max(0, (x.in ?? 0) + dt);
+      x.out = (x.out ?? inner.duration) + dt;
+      x.transform = shiftProps(x.transform as Record<string, Prop> | undefined, dt) as Layer['transform'];
+      x.props = shiftProps(x.props, dt);
+      x.effects = x.effects?.map((e) => ({ ...e, props: shiftProps(e.props, dt) }));
+    }
+    ops.push({ op: 'add', path: pointer('compositions', compId, 'layers', nid), value: x });
+  }
+  const group: Layer = { ...structuredClone(l), type: 'group', transform: { ...l.transform, anchor: moved as Prop<Vec2> }, children: inner.order.map((o) => ids.get(o)!) };
+  delete group.props;
+  ops.push({ op: 'replace', path: pointer('compositions', compId, 'layers', id), value: group });
+  const shown = Object.entries(doc.compositions).some(([cid, k]) => Object.entries(k.layers).some(([lid, x]) => (cid !== compId || lid !== id) && x.type === 'comp' && x.props?.comp === innerId));
+  if (!shown && innerId !== doc.root) ops.push({ op: 'remove', path: pointer('compositions', innerId) });
+  if (commit(t('panel.decompose'), ops)) select([id]);
+}
+
+/** the compositions from the main one down to this one, through the comp layers that show them */
+function trailTo(doc: TrammeDoc, target: string): string[] {
+  const seen = new Set<string>();
+  const walk = (cid: string): string[] | null => {
+    if (cid === target) return [cid];
+    if (seen.has(cid)) return null;
+    seen.add(cid);
+    for (const l of Object.values(doc.compositions[cid]?.layers ?? {})) {
+      const next = l.type === 'comp' && typeof l.props?.comp === 'string' ? l.props.comp as string : null;
+      const rest = next && walk(next);
+      if (rest) return [cid, ...rest];
+    }
+    return null;
+  };
+  return walk(doc.root) ?? [doc.root, target];
+}
+
+/** where the open composition sits: each step above goes back up to it */
+function CompTrail() {
+  const doc = viewDoc.value, id = S.compId.value;
+  if (!id || id === doc.root || !doc.compositions[id]) return null;
+  const trail = trailTo(doc, id);
+  return (
+    <nav class="comp-trail" aria-label={t('panel.compositionPath')}>
+      {trail.map((cid, i) => (i < trail.length - 1
+        ? <Fragment key={cid}><button title={t('panel.backToName', { name: doc.compositions[cid].name })} onClick={() => { S.compId.value = cid; select([]); }}>{doc.compositions[cid].name}</button><Icon name="chevron" size={10} /></Fragment>
+        : <span key={cid} class="here">{doc.compositions[cid].name}</span>))}
+    </nav>
+  );
+}
+
 // ── layer tree ───────────────────────────────────────────────
 /** the words the layer tree is narrowed to: every layer whose name holds them, folded groups opened */
 const filter = signal('');
@@ -243,7 +325,10 @@ function LayerTree() {
       { label: l.visible === false ? t('common.show') : t('common.hide'), icon: l.visible === false ? 'eye' : 'eyeOff', onClick: () => commit(t('panel.visibility'), l.visible === false ? [{ op: 'remove', path: `${lp(id)}/visible` }] : [{ op: 'add', path: `${lp(id)}/visible`, value: false }]) },
       { label: t('panel.goToInPoint'), icon: 'start', onClick: () => { S.time.value = l.in ?? 0; } },
       { label: t('panel.precompose'), icon: 'comp', onClick: precompose },
-      ...(l.type === 'comp' && typeof l.props?.comp === 'string' ? [{ label: t('panel.openComposition'), icon: 'comp' as const, onClick: () => { S.compId.value = l.props!.comp as string; select([]); } }] : []),
+      ...(l.type === 'comp' && typeof l.props?.comp === 'string' ? [
+        { label: t('panel.openComposition'), icon: 'comp' as const, onClick: () => { S.compId.value = l.props!.comp as string; select([]); } },
+        { label: t('panel.decompose'), icon: 'group' as const, onClick: decompose },
+      ] : []),
       ...(l.type === 'audio' && c.order.includes(id) ? [{ label: t('panel.groupSounds'), icon: 'audio' as const, onClick: groupSounds }] : []),
       'sep',
       { label: t('common.delete'), icon: 'trash', hint: t('common.del'), onClick: deleteSelection },
@@ -593,7 +678,7 @@ export function LeftPanel() {
         <span class="grow" />
         {current === 'layers' && <button class="icon-btn sm" title={t('panel.addALayer')} onClick={(e) => addLayerMenu(e)}><Icon name="plus" /></button>}
       </div>
-      {current === 'layers' && <div class="panel-body" onClick={(e) => { if (e.target === e.currentTarget) select([]); }}><LayerTree /></div>}
+      {current === 'layers' && <div class="panel-body" onClick={(e) => { if (e.target === e.currentTarget) select([]); }}><CompTrail /><LayerTree /></div>}
       {current === 'assets' && <Assets />}
       {current === 'tokens' && <Tokens />}
     </>

@@ -189,9 +189,18 @@ export interface Look {
   checker?: boolean;
 }
 
+/** WebGL drawn by the processor (no usable graphics card, or one the browser refused): every frame then weighs on the whole machine */
+export function softwareGl(gl: WebGL2RenderingContext): boolean {
+  const info = gl.getExtension('WEBGL_debug_renderer_info');
+  const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
+  return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(name);
+}
+
 export class Compositor {
   w = 0;
   h = 0;
+  /** drawn by the processor rather than a graphics card */
+  readonly software: boolean;
   private gl: WebGL2RenderingContext;
   private vao: WebGLVertexArrayObject;
   private p: Record<'accum' | 'prefilter' | 'down' | 'up' | 'final' | 'yuv' | 'rgba', Program>;
@@ -212,12 +221,14 @@ export class Compositor {
    */
   constructor(canvas: HTMLCanvasElement | OffscreenCanvas, w: number, h: number, { preserve = true }: { preserve?: boolean } = {}) {
     const gl = canvas.getContext('webgl2', {
-      antialias: false, alpha: true, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: preserve,
+      // the strong graphics card of a laptop that has two, rather than the one that saves the battery
+      antialias: false, alpha: true, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: preserve, powerPreference: 'high-performance',
     }) as WebGL2RenderingContext | null;
     if (!gl) throw new Error('WebGL2 unavailable');
     if (!gl.getExtension('EXT_color_buffer_float')) throw new Error('EXT_color_buffer_float unavailable');
     gl.getExtension('OES_texture_float_linear');
     this.gl = gl;
+    this.software = softwareGl(gl);
     this.vao = gl.createVertexArray()!;
     this.p = {
       accum: compile(gl, FS_ACCUM), prefilter: compile(gl, FS_PREFILTER), down: compile(gl, FS_DOWN),

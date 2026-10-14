@@ -45,20 +45,19 @@ function NewProject({ onClose }: { onClose: () => void }) {
   const [preset, setPreset] = useState('16x9');
   const [size, setSize] = useState<[number, number]>([1920, 1080]);
   const [fps, setFps] = useState(30);
-  const [duration, setDuration] = useState(5);
   const [busy, setBusy] = useState(false);
   const pick = (id: string) => {
     setPreset(id);
     const p = PRESETS.find((x) => x[0] === id);
     if (p) setSize([p[2], p[3]]);
   };
-  const valid = name.trim() && size.every((v) => Number.isInteger(v) && v >= 16 && v <= 8192) && duration > 0 && duration <= 3600;
+  const valid = name.trim() && size.every((v) => Number.isInteger(v) && v >= 16 && v <= 8192);
   const create = async (e: Event) => {
     e.preventDefault();
     if (!valid || busy) return;
     setBusy(true);
     try {
-      const m = await api.create({ name: name.trim(), width: size[0], height: size[1], fps, duration });
+      const m = await api.create({ name: name.trim(), width: size[0], height: size[1], fps });
       open(m.id);
     } catch (x) { toast(t('home.couldNotCreateError', { error: (x as Error).message }), 'error'); setBusy(false); }
   };
@@ -85,16 +84,9 @@ function NewProject({ onClose }: { onClose: () => void }) {
             <div class="field num"><span class="axis">H</span><input type="number" min={16} max={8192} value={size[1]} onInput={(e) => setSize([size[0], Math.round(Number((e.target as HTMLInputElement).value))])} /><span class="unit">px</span></div>
           </div>
         )}
-        <div class="inline-fields">
-          <div>
-            <label class="lbl">{t('common.frameRate')}</label>
-            <div class="seg">{[24, 25, 30, 50, 60].map((f) => <button type="button" key={f} class={fps === f ? 'on' : ''} onClick={() => setFps(f)}>{f}</button>)}</div>
-          </div>
-          <div>
-            <label class="lbl">{t('common.duration')}</label>
-            <div class="field num"><input type="number" min={0.1} max={3600} step={0.1} value={duration} onInput={(e) => setDuration(Number((e.target as HTMLInputElement).value))} /><span class="unit">s</span></div>
-          </div>
-        </div>
+        {/* no duration asked: the assistant sets it to the content it builds, the inspector changes it */}
+        <label class="lbl">{t('common.frameRate')}</label>
+        <div class="seg">{[24, 25, 30, 50, 60].map((f) => <button type="button" key={f} class={fps === f ? 'on' : ''} onClick={() => setFps(f)}>{f}</button>)}</div>
         <div class="modal-foot">
           <button type="button" class="btn ghost" onClick={onClose}>{t('common.cancel')}</button>
           <button type="submit" class="btn primary" disabled={!valid || busy}><Icon name={busy ? 'spinner' : 'plus'} />{t('home.createProject')}</button>

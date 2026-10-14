@@ -288,7 +288,8 @@ ${r.content[0].type === 'text' ? r.content[0].text : ''}`);
       renderStill: (t, id) => this.stillUrl(t, id),
       transcript: async (id) => (await this.readTranscript(id)).t,
       signal: this.signal,
-      progress: (done, total, step) => this.onProgress?.(done, total, step),
+      // a plugin's figures are not trusted: what is not a number is shown as a step without a share
+      progress: (done, total, step) => this.onProgress?.(Number.isFinite(done) ? done : 0, Number.isFinite(total) ? total : 0, typeof step === 'string' ? step : undefined),
     };
   }
 

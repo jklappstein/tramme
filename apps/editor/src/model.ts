@@ -41,6 +41,18 @@ export function subtree(comp: Composition, id: string): string[] {
   return out;
 }
 
+/** where the last layer of the composition ends: its duration when a layer runs to the end (no out point) */
+export function contentEnd(comp: Composition): number {
+  let end = 0;
+  for (const id of comp.order) {
+    const l = comp.layers[id];
+    if (!l) continue;
+    if (l.out === undefined) return comp.duration;
+    end = Math.max(end, l.out);
+  }
+  return Math.min(end, comp.duration);
+}
+
 /** the name of the group the sounds are kept in */
 export const SOUND_GROUP = 'Sound';
 
@@ -122,6 +134,11 @@ export function editPropOps(doc: TrammeDoc, compId: string, id: string, name: st
   return setProp(doc, compId, id, name, value as Prop);
 }
 
+/** a property dt later: its keys moved, any other form kept */
+export const shiftProp = (p: Prop, dt: number): Prop => (propKind(p) === 'keyframes'
+  ? { ...(p as KeyframedProp), $k: (p as KeyframedProp).$k.map((k) => ({ ...k, t: Math.round((k.t + dt) * 1e6) / 1e6 })) }
+  : p);
+
 /** move a layer and its descendants in time: in/out and every keyframe */
 export function shiftLayerOps(doc: TrammeDoc, compId: string, id: string, dt: number): Op[] {
   const comp = doc.compositions[compId];
@@ -131,9 +148,7 @@ export function shiftLayerOps(doc: TrammeDoc, compId: string, id: string, dt: nu
     const l = comp.layers[lid];
     if (l.in !== undefined || lid === id) ops.push({ op: 'add', path: pointer('compositions', compId, 'layers', lid, 'in'), value: r(Math.max(0, (l.in ?? 0) + dt)) });
     if (l.out !== undefined || lid === id) ops.push({ op: 'add', path: pointer('compositions', compId, 'layers', lid, 'out'), value: r((l.out ?? comp.duration) + dt) });
-    for (const [name, keys] of animatedProps(l)) {
-      ops.push({ op: 'replace', path: propPath(compId, lid, name), value: { ...(rawProp(doc, compId, lid, name) as object), $k: keys.map((k) => ({ ...k, t: r(k.t + dt) })) } });
-    }
+    for (const [name] of animatedProps(l)) ops.push({ op: 'replace', path: propPath(compId, lid, name), value: shiftProp(rawProp(doc, compId, lid, name)!, dt) });
   }
   return ops;
 }
@@ -159,6 +174,20 @@ export function describeOp(doc: TrammeDoc, op: Op): string {
     return `${name} · ${rest || t('editor.layer')}${v}`;
   }
   if (parts[0] === 'compositions' && parts[2] === 'order') return t('editor.layerOrder');
+  // the files and plugins of the project: named, their JSON is no use to the reader
+  if (parts[0] === 'assets' && parts[1]) {
+    const name = (parts.length === 2 && op.op === 'add' ? (op.value as { name?: string })?.name : doc.assets[parts[1]]?.name) || parts[1];
+    return parts.length > 2 || op.op === 'replace' ? t('editor.fileChanged', { name }) : op.op === 'add' ? t('editor.fileAdded', { name }) : t('editor.fileRemoved', { name });
+  }
+  if (parts[0] === 'plugins') {
+    // the list once the op is applied: the whole list set, or one id added or removed
+    const cur = doc.plugins ?? [], i = parts[1] === '-' ? cur.length : Number(parts[1]), value = 'value' in op ? op.value : undefined;
+    const ids = parts.length === 1 ? (op.op === 'remove' ? [] : (value as string[]) ?? [])
+      : op.op === 'remove' ? cur.filter((_, j) => j !== i)
+      : op.op === 'add' ? [...cur.slice(0, i), String(value), ...cur.slice(i)]
+      : cur.map((id, j) => (j === i ? String(value) : id));
+    return ids.length ? t('editor.pluginsOn', { names: ids.map((id) => doc.assets[id]?.name || id).join(', ') }) : t('editor.noPlugin');
+  }
   const v = 'value' in op ? ` = ${short(op.value)}` : '';
   return `${parts.join('.')}${v}`;
 }

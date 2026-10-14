@@ -35,7 +35,7 @@ let shared: GL | null = null;
 function context(): GL {
   if (shared) return shared;
   const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(4, 4) : document.createElement('canvas');
-  const gl = canvas.getContext('webgl2', { premultipliedAlpha: true, antialias: false, preserveDrawingBuffer: true }) as WebGL2RenderingContext | null;
+  const gl = canvas.getContext('webgl2', { premultipliedAlpha: true, antialias: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' }) as WebGL2RenderingContext | null;
   if (!gl) throw new Error('WebGL2 unavailable for shaders');
   shared = { canvas, gl, programs: new Map(), vao: gl.createVertexArray()! };
   return shared;

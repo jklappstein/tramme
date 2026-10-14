@@ -81,15 +81,27 @@ interface Attempt { headers?: Record<string, string>; body: unknown; parts: Part
 /** tries after the first one, for a busy server, a dropped connection or a broken stream */
 const RETRIES = 2;
 
+/** a wait the stop button ends */
+export const pause = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
+  if (signal.aborted) { reject(new DOMException('stopped', 'AbortError')); return; }
+  const timer = setTimeout(resolve, ms);
+  signal.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('stopped', 'AbortError')); }, { once: true });
+});
+
 /** waits before trying again: what the server asks (retry-after), or longer each time */
-function backoff(attempt: number, res?: Response): Promise<void> {
+function backoff(attempt: number, signal: AbortSignal, res?: Response): Promise<void> {
   const asked = Number(res?.headers.get('retry-after'));
-  const ms = Number.isFinite(asked) && asked > 0 ? Math.min(30, asked) * 1000 : 1500 * (attempt + 1) ** 2;
-  return new Promise((r) => setTimeout(r, ms));
+  return pause(Number.isFinite(asked) && asked > 0 ? Math.min(30, asked) * 1000 : 1500 * (attempt + 1) ** 2, signal);
 }
 
 /** a failure worth trying again: a busy or failing server, no answer, a stream cut short */
 const transient = (status: number) => status === 0 || status === 429 || status === 529 || status >= 500;
+/** a failure, as its message tells, that waits for the user: a quota or a plan used up, a key or a login refused */
+const LASTING = /quota|insufficient|billing|credit|usage limit|limit reached|hit your limit|exceeded your|subscription|upgrade|unauthori[sz]ed|forbidden|invalid.{0,20}(key|token)|api.?key|authenticat|log ?in|\b40[1-3]\b/i;
+/** a failure, as its message tells, that passes: the network, a busy or failing server, an answer cut short */
+const PASSING = /network|fetch|connect|ECONN|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|socket|timed? ?out|timeout|overload|busy|unavailable|temporar|stream|interrupted|reset|rate.?limit|\b(429|5\d\d)\b|does not answer|ne répond pas/i;
+/** whether a failure known by its message only (a companion's, a turn's last) is worth a new attempt later */
+export const passes = (message: string) => !LASTING.test(message) && PASSING.test(message);
 const retryable = (e: unknown) => (e instanceof ApiFailure ? !e.final && transient(e.status) : (e as Error).name !== 'AbortError');
 
 /** the status of an error sent inside a stream (the Messages API's error types) */
@@ -192,7 +204,7 @@ export class ServerSession {
         }
       } catch (e) {
         if (shown || signal.aborted || attempt >= RETRIES || !retryable(e)) throw e;
-        await backoff(attempt);
+        await backoff(attempt, signal);
       }
     }
   }
@@ -215,7 +227,7 @@ export class ServerSession {
       } catch (e) {
         if ((e as Error).name === 'AbortError') throw e;
         // no answer (network, server starting): tried again like a busy server
-        if (attempt < RETRIES) { await backoff(attempt++); continue; }
+        if (attempt < RETRIES) { await backoff(attempt++, signal); continue; }
         throw new ApiFailure(0, t('ai.urlDoesNotAnswer', { url, error: (e as Error).message }), true);
       }
       if (res.ok) return res;
@@ -225,7 +237,7 @@ export class ServerSession {
         const part = REFUSED.find(([p, re]) => parts.includes(p) && this.takes(model, p) && re.test(message))?.[0];
         if (part) { this.refused.add(`${model} ${part}`); continue; }
       }
-      if (transient(res.status) && attempt < RETRIES) { await backoff(attempt++, res); continue; }
+      if (transient(res.status) && attempt < RETRIES) { await backoff(attempt++, signal, res); continue; }
       throw new ApiFailure(res.status, message, true);
     }
   }

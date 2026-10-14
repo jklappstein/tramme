@@ -13,9 +13,10 @@ import { aiRoute, aiSettings, aiStatus, ask, CLI_SETUP, cliUnavailable, routeLab
 import { openSettings } from '../settings.ts';
 import { fieldsOf, inputLine, inputOf, listCommands, matchCommands, parseCommand, ready, type Command, type Field } from '../ai/commands.ts';
 import { uid } from '../ai/calls.ts';
+import { opLine } from '../ai/tools.ts';
 import { refreshLibrary } from '../library.ts';
 import { acceptProposal, comp, propose, rejectProposal, S, toast, uiTime } from '../state.ts';
-import { ago, clip, describeOp, layerName, timecode } from '../model.ts';
+import { ago, clip, layerName, timecode } from '../model.ts';
 import { away, notify } from '../notify.ts';
 import { answer, chatShown, question, turnBegins, turnEnds } from '../confirm.ts';
 import { Icon } from './icons.tsx';
@@ -96,7 +97,7 @@ async function consume(start: (signal: AbortSignal) => AsyncGenerator<AiEvent>, 
       else if (ev.type === 'tool-progress') update(ev.id, (it) => ({ ...it, tool: it.tool && { ...it.tool, progress: ev.progress } }));
       else if (ev.type === 'proposal') {
         propose({ id: ev.id, label: ev.label, ops: ev.ops });
-        const card = { id: ev.id, label: ev.label, count: ev.ops.length, status: 'pending' as const, lines: ev.ops.slice(0, 40).map((o) => `${o.op}\t${describeOp(S.doc.peek(), o)}`) };
+        const card = { id: ev.id, label: ev.label, count: ev.ops.length, status: 'pending' as const, lines: ev.ops.slice(0, 40).map(opLine) };
         // the agent refines its proposal: the card updates in place
         if (chat.value.some((it) => it.proposal?.id === ev.id)) chat.value = chat.value.map((it) => (it.proposal?.id === ev.id ? { ...it, proposal: card } : it));
         else chat.value = [...chat.value, { id: uid(), role: 'assistant', proposal: card }];
@@ -307,11 +308,13 @@ function Item({ it }: { it: ChatItem }) {
   );
   if (it.tool) {
     const run = !it.tool.done;
-    const p = run ? it.tool.progress : undefined, pct = p ? Math.min(100, Math.round((100 * p.done) / Math.max(p.total, 1e-9))) : 0;
+    const p = run ? it.tool.progress : undefined;
+    // a plugin's tool may report a total it does not know (0, NaN): its step alone is shown
+    const pct = p && p.total > 0 && Number.isFinite(p.done / p.total) ? Math.max(0, Math.min(100, Math.round((100 * p.done) / p.total))) : null;
     return (
       <div class={`activity${run ? ' running' : ''}`}>
         <Icon name={run ? 'spinner' : it.tool.error ? 'alert' : 'check'} />{it.tool.summary}
-        {p && <span class="tool-progress"><span class="progress"><i style={{ width: `${pct}%` }} /></span><span class="mono">{p.step ? `${p.step} ` : ''}{pct} %</span></span>}
+        {p && <span class="tool-progress">{pct !== null && <span class="progress"><i style={{ width: `${pct}%` }} /></span>}<span class="mono">{[p.step, pct !== null ? `${pct} %` : ''].filter(Boolean).join(' ')}</span></span>}
       </div>
     );
   }
