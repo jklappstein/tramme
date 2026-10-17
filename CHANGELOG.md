@@ -8,6 +8,36 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-18
+
+### Added
+
+- The studio, the default view of a project: the film in front, directed by notes. A note is written in the box under the picture, pinned to a moment or a place of the frame if needed, and the assistant answers with a take shown on the picture, kept or set aside. The storyboard below shows the scenes with their frames, the sound and the notes at their moment; a click on a scene puts the notes on it. The Direction panel holds the brief (subject, tone, rules), the look and the material of the film. The former layout stays as the atelier, one switch away in the top bar and the settings.
+- The Transcribe button: on a sound or a video joined to a message, on the material of the film, in the assets, in a new "Speech" section of the inspector of sound and video layers, and in their menus. It reads the same state everywhere: to transcribe, under way, transcribed.
+- The timeline's own menus on the right click. On a clip or its name: split at the playhead, trim the start or the end to the playhead, bring it to the playhead, then the layer's menu (the same as in the layer list). On an empty place or the ruler: the playhead or a marker there, end the composition there or at its content, add a layer, select all, the whole timeline in view. On a marker: go there, delete it. On a keyframe: go there, its curve.
+- Guided tours "The tricks" (atelier: timeline zoom and lasso, snapping edges, cutting a video, the right click, scrubbing and arithmetic in fields, expressions and modifiers, the keyboard, export) and "Speech and transcription" (both views: where to transcribe, what the assistant does with the words). The editor tour's timeline step tells the new menus.
+- The interface is bundled with its fonts (Geist and Geist Mono, OFL-1.1): it looks the same on every machine, offline included.
+- A theme of previews in the settings: each of the five themes (studio, obsidienne, carbone, crépuscule, papier) is picked on a small picture drawn with its own colours, and "système" follows the computer's light or dark setting; papier joins the site's light palette.
+- The lists of choices (a project's format, the frame rate, a property's choices) open the editor's own menu: a line of detail can sit under a choice, the chosen one carries a check, and the keyboard works through them (arrows, Enter, Escape, first letter). On a touchscreen the native list stays.
+- A take announces itself with a clapperboard: a `clap` icon on its pill and its card, "Prise N" in the theme's accent.
+
+### Changed
+
+- Nothing is transcribed on its own any more: not a project made from a video or from sources, not a file joined to a message. The user starts it with the Transcribe button; when the assistant needs the words of a media not transcribed yet, it asks first in the conversation (a turn left alone never asks, and works without them). The project's first greetings say so.
+- Dragging the left edge of a sound or a composition cuts its head off like a video's: what follows stays in place (its start in the file carried, at its rate or speed).
+- The browser's menu no longer opens on the timeline, the transport, the curves or the storyboard (it stays in text fields), and a right press on the ruler no longer moves the playhead.
+- One art direction for the whole application, built only on the theme's tokens (the reference board is `docs/design/board.html`): Geist everywhere (13 px base, Geist Mono for timecodes and values), text buttons as pills, icon buttons as 8 px rounded squares, fields without borders that take a 2 px accent ring on focus, panels and cards as 14 px surfaces set on the background and separated by 8 px gutters instead of seams, dialogs at 20 px over a blurred scrim. No colour is written outside the theme files any more; the playhead, the selection and the focus are the accent's, never a red of their own.
+- The studio is dressed like the rest: the violet of the assistant, its gradients, halos and sparks are gone. Tramme at work is its mark breathing and a 2 px accent ring around the picture; the notes' numbers, the pins and the stage tags are the theme's accent; the storyboard's sounds are drawn (music neutral, voice accented, effects as ticks, heroes warm); the playhead is the same line in the studio, the storyboard and the timeline.
+- The atelier is panels on a background: the left panel, the viewport, the bottom and the inspector are rounded surfaces in gutters, and the resizers hide in the gutters (an accent line while dragged). The viewport's toolbar and banners float as pills over the picture; the transport reads its time in mono; the timeline's clips keep their layer's colour and the chosen one takes an accent ring; the curves sit on a soft surface with their presets in a floating pill. On a phone, the tabs float in a pill above the safe area.
+- The assistant speaks in one thread in both views: the notes with their number, the work as stages (its steps one click away) and the takes as cards, in the studio's side panel and in the atelier's assistant alike — the bubbles are gone.
+- The settings' rows are grouped in cards, one section at a time under its title; the navigation reads as rounded lines. The guided tours follow the new shapes, and every `data-tour` marker stands where it was.
+- The home screen's cards show each film at its own aspect ratio on the picture's stage colour: a vertical film no longer leaves empty bands beside its preview, and the examples follow.
+
+### Fixed
+
+- A field focused by the keyboard showed a doubled outline: the global focus ring painted on the field's inner input as well as on the field itself. Text controls now answer with their container's ring alone, and sliders and colour swatches keep a thin one.
+- The projects' thumbnails left see-through bands (a checkerboard) beside vertical films: the thumb now takes the film's aspect from its manifest.
+
 ## [0.6.0] - 2026-10-11
 
 ### Added
@@ -196,7 +226,8 @@ First public release.
 
 - Cloudflare Worker serving the editor and the API, projects stored in R2, access protected by Cloudflare Access.
 
-[Unreleased]: ../../compare/v0.6.0...HEAD
+[Unreleased]: ../../compare/v0.7.0...HEAD
+[0.7.0]: ../../compare/v0.6.0...v0.7.0
 [0.6.0]: ../../compare/v0.5.0...v0.6.0
 [0.5.0]: ../../compare/v0.4.0...v0.5.0
 [0.4.0]: ../../compare/v0.3.0...v0.4.0
