@@ -11,15 +11,15 @@ import dark from '../assets/editor-dark.png';
 
 const ITEMS = [
   { Icon: Scissors, title: 'A timeline with its own menus', text: 'Split a clip at the playhead, trim it, bring it there; drop a marker; snap every edge. A video is cut in its file.' },
-  { Icon: BezierCurve, title: 'Curves', text: 'Values over time with their eases, shaped in the curve editor, named once as tokens and reused.' },
-  { Icon: Sliders, title: 'An inspector per node', text: 'Generated from each node: keyframes, expressions, links and modifiers, and the speech of a video, transcribed when you ask.' },
+  { Icon: BezierCurve, title: 'Curves', text: 'A graph editor to shape every ease, saved once and reused across the film.' },
+  { Icon: Sliders, title: 'An inspector for each layer', text: 'Every setting of the selected layer, ready to animate, and the speech of a video, transcribed when you ask.' },
 ];
 const alt = 'The tramme atelier: the layers of the Showreel example on the left, the frame in the viewport, the timeline below and the inspector on the right.';
 ---
 
 <section class="section" id="editor">
   <div class="wrap">
-    <Head title="The atelier, for the detail." more="One switch away: the layers, the timeline, the curves and the inspector, on the same document." />
+    <Head title="The atelier, for the detail." more="One switch away: the layers, the timeline, the curves and the inspector, on the same film." />
   </div>
   <div class="wrap-wide body">
     <Shot light={light} dark={dark} alt={alt} />

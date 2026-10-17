@@ -7,11 +7,11 @@ export const SITE = {
   /** the public address (SITE_URL overrides it, for a deployment elsewhere) */
   url: 'https://tramme.dev',
   name: 'tramme',
-  title: 'tramme, open-source motion design written as data',
-  description: 'An open-source motion design engine and editor. You and the AI edit the same JSON document, and the preview is the export.',
+  title: 'tramme, motion design directed in words',
+  description: 'A free, open-source motion design app: direct the film in words in the studio, refine every keyframe in the atelier, export what you see.',
   docs: 'Documentation of tramme, the open-source motion design engine and editor.',
   /** the preview of a link to the site (apps/editor/og.jpg, made by scripts/og-image.ts) */
-  preview: { width: 1200, height: 630, alt: 'tramme: motion design, written as data. The editor, with a composition, its layers and its timeline.' },
+  preview: { width: 1200, height: 630, alt: 'tramme: motion design, directed in words. The editor, with a composition, its layers and its timeline.' },
 };
 
 /** the structured data of the landing page (schema.org): the site, and the app it presents, on the

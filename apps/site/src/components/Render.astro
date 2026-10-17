@@ -1,25 +1,19 @@
 ---
-import Code from './Code.astro';
 import Head from './Head.astro';
 import { FORMATS } from '../lib/formats';
+import { docHref } from '../lib/docs';
 
-const CLI = `# a video, a vector animation and two stills, from the repository's examples
-$ tramme render examples/launch-film --format mp4
-$ tramme export examples/launch-film --format lottie
-$ tramme still examples/anime --t 0.5,1.2`;
 ---
 
 <section class="section" id="render">
   <div class="wrap">
-    <Head title="The preview is the export." more="Each frame is a pure function of time, drawn by the same engine everywhere." />
+    <Head title="What you see is what you export." more="The preview and the export are drawn by the same engine, frame for frame." />
     <ul class="formats" role="list" data-reveal>
       {FORMATS.map(({ name, what }) => (
         <li class="surface"><strong>{name}</strong><span>{what}</span></li>
       ))}
     </ul>
-    <div class="cli" data-reveal>
-      <Code lang="sh" title="Terminal" code={CLI} />
-    </div>
+    <p class="cli" data-reveal>Batch renders from a terminal too, for studios that automate: <a href={docHref('')}>see the docs</a>.</p>
   </div>
 </section>
 
@@ -28,6 +22,7 @@ $ tramme still examples/anime --t 0.5,1.2`;
   li { display: grid; align-content: space-between; gap: 16px; min-height: clamp(128px, 12vw, 176px); padding: clamp(18px, 2.2vw, 28px); }
   strong { font-size: clamp(1.5rem, 2.6vw, 2.25rem); font-weight: 500; letter-spacing: -0.035em; line-height: 1.1; }
   span { font-size: 0.875rem; color: var(--ink-3); }
-  .cli { margin-top: var(--gap); }
+  .cli { margin-top: 20px; font-size: 0.9375rem; color: var(--ink-3); }
+  .cli a { color: var(--accent-text); text-underline-offset: 3px; }
   @media (max-width: 820px) { .formats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

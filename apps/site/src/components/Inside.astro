@@ -1,58 +1,35 @@
 ---
-import { BUILTIN_MODIFIERS } from '@tramme/core';
-import film from '../../../../examples/launch-film/document.tramme.json';
-import Code from './Code.astro';
+// Animation, in a motion designer's words: keys and curves, the usual
+// behaviours one click away, properties that follow others, a style named
+// once. The file format is a link for those who want it, never the pitch.
+import BezierCurve from '@phosphor-icons/core/assets/regular/bezier-curve.svg';
+import Waves from '@phosphor-icons/core/assets/regular/wave-sine.svg';
+import LinkSimple from '@phosphor-icons/core/assets/regular/link-simple.svg';
+import Palette from '@phosphor-icons/core/assets/regular/palette.svg';
 import Head from './Head.astro';
-import { formatJson } from '../lib/code';
+import Cards from './Cards.astro';
+import { docHref } from '../lib/docs';
 
-// a layer of the Launch film example, as it is in the repository: hovering
-// a row lights its keys in the code
-const square = film.compositions.s3.layers.square;
-const ROWS = [
-  { key: '$k', name: 'Keyframes', what: 'An ease per key, shaped in the curve editor.' },
-  { key: '$expr', name: 'Expressions', what: 'Pure JavaScript of time, frames and the other layers.' },
-  { key: '$mod', name: 'Modifiers', what: `${BUILTIN_MODIFIERS.map((m) => m.type).join(', ')}.` },
-  { key: '@', name: 'Tokens', what: 'Colors, curves and values named once, used everywhere.' },
+const ITEMS = [
+  { Icon: BezierCurve, title: 'Keyframes and curves', text: 'Set a key, shape its ease in the graph editor, nudge it on the timeline. The way you already animate.' },
+  { Icon: Waves, title: 'Wiggle, loop, spring', text: 'The usual behaviours sit on any property, one click away: wiggle, loop, spring, stagger, react to the beat.' },
+  { Icon: LinkSimple, title: 'Properties that follow', text: 'Tie a property to another layer, or write a small expression if you like that. Never required.' },
+  { Icon: Palette, title: 'A style named once', text: 'Colours, eases and sizes kept as a palette: change one, the whole film follows.' },
 ];
 ---
 
-<section class="section inside" id="inside">
+<section class="section" id="inside">
   <div class="wrap">
-    <Head title="Every property can move." more="Fixed, keyframed, an expression of time or a link, with modifiers on top." />
-    <div class="grid">
-      <dl class="surface" data-reveal>
-        {ROWS.map(({ key, name, what }) => (
-          <div class="row" data-row={key}>
-            <dt><code>{key}</code>{name}</dt>
-            <dd>{what}</dd>
-          </div>
-        ))}
-      </dl>
-      <div data-reveal>
-        <Code lang="json" title="examples/launch-film/document.tramme.json" code={`"square": ${formatJson(square)}`} />
-      </div>
+    <Head title="Everything can move." more="With the tools you know, and a few you will not want to give up." />
+    <div class="body">
+      <Cards items={ITEMS} columns={2} />
+      <p class="more" data-reveal>Under the hood, a project is a readable file that versions like code. <a href={docHref('document')}>See the format</a>, if you are curious.</p>
     </div>
   </div>
 </section>
 
 <style>
-  .grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px clamp(40px, 6vw, 96px); align-items: center; margin-top: clamp(40px, 5vw, 64px); }
-  dl { margin: 0; padding: 6px clamp(20px, 2.2vw, 28px); }
-  .row { display: grid; gap: 4px; padding: 18px 0; }
-  .row + .row { border-top: 1px solid var(--line); }
-  dt { display: flex; align-items: center; gap: 12px; font-weight: 500; }
-  dt code {
-    min-width: 3.4rem; padding: 3px 7px; border-radius: var(--r-sm); text-align: center;
-    font-size: 0.75rem; color: var(--accent-text); background: var(--accent-soft);
-    transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
-  }
-  dd { margin: 0; color: var(--ink-3); font-size: 0.9375rem; }
-  .row:hover dt code { background: var(--accent); color: var(--accent-ink); }
-
-  .inside:has([data-row='$k']:hover) :global([data-key='$k']),
-  .inside:has([data-row='$expr']:hover) :global([data-key='$expr']),
-  .inside:has([data-row='$mod']:hover) :global([data-key='$mod']),
-  .inside:has([data-row='@']:hover) :global([data-key='@']) { background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-soft); }
-
-  @media (max-width: 960px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .body { margin-top: clamp(40px, 5vw, 64px); }
+  .more { margin-top: 20px; font-size: 0.9375rem; color: var(--ink-3); }
+  .more a { color: var(--accent-text); text-underline-offset: 3px; }
 </style>
