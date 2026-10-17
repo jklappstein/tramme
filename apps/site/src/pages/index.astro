@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Nav from '../components/Nav.astro';
 import Hero from '../components/Hero.astro';
+import Studio from '../components/Studio.astro';
 import Made from '../components/Made.astro';
 import Inside from '../components/Inside.astro';
 import Editor from '../components/Editor.astro';
@@ -23,10 +24,11 @@ const data = landingData(Astro.site!, previewUrl(Astro.site), systems);
   <Nav />
   <main>
     <Hero />
-    <Made />
-    <Inside />
+    <Studio />
     <Editor />
     <Assistant />
+    <Made />
+    <Inside />
     <Render />
     <OpenSource />
   </main>

@@ -2,14 +2,18 @@
    apps/editor/src/styles.css), so the page and the product look like one
    thing. One family in two cuts (Geist, Geist Mono), the editor's teal as the
    only accent.
-   Shapes: media and panels 14px, small chips 8px, every button a full pill.
+   Shapes, as in the app: surfaces 20px set on the ground with gutters
+   instead of hairlines, media 14px, small chips 8px, every button a pill.
+   No glow, no gradient: the accent is a colour, used sparingly.
    No script for the look: reveals are scroll-driven CSS, still without it. */
 
 @import './theme.css';
 
 :root {
   --r: 14px;
+  --r-lg: 20px;
   --r-sm: 8px;
+  --gap: 8px;
   --gutter: clamp(16px, 4.5vw, 56px);
   --max: 1280px;
   --nav: 64px;
@@ -44,13 +48,17 @@ p { margin: 0; text-wrap: pretty; }
 a { color: inherit; }
 code, pre, .mono { font-family: var(--font-mono), ui-monospace, monospace; }
 img, svg, video { display: block; max-width: 100%; }
-::selection { background: rgba(46, 196, 182, 0.32); }
+::selection { background: var(--accent-soft); }
 :focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; border-radius: 6px; }
 
 .wrap { width: 100%; max-width: var(--max); margin-inline: auto; padding-inline: var(--gutter); }
 /* wider than the text, for pictures */
 .wrap-wide { width: 100%; max-width: calc(var(--max) + 160px); margin-inline: auto; padding-inline: var(--gutter); }
 .section { padding-block: var(--section) 0; }
+
+/* a surface on the ground: the app's panels and cards */
+.surface { background: var(--panel); border-radius: var(--r-lg); }
+:root[data-theme='dark'] .surface { box-shadow: inset 0 0 0 1px var(--line); }
 
 /* under a picture: its name, then what it shows */
 .caption { font-size: 0.9375rem; color: var(--ink-3); }

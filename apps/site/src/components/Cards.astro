@@ -1,0 +1,27 @@
+---
+// What a section shows, as the app's cards: an icon, a short name, a line.
+// Surfaces on the ground with gutters between, never hairlines.
+interface Item { Icon: (props: Record<string, unknown>) => unknown; title: string; text: string }
+interface Props { items: Item[]; columns?: number }
+const { items, columns = 3 } = Astro.props;
+---
+
+<ul class="cards" role="list" style={`--cols: ${columns}`} data-reveal>
+  {items.map(({ Icon, title, text }) => (
+    <li class="surface">
+      <span class="icon"><Icon aria-hidden="true" /></span>
+      <strong>{title}</strong>
+      <p>{text}</p>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .cards { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: var(--gap); margin: var(--gap) 0 0; padding: 0; list-style: none; }
+  li { display: grid; align-content: start; gap: 8px; padding: clamp(20px, 2.2vw, 28px); }
+  .icon { display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: 8px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-text); }
+  .icon :global(svg) { width: 18px; height: 18px; }
+  strong { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.02em; }
+  p { font-size: 0.9375rem; line-height: 1.55; color: var(--ink-3); }
+  @media (max-width: 960px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+</style>

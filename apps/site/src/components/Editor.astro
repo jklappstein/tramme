@@ -1,32 +1,32 @@
 ---
-// The editor in the page's theme: its light theme (paper) on the light page,
-// its dark one (studio) on the dark page. Both are lazy, so only the one shown
-// loads.
-import { Image } from 'astro:assets';
+// The atelier, one switch away from the studio: every layer, key and curve.
+import Scissors from '@phosphor-icons/core/assets/regular/scissors.svg';
+import BezierCurve from '@phosphor-icons/core/assets/regular/bezier-curve.svg';
+import Sliders from '@phosphor-icons/core/assets/regular/sliders-horizontal.svg';
 import Head from './Head.astro';
+import Shot from './Shot.astro';
+import Cards from './Cards.astro';
 import light from '../assets/editor-light.png';
 import dark from '../assets/editor-dark.png';
 
-const SHOTS = [['light', light], ['dark', dark]] as const;
-const alt = "The tramme editor: layers on the left, the Showcase composition in the viewport, the title's properties and a wiggle modifier in the inspector, keyframes on the timeline.";
+const ITEMS = [
+  { Icon: Scissors, title: 'A timeline with its own menus', text: 'Split a clip at the playhead, trim it, bring it there; drop a marker; snap every edge. A video is cut in its file.' },
+  { Icon: BezierCurve, title: 'Curves', text: 'Values over time with their eases, shaped in the curve editor, named once as tokens and reused.' },
+  { Icon: Sliders, title: 'An inspector per node', text: 'Generated from each node: keyframes, expressions, links and modifiers, and the speech of a video, transcribed when you ask.' },
+];
+const alt = 'The tramme atelier: the layers of the Showreel example on the left, the frame in the viewport, the timeline below and the inspector on the right.';
 ---
 
 <section class="section" id="editor">
   <div class="wrap">
-    <Head title="An editor built around the document." more="Layers, a timeline with curves, and an inspector generated from each node." />
+    <Head title="The atelier, for the detail." more="One switch away: the layers, the timeline, the curves and the inspector, on the same document." />
   </div>
-  <div class="wrap-wide">
-    <div class="shot" data-reveal>
-      {SHOTS.map(([theme, src]) => (
-        <Image class={theme} src={src} alt={alt} widths={[800, 1280, 1760, 2560]} sizes="(max-width: 1440px) 100vw, 1440px" loading="lazy" decoding="async" />
-      ))}
-    </div>
+  <div class="wrap-wide body">
+    <Shot light={light} dark={dark} alt={alt} />
+    <Cards items={ITEMS} />
   </div>
 </section>
 
 <style>
-  .shot { margin-top: clamp(40px, 5vw, 64px); border-radius: var(--r); overflow: hidden; box-shadow: var(--lift); }
-  .shot :global(img) { width: 100%; height: auto; }
-  .shot :global(.dark), :global([data-theme='dark']) .shot :global(.light) { display: none; }
-  :global([data-theme='dark']) .shot :global(.dark) { display: block; }
+  .body { margin-top: clamp(40px, 5vw, 64px); }
 </style>

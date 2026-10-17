@@ -20,7 +20,7 @@ const ROWS = [
   <div class="wrap">
     <Head title="Every property can move." more="Fixed, keyframed, an expression of time or a link, with modifiers on top." />
     <div class="grid">
-      <dl data-reveal>
+      <dl class="surface" data-reveal>
         {ROWS.map(({ key, name, what }) => (
           <div class="row" data-row={key}>
             <dt><code>{key}</code>{name}</dt>
@@ -37,7 +37,7 @@ const ROWS = [
 
 <style>
   .grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px clamp(40px, 6vw, 96px); align-items: center; margin-top: clamp(40px, 5vw, 64px); }
-  dl { margin: 0; }
+  dl { margin: 0; padding: 6px clamp(20px, 2.2vw, 28px); }
   .row { display: grid; gap: 4px; padding: 18px 0; }
   .row + .row { border-top: 1px solid var(--line); }
   dt { display: flex; align-items: center; gap: 12px; font-weight: 500; }

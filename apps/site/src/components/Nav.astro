@@ -10,8 +10,9 @@ import { docHref } from '../lib/docs';
   <nav class="wrap row" aria-label="Main">
     <a class="home" href="/" aria-label="tramme, home"><Brand /></a>
     <ul class="links" role="list">
+      <li><a href="#studio">Studio</a></li>
+      <li><a href="#editor">Atelier</a></li>
       <li><a href="#made">Examples</a></li>
-      <li><a href="#editor">Editor</a></li>
       <li><a href="#assistant">Assistant</a></li>
       <li><a href="#render">Export</a></li>
       <li><a href={docHref('')}>Docs</a></li>
@@ -26,19 +27,25 @@ import { docHref } from '../lib/docs';
 </header>
 
 <style>
-  .nav { position: sticky; top: 0; z-index: 10; background: var(--bg); border-bottom: 1px solid transparent; }
-  .row { display: flex; align-items: center; gap: 32px; height: var(--nav); }
-  .home { text-decoration: none; font-size: 1.05rem; }
-  .links { display: flex; gap: 28px; margin: 0 auto; padding: 0; list-style: none; }
-  .links a { color: var(--ink-2); text-decoration: none; font-size: 0.875rem; transition: color 0.2s var(--ease); }
-  .links a:hover { color: var(--ink); }
-  .end { display: flex; align-items: center; gap: 10px; }
-  /* a hairline under the bar once the page moves under it */
-  @supports (animation-timeline: scroll()) {
-    .nav { animation: ruled linear both; animation-timeline: scroll(); animation-range: 0 64px; }
-    @keyframes ruled { to { border-bottom-color: var(--line); } }
+  /* the app's top bar: a pill floating over the page, the page passing under it */
+  .nav { position: sticky; top: 0; z-index: 10; padding: 10px var(--gutter) 0; }
+  .row {
+    display: flex; align-items: center; gap: 28px; height: calc(var(--nav) - 10px);
+    max-width: calc(var(--max) - 2 * var(--gutter)); padding-inline: 18px 8px; border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   }
-  @media (max-width: 860px) {
+  .home { text-decoration: none; font-size: 1.05rem; }
+  .links { display: flex; gap: 4px; margin: 0 auto; padding: 0; list-style: none; }
+  .links a { display: block; padding: 7px 12px; border-radius: 999px; color: var(--ink-2); text-decoration: none; font-size: 0.875rem; transition: color 0.2s var(--ease), background-color 0.2s var(--ease); }
+  .links a:hover { color: var(--ink); background: var(--hover); }
+  .end { display: flex; align-items: center; gap: 8px; }
+  /* once the page moves under it, the bar becomes a surface */
+  @supports (animation-timeline: scroll()) {
+    .row { animation: lifted linear both; animation-timeline: scroll(); animation-range: 0 64px; }
+    @keyframes lifted { to { background: color-mix(in srgb, var(--panel) 88%, transparent); box-shadow: 0 0 0 1px var(--line), 0 12px 32px -20px rgba(0, 0, 0, 0.35); } }
+  }
+  @media (max-width: 960px) {
     .links { display: none; }
     .end { margin-left: auto; }
   }
