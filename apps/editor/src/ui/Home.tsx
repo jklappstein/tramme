@@ -159,13 +159,16 @@ function Failure({ error, onClose }: { error: ImportError | Error; onClose: () =
 
 function Card({ m, onMenu }: { m: Manifest; onMenu: (e: MouseEvent | { clientX: number; clientY: number }) => void }) {
   const [broken, setBroken] = useState(false);
+  // every thumb sits in the same 16/10 box, whatever the film's format: the grid keeps
+  // one row height (a vertical film fills it, cropped); the placeholder keeps the shape
+  const vertical = (m.height ?? 9) > (m.width ?? 16);
   return (
     <div class="card interactive" role="button" tabIndex={0} onClick={() => open(m.id)} onKeyDown={(e) => e.key === 'Enter' && open(m.id)}
       onPointerDown={(e) => longPress(e, onMenu)} onContextMenu={(e) => { e.preventDefault(); onMenu(e); }}>
-      <div class="card-thumb" style={{ aspectRatio: `${m.width ?? 16} / ${m.height ?? 9}` }}>
+      <div class="card-thumb">
         {m.thumbnail && !broken
           ? <img src={`${api.fileUrl(m.id, m.thumbnail)}?v=${encodeURIComponent(m.modified)}`} alt="" loading="lazy" onError={() => setBroken(true)} />
-          : <span class="frame" style={{ aspectRatio: `${m.width ?? 16} / ${m.height ?? 9}` }}><Icon name="film" /></span>}
+          : <span class="frame" style={{ aspectRatio: `${m.width ?? 16} / ${m.height ?? 9}`, ...(vertical ? { width: 'auto', height: '62%' } : {}) }}><Icon name="film" /></span>}
       </div>
       <div class="card-meta">
         <div class="card-name" title={m.name}>{m.name}</div>
@@ -341,7 +344,7 @@ export function Home() {
             <div class="examples">
               {examples.map((x) => (
                 <button key={x.file} class="example card interactive" onClick={() => useExample(x)}>
-                  <span class="example-thumb" style={{ aspectRatio: `${x.width} / ${x.height}` }}>{x.thumbnail ? <img src={`/examples/${x.thumbnail}`} alt="" loading="lazy" /> : <span class="frame" style={{ aspectRatio: `${x.width} / ${x.height}` }}><Icon name="film" /></span>}</span>
+                  <span class="example-thumb">{x.thumbnail ? <img src={`/examples/${x.thumbnail}`} alt="" loading="lazy" /> : <span class="frame" style={{ aspectRatio: `${x.width} / ${x.height}` }}><Icon name="film" /></span>}</span>
                   <span class="example-text" title={t(x.description)}><b>{t(x.name)}</b><span class="faint example-about">{t(x.description)}</span><span class="faint mono">{dims(x)}</span></span>
                 </button>
               ))}

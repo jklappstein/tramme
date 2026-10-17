@@ -8,7 +8,7 @@ import { effect, signal } from '@preact/signals';
 export interface Preferences {
   /** interface language: the browser's (French or English), or chosen */
   language: 'auto' | 'fr' | 'en';
-  /** the theme: one palette (all are dark but paper), or as the system says */
+  /** the theme: one palette (all are dark but paper, linen and porcelain), or as the system says */
   theme: ThemeId;
   /** how the interface works: the studio (the film directed in notes) or the atelier (layers, timeline, inspector) */
   view: View;
@@ -46,12 +46,14 @@ export const DEFAULT_PREFERENCES: Preferences = {
 };
 
 // ── themes and views ─────────────────────────────────────────
-/** a theme is one palette; all are dark but paper, and system follows the computer */
-export type ThemeId = 'system' | 'studio' | 'obsidian' | 'carbon' | 'dusk' | 'paper';
+/** a theme is one palette; all are dark but the three lights, and system follows the computer */
+export type ThemeId = 'system' | 'studio' | 'obsidian' | 'carbon' | 'dusk' | 'paper' | 'linen' | 'porcelain';
 /** the studio: the film in front, directed by notes the assistant carries out; the atelier: the layers, the timeline and the inspector, for the detail */
 export type View = 'studio' | 'atelier';
-const THEME_IDS: ThemeId[] = ['system', 'studio', 'obsidian', 'carbon', 'dusk', 'paper'];
-const DARK_LEGACY: string[] = ['studio', 'obsidian', 'carbon', 'dusk'], LIGHT_LEGACY: string[] = ['paper'];
+const THEME_IDS: ThemeId[] = ['system', 'studio', 'obsidian', 'carbon', 'dusk', 'paper', 'linen', 'porcelain'];
+const DARK_LEGACY: string[] = ['studio', 'obsidian', 'carbon', 'dusk'], LIGHT_LEGACY: string[] = ['paper', 'linen', 'porcelain'];
+/** the themes the meta colour-scheme and the system mode resolve to */
+const LIGHT_THEMES: ThemeId[] = ['paper', 'linen', 'porcelain'];
 
 /** a theme as the picker shows it: its id and the colours that draw its preview (its name's key lives beside the picker) */
 export interface ThemeInfo { id: ThemeId; bg: string; surface: string; text: string; accent: string }
@@ -61,10 +63,12 @@ export const THEMES: ThemeInfo[] = [
   { id: 'carbon', bg: '#101010', surface: '#191919', text: '#ededed', accent: '#2ec4b6' },
   { id: 'dusk', bg: '#150f0a', surface: '#1e1812', text: '#f4ebe2', accent: '#2ec4b6' },
   { id: 'paper', bg: '#f0f4f7', surface: '#ffffff', text: '#181f24', accent: '#0b8075' },
+  { id: 'linen', bg: '#f7f3ec', surface: '#fffdf8', text: '#221d14', accent: '#0c7f6b' },
+  { id: 'porcelain', bg: '#eef2f6', surface: '#ffffff', text: '#151a21', accent: '#0b7f95' },
   { id: 'system', bg: '#090f13', surface: '#12181c', text: '#e8eef1', accent: '#2ec4b6' },
 ];
 /** the window bar's colour, per theme (system resolves to one of the two) */
-const BAR: Record<string, string> = { studio: '#090f13', obsidian: '#050708', carbon: '#101010', dusk: '#150f0a', paper: '#f0f4f7' };
+const BAR: Record<string, string> = { studio: '#090f13', obsidian: '#050708', carbon: '#101010', dusk: '#150f0a', paper: '#f0f4f7', linen: '#f7f3ec', porcelain: '#eef2f6' };
 /** the views, in the order they are offered */
 export const VIEWS: View[] = ['studio', 'atelier'];
 const VOICE_PROVIDERS = ['auto', 'elevenlabs', 'openai', 'gemini'] as const;
@@ -148,7 +152,7 @@ effect(() => {
   document.documentElement.dataset.theme = theme;
   document.documentElement.dataset.view = p.view;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', BAR[theme] ?? BAR.studio);
-  document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', theme === 'paper' ? 'light' : 'dark');
+  document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', LIGHT_THEMES.includes(theme) ? 'light' : 'dark');
   // another view changes the size of the stage without a window resize: the viewport re-measures on this
   if (lastView && lastView !== p.view) window.dispatchEvent(new Event('resize'));
   lastView = p.view;

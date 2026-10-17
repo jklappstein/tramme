@@ -10,11 +10,11 @@ import { t } from '../i18n/index.ts';
 export const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 export const Search = createContext<{ query: string; whole: boolean }>({ query: '', whole: true });
 
-export function Section({ title, children }: { title: string; children: ComponentChildren }) {
+export function Section({ title, hint, children }: { title: string; hint?: string; children: ComponentChildren }) {
   const { query } = useContext(Search);
   return (
-    <Search.Provider value={{ query, whole: !query || norm(title).includes(query) }}>
-      <section class="set-section"><h3>{title}</h3><div class="set-group-card">{children}</div></section>
+    <Search.Provider value={{ query, whole: !query || norm(`${title} ${hint ?? ''}`).includes(query) }}>
+      <section class="set-section"><h3>{title}</h3>{hint && <p>{hint}</p>}<div class="set-group-card">{children}</div></section>
     </Search.Provider>
   );
 }

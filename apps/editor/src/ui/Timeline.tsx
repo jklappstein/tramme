@@ -197,8 +197,16 @@ export function Timeline() {
         ops = dt ? moving.flatMap((x) => shiftLayerOps(d0, compId, x, dt)) : [];
       } else {
         const lp = pointer('compositions', compId, 'layers', id);
-        if (mode === 'in') ops = [{ op: 'add', path: `${lp}/in`, value: +Math.min(tout - 1 / fps, Math.max(0, tin + dt)).toFixed(4) }];
-        else ops = [{ op: 'add', path: `${lp}/out`, value: +Math.max(tin + 1 / fps, tout + dt).toFixed(4) }];
+        if (mode === 'in') {
+          const din = Math.min(tout - 1 / fps, Math.max(0, tin + dt)) - tin;
+          ops = [{ op: 'add', path: `${lp}/in`, value: +(tin + din).toFixed(4) }];
+          // a video trims in its file: the edge carries the start with it, so the
+          // head cut off stops playing (held at 0: the file begins there)
+          const start0 = Number(staticValue(l.props?.start) ?? 0) || 0;
+          if (l.type === 'video' && l.props && din) ops.push({ op: 'add', path: `${lp}/props/start`, value: +Math.max(0, start0 + din).toFixed(4) });
+        } else {
+          ops = [{ op: 'add', path: `${lp}/out`, value: +Math.max(tin + 1 / fps, tout + dt).toFixed(4) }];
+        }
       }
       if (ops.length) draft(ops); else cancelDraft();
     };
@@ -206,7 +214,9 @@ export function Timeline() {
       removeEventListener('pointermove', move); removeEventListener('pointerup', up);
       setSnapAt(null);
       if (!ops.length) { cancelDraft(); return; }
-      const label = mode === 'in' ? t('common.inPoint') : mode === 'out' ? t('common.outPoint') : moving.length > 1 ? t('timeline.moveNClips', { n: moving.length }) : t('timeline.moveInTime');
+      const label = mode === 'in'
+        ? (ops.length > 1 ? t('timeline.trimVideoInFile') : t('common.inPoint'))
+        : mode === 'out' ? t('common.outPoint') : moving.length > 1 ? t('timeline.moveNClips', { n: moving.length }) : t('timeline.moveInTime');
       commit(label, ops);
     };
     addEventListener('pointermove', move); addEventListener('pointerup', up);

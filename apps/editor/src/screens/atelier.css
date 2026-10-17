@@ -49,6 +49,8 @@
 .topbar .group { display: flex; align-items: center; gap: 2px; }
 .topbar .settings { display: flex; align-items: center; gap: 6px; }
 .topbar .more-btn { display: none; }
+/* a finished export waits in the popover: a small dot on the button says so */
+.export-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--on-accent); opacity: 0.85; flex: none; }
 
 /* the desktop app's window (ui/WindowControls.tsx): the top bars are its title bar, one
    height on every screen; its buttons at their right end (Windows, Linux), room for the
@@ -322,6 +324,14 @@
 .prop-note { font-size: var(--fs-xs); color: var(--text-3); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prop-note.err { color: var(--danger); white-space: normal; }
 .keynav { display: flex; gap: 2px; }
+/* the video's cut: the file's whole length, the passage the layer plays highlighted,
+   a handle at each end (the left one slides the passage, the right one keeps the tail) */
+.trim-bar { position: relative; height: 20px; margin: 4px 0 0; border-radius: var(--r-md); background: var(--field); box-shadow: inset 0 0 0 1px var(--line); touch-action: none; }
+.trim-bar .used { position: absolute; top: 0; bottom: 0; border-radius: var(--r-md); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); pointer-events: none; }
+.trim-bar .handle { position: absolute; top: -3px; bottom: -3px; width: 9px; margin-left: -5px; border-radius: 5px; background: var(--accent); cursor: ew-resize; }
+.trim-bar .handle:hover { background: var(--accent-hover); }
+.trim-read { display: flex; align-items: baseline; gap: 8px; margin-top: 5px; font-size: 11px; }
+.trim-read .grow { flex: 1; }
 /* the modifiers and the effects sit in wells */
 .fx { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: var(--r-md); background: var(--surface-2); }
 .fx-head { display: flex; align-items: center; gap: 6px; }

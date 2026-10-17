@@ -2,8 +2,8 @@
 // by type, and the property's state (static, keyframes, expression, link)
 // shown by colour and switched from its menu.
 
-import { useMemo, useState } from 'preact/hooks';
-import { Evaluator, getAt, pointer, propKind, sheetIssues, TRANSFORM_SCHEMA, MOTION_BLUR_SCHEMA, CAMERA_SCHEMA, SOUND_MIX_SCHEMA, type TrammeDoc, type Paint, type Prop, type PropDef, type PropSchema, type Token } from '@tramme/core';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { Evaluator, getAt, pointer, propKind, staticValue, sheetIssues, TRANSFORM_SCHEMA, MOTION_BLUR_SCHEMA, CAMERA_SCHEMA, SOUND_MIX_SCHEMA, type TrammeDoc, type Op, type Paint, type Prop, type PropDef, type PropSchema, type Token } from '@tramme/core';
 import { comp, commit, draft, cancelDraft, S, viewDoc, select, uiTime } from '../state.ts';
 import { assetData } from '../preview.ts';
 import { addModifierOps, editAtOps, fixedOps, folderOf, imagesIn, keyAtOps, keyIndexAt, keysOf, removeKeyOps, removeModifierOps, setAtOps, snap, freshId, fmtSeconds } from '../model.ts';
@@ -448,6 +448,7 @@ function LayerInspector({ ctx, id }: { ctx: Ctx; id: string }) {
           <Select value={layer.clip ?? ''} options={[['', t('inspector.none')], ...clipCandidates.map(([lid, l]) => [lid, l.name || lid] as [string, string])]} onChange={(v) => setField('clip', v || undefined, t('inspector.clip'))} />
         </div><span /></div>
       </Section>
+      {layer.type === 'video' && <VideoTrim ctx={ctx} id={id} />}
       {node?.render.canvas2d || node?.container || !node ? (
         <Section id="transform" title={t('inspector.transform')}>
           <SchemaRows ctx={ctx} schema={TRANSFORM_SCHEMA} basePath={`${lp}/transform`} baseAddress={`${id}.transform`} />
@@ -461,6 +462,80 @@ function LayerInspector({ ctx, id }: { ctx: Ctx; id: string }) {
       {!node && <div class="empty"><Icon name="alert" />{t('inspector.unknownTypeTypeAdd', { type: layer.type })}</div>}
       {node && layer.type !== 'audio' && <EffectsSection ctx={ctx} base={lp} address={`${id}.effects`} effects={layer.effects || []} stage="layer" title={t('inspector.effects')} />}
     </>
+  );
+}
+
+/**
+ * The passage of the video file the layer plays: two handles on the file's whole
+ * length. The left one slides the passage (the start in the file: the same piece
+ * of the film, taken further), the right one lengthens or shortens it (the
+ * layer's out point: the tail kept). Cut off a part of the video, or take a
+ * piece of it only, without touching the layer's timing.
+ */
+function VideoTrim({ ctx, id }: { ctx: Ctx; id: string }) {
+  const layer = ctx.doc.compositions[ctx.compId].layers[id];
+  const asset = staticValue(layer.props?.video);
+  const bar = useRef<HTMLDivElement>(null);
+  // the file's length is known once the preview has loaded it: until then the
+  // section waits (a few checks, then it gives up — the fields above remain)
+  const [, bump] = useState(0);
+  useEffect(() => {
+    if (typeof asset !== 'string' || assetData(asset)) return;
+    let tries = 0;
+    const iv = setInterval(() => {
+      if (assetData(asset) || ++tries > 25) { clearInterval(iv); bump((n) => n + 1); }
+    }, 400);
+    return () => clearInterval(iv);
+  }, [asset]);
+  if (typeof asset !== 'string') return null;
+  const dur = Number((assetData(asset) as { duration?: number } | undefined)?.duration) || 0;
+  if (!dur) return null;
+
+  const c = ctx.doc.compositions[ctx.compId];
+  const lp = pointer('compositions', ctx.compId, 'layers', id);
+  const li = layer.in ?? 0, lo = layer.out ?? c.duration;
+  const start = Math.max(0, Number(staticValue(layer.props?.start) ?? 0) || 0);
+  const end = Math.min(dur, start + Math.max(1 / ctx.fps, lo - li));
+
+  const drag = (which: 'start' | 'end') => (e: PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const r = bar.current!.getBoundingClientRect();
+    const at = (ev: PointerEvent) => snap(Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)) * dur, ctx.fps);
+    let ops: Op[] = [];
+    const move = (ev: PointerEvent) => {
+      const v = at(ev);
+      if (which === 'start') {
+        const s = Math.max(0, Math.min(end - 1 / ctx.fps, v));
+        ops = s === start ? [] : [{ op: 'add', path: `${lp}/props/start`, value: +s.toFixed(4) }];
+      } else {
+        const out = +(li + Math.max(start + 1 / ctx.fps, Math.min(dur, v)) - start).toFixed(4);
+        ops = out === lo ? [] : [{ op: 'add', path: `${lp}/out`, value: out }];
+      }
+      if (ops.length) draft(ops); else cancelDraft();
+    };
+    const up = () => {
+      removeEventListener('pointermove', move);
+      removeEventListener('pointerup', up);
+      if (ops.length) commit(t('inspector.trimVideo'), ops); else cancelDraft();
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+  };
+
+  return (
+    <Section id="cut" title={t('inspector.trimInTheFile')}>
+      <div class="trim-bar" ref={bar} title={t('inspector.trimInTheFileHint')} onPointerDown={(e) => e.stopPropagation()}>
+        <span class="used" style={{ left: `${(start / dur) * 100}%`, width: `${((end - start) / dur) * 100}%` }} />
+        <span class="handle" style={{ left: `${(start / dur) * 100}%` }} title={t('common.in')} onPointerDown={drag('start')} />
+        <span class="handle" style={{ left: `${(end / dur) * 100}%` }} title={t('common.out')} onPointerDown={drag('end')} />
+      </div>
+      <div class="trim-read faint mono">
+        <span>{fmtSeconds(start)} → {fmtSeconds(end)}</span>
+        <span class="grow" />
+        <span>{fmtSeconds(dur)}</span>
+      </div>
+    </Section>
   );
 }
 

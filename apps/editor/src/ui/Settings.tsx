@@ -58,6 +58,8 @@ const THEME_NAME: Record<string, string> = {
   carbon: m('settings.themes.carbon'),
   dusk: m('settings.themes.dusk'),
   paper: m('settings.themes.paper'),
+  linen: m('settings.themes.linen'),
+  porcelain: m('settings.themes.porcelain'),
 };
 
 function ThemeCards({ value, onPick }: { value: Preferences['theme']; onPick: (id: Preferences['theme']) => void }) {
@@ -99,8 +101,7 @@ function Appearance() {
 function Preview() {
   const p = prefs.value, info = previewInfo.value, inEditor = S.ready.value;
   return (
-    <Section title={t('common.preview')}>
-      <p class="faint">{t('settings.settingsForThisComputer')}</p>
+    <Section title={t('common.preview')} hint={t('settings.settingsForThisComputer')}>
       <Row label={t('common.inMotion')} hint={t(MOTION[p.motion])}>
         <Seg value={p.motion} options={[['auto', t('common.automatic')], ['full', t('common.full')], ['half', t('common.half')], ['quarter', t('common.quarter')]]} onChange={(v) => setPrefs({ motion: v as Preferences['motion'] })} />
       </Row>

@@ -1,6 +1,7 @@
 // Top bar: project, the view (studio or atelier), history, format, frame rate, export.
 
-import { useRef, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
+import { signal } from '@preact/signals';
 import { pointer } from '@tramme/core';
 import { api } from '../api.ts';
 import { saveBlob } from '../download.ts';
@@ -27,16 +28,23 @@ const FORMATS: [string, string, number, number][] = [
 ];
 
 interface Done { blob: Blob; name: string; seconds: number; warnings: string[]; saved?: string }
+type ExpState = { done: number; total: number } | Done | { error: string };
+
+// the export lives outside the popover: closing it (a click beside, the button
+// again) neither stops the export nor loses the finished file — opening the
+// popover again shows the progress or the result as it stands
+const expState = signal<ExpState | null>(null);
+const expFormat = signal<WebFormat>('mp4');
+const expSamples = signal('doc');
+const expBatch = signal<{ i: number; n: number; name: string } | null>(null);
+const expAbort: { current: AbortController | null } = { current: null };
+const expStop = { current: false };
+const running = () => (expState.value !== null && 'total' in expState.value) || expBatch.value !== null;
 
 function ExportPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => void }) {
   const c = comp.value;
-  const [format, setFormat] = useState<WebFormat>('mp4');
-  const [samples, setSamples] = useState('doc');
-  const [state, setState] = useState<{ done: number; total: number } | Done | { error: string } | null>(null);
-  const [batch, setBatch] = useState<{ i: number; n: number; name: string } | null>(null);
-  const abort = useRef<AbortController | null>(null);
-  const stopAll = useRef(false);
-  const running = (state !== null && 'total' in state) || batch !== null;
+  const format = expFormat.value, samples = expSamples.value, state = expState.value, batch = expBatch.value;
+  const setFormat = (id: WebFormat) => { expFormat.value = id; expState.value = null; };
   const video = VIDEO.has(format);
   // the shorts of the document, named short-* by the build: exported one by one, in the format chosen above
   const shorts = shortsOf(S.doc.value);
@@ -45,75 +53,75 @@ function ExportPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => vo
   const trim = () => commit(t('topbar.trimToContent'), [{ op: 'replace', path: pointer('compositions', S.compId.peek(), 'duration'), value: end }]);
   const run = async () => {
     const t0 = performance.now(), at = S.time.peek();
-    abort.current = new AbortController();
-    setState({ done: 0, total: video ? Math.round(c.duration * c.fps) : 1 });
+    expAbort.current = new AbortController();
+    expState.value = { done: 0, total: VIDEO.has(expFormat.value) ? Math.round(c.duration * c.fps) : 1 };
     try {
       const { exportInBrowser } = await import('../webexport.ts');
-      const r = await exportInBrowser(S.doc.peek(), new URL(S.docUrl.peek(), location.href).href, format, {
-        compId: S.compId.peek(), registry: S.registry.peek(), t: at, signal: abort.current.signal,
-        samples: samples === 'doc' ? undefined : Number(samples),
-        onProgress: (done, total) => { if (done % 3 === 0 || done === total) setState({ done, total }); },
+      const r = await exportInBrowser(S.doc.peek(), new URL(S.docUrl.peek(), location.href).href, expFormat.value, {
+        compId: S.compId.peek(), registry: S.registry.peek(), t: at, signal: expAbort.current.signal,
+        samples: expSamples.value === 'doc' ? undefined : Number(expSamples.value),
+        onProgress: (done, total) => { if (done % 3 === 0 || done === total) expState.value = { done, total }; },
       });
       const stem = safeName(S.project.peek().name);
-      const name = format === 'svg' ? `${stem}_${at.toFixed(2)}.svg` : `${stem}.${r.ext}`;
-      setState({ blob: r.blob, name, seconds: (performance.now() - t0) / 1000, warnings: r.warnings });
+      const name = expFormat.value === 'svg' ? `${stem}_${at.toFixed(2)}.svg` : `${stem}.${r.ext}`;
+      expState.value = { blob: r.blob, name, seconds: (performance.now() - t0) / 1000, warnings: r.warnings };
     } catch (e) {
-      setState((e as Error).name === 'AbortError' ? null : { error: (e as Error).message });
-    } finally { abort.current = null; }
+      expState.value = (e as Error).name === 'AbortError' ? null : { error: (e as Error).message };
+    } finally { expAbort.current = null; }
   };
   // all the shorts, one after another for the memory's sake, each named after its title
   const exportAll = async () => {
-    stopAll.current = false;
-    abort.current = new AbortController();
+    expStop.current = false;
+    expAbort.current = new AbortController();
     try {
       const { exportInBrowser } = await import('../webexport.ts');
       for (let i = 0; i < shorts.length; i++) {
-        if (stopAll.current) break;
+        if (expStop.current) break;
         const { id: cid, name } = shorts[i];
-        setBatch({ i: i + 1, n: shorts.length, name });
-        setState(null);
-        const r = await exportInBrowser(S.doc.peek(), new URL(S.docUrl.peek(), location.href).href, format, {
-          compId: cid, registry: S.registry.peek(), signal: abort.current.signal,
-          samples: samples === 'doc' ? undefined : Number(samples),
+        expBatch.value = { i: i + 1, n: shorts.length, name };
+        expState.value = null;
+        const r = await exportInBrowser(S.doc.peek(), new URL(S.docUrl.peek(), location.href).href, expFormat.value, {
+          compId: cid, registry: S.registry.peek(), signal: expAbort.current.signal,
+          samples: expSamples.value === 'doc' ? undefined : Number(expSamples.value),
         });
         const file = `${safeName(name)}.${r.ext}`;
         await saveBlob(r.blob, file);
         try { await upload(await takenPaths(), `renders/${name.replace(/\.png\.zip$/, '.zip')}`, r.blob); } catch { /* the file is on disk anyway */ }
       }
     } catch (e) {
-      if ((e as Error).name !== 'AbortError') setState({ error: (e as Error).message });
-    } finally { setBatch(null); abort.current = null; }
+      if ((e as Error).name !== 'AbortError') expState.value = { error: (e as Error).message };
+    } finally { expBatch.value = null; expAbort.current = null; }
   };
   // a copy in the project's renders/ folder (kept out of .tramme archives)
   const keep = async (done: Done) => {
     try {
       const path = await upload(await takenPaths(), `renders/${done.name.replace(/\.png\.zip$/, '.zip').replace(/\.lottie\.json$/, '.json')}`, done.blob);
-      setState({ ...done, saved: path });
+      expState.value = { ...done, saved: path };
     } catch (e) { toast(t('topbar.couldNotSaveTo', { error: (e as Error).message }), 'error'); }
   };
   return (
-    <Popover anchor={anchor} onClose={running ? () => {} : onClose} class="export-pop" align="right">
+    <Popover anchor={anchor} onClose={running() ? () => {} : onClose} class="export-pop" align="right">
       <div style={{ fontWeight: 600 }}>{t('common.export')}</div>
       <div class="export-formats">
         {WEB_FORMATS.map(([id, label, hint]) => (
-          <button key={id} class={format === id ? 'on' : ''} disabled={running} onClick={() => { setFormat(id); setState(null); }}>
+          <button key={id} class={format === id ? 'on' : ''} disabled={running()} onClick={() => setFormat(id)}>
             <span>{t(label)}</span><span class="faint">{t(hint)}</span>
           </button>
         ))}
       </div>
       <div class="row"><span class="muted">{t('common.image')}</span><span class="mono">{c.width}×{c.height} · {t('common.nFps', { n: c.fps })} · {fmtSeconds(c.duration)}</span></div>
-      {empty && <div class="export-trim"><span>{t('topbar.contentEndsAt', { end: fmtSeconds(end), duration: fmtSeconds(c.duration) })}</span><button class="btn sm" disabled={running} onClick={trim}>{t('topbar.trimToContent')}</button></div>}
+      {empty && <div class="export-trim"><span>{t('topbar.contentEndsAt', { end: fmtSeconds(end), duration: fmtSeconds(c.duration) })}</span><button class="btn sm" disabled={running()} onClick={trim}>{t('topbar.trimToContent')}</button></div>}
       {shorts.length > 1 && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {batch
           ? <>
             <div class="progress"><i style={{ width: `${(100 * (batch.i - 1)) / batch.n}%` }} /></div>
             <div class="faint mono" style={{ fontSize: 11 }}>{t('topbar.shortOfN', { name: batch.name, i: batch.i, n: batch.n })}</div>
-            <button class="btn" onClick={() => { stopAll.current = true; abort.current?.abort(); }}><Icon name="stop" />{t('topbar.cancelExport')}</button>
+            <button class="btn" onClick={() => { expStop.current = true; expAbort.current?.abort(); }}><Icon name="stop" />{t('topbar.cancelExport')}</button>
           </>
-          : <button class="btn" disabled={running} onClick={exportAll}><Icon name="film" />{t('topbar.exportAllShorts', { n: shorts.length })}</button>}
+          : <button class="btn" disabled={running()} onClick={exportAll}><Icon name="film" />{t('topbar.exportAllShorts', { n: shorts.length })}</button>}
       </div>}
       {video && <div class="row"><span class="muted">{t('topbar.blur')}</span>
-        <Select value={samples} options={[['doc', t('topbar.documentSetting')], ['1', t('topbar.noBlurFast')], ['8', t('topbar.nSubFrames', { n: 8 })], ['16', t('topbar.nSubFrames', { n: 16 })]]} onChange={setSamples} />
+        <Select value={samples} options={[['doc', t('topbar.documentSetting')], ['1', t('topbar.noBlurFast')], ['8', t('topbar.nSubFrames', { n: 8 })], ['16', t('topbar.nSubFrames', { n: 16 })]]} onChange={(v) => { expSamples.value = v; }} />
       </div>}
       {state && 'total' in state && video && <>
         <div class="progress"><i style={{ width: `${(100 * state.done) / Math.max(1, state.total)}%` }} /></div>
@@ -131,8 +139,8 @@ function ExportPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => vo
         </div>
       </div>}
       {state && 'error' in state && <div class="prop-note err">{state.error}</div>}
-      {running
-        ? <button class="btn" onClick={() => abort.current?.abort()}><Icon name="stop" />{t('topbar.cancelExport')}</button>
+      {running()
+        ? <button class="btn" onClick={() => expAbort.current?.abort()}><Icon name="stop" />{t('topbar.cancelExport')}</button>
         : <button class="btn primary" onClick={run}><Icon name="download" />{t('common.export')}</button>}
     </Popover>
   );
@@ -184,6 +192,7 @@ function moreMenu(e: MouseEvent, o: FormatChoice) {
 export function TopBar() {
   const doc = S.doc.value, c = comp.value, save = S.save.value, project = S.project.value;
   const [exp, setExp] = useState<HTMLElement | null>(null);
+  const doneWaiting = expState.value !== null && 'blob' in expState.value && !expState.value.saved;
   const cp = pointer('compositions', S.compId.value);
   const fmt = FORMATS.find((f) => f[2] === c.width && f[3] === c.height)?.[0] ?? 'custom';
   const setFormat = (id: string) => {
@@ -226,7 +235,12 @@ export function TopBar() {
       </div>
       <HelpButton page="editor" />
       <button class="icon-btn" data-tour="settings" title={t('common.settingsCtrl')} onClick={() => { settingsOpen.value = true; }}><Icon name="gear" /></button>
-      <button class="btn primary" data-tour="export" onClick={(e) => setExp(exp ? null : (e.currentTarget as HTMLElement))}><Icon name="download" /><span class="label">{t('common.export')}</span></button>
+      {/* the popover never closes on this button while an export runs: the progress stays visible;
+          a finished file waits in the popover for its next open (kept outside of it, in the signals) */}
+      <button class="btn primary" data-tour="export" title={doneWaiting ? t('topbar.exportReady') : undefined} onClick={(e) => {
+        if (running()) { setExp((prev) => prev ?? (e.currentTarget as HTMLElement)); return; }
+        setExp(exp ? null : (e.currentTarget as HTMLElement));
+      }}><Icon name="download" />{doneWaiting && <i class="export-dot" />}<span class="label">{t('common.export')}</span></button>
       {/* narrow screens: what no longer fits in the bar moves here */}
       <button class="icon-btn more-btn" title={t('topbar.moreOptions')} aria-label={t('topbar.moreOptions')} onClick={(e) => moreMenu(e as unknown as MouseEvent, choice)}><Icon name="more" /></button>
       <WindowControls />

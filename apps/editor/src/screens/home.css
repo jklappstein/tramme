@@ -40,9 +40,8 @@ a.brand:hover { background: var(--hover); }
 .card {
   position: relative; display: flex; flex-direction: column; overflow: hidden; cursor: pointer; outline: none;
 }
-/* the thumb takes the film's own aspect (set inline from its manifest), so the preview fills its
-   box: no empty band beside a vertical film. When a neighbour in the row stands taller, the card
-   grows and the space stays between thumb and meta, on the card's surface */
+/* the thumb keeps one ratio for every film (a vertical one fills the box, cropped),
+   so the cards of a row stand as tall as each other: the meta follows, no hole */
 .card-thumb {
   flex: none; aspect-ratio: 16 / 10; display: grid; place-items: center; overflow: hidden;
   background: var(--stage);
@@ -72,10 +71,11 @@ a.brand:hover { background: var(--hover); }
 .home-empty .faint { max-width: 420px; line-height: 1.5; }
 .home-empty .btn { margin-top: 6px; }
 
-/* the examples: the same language, in a horizontal card */
+/* the examples: the same language, in a horizontal card (the card class brings
+   a column direction: the example puts its thumb beside its text again) */
 .examples { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
 .example {
-  display: flex; align-items: center; gap: 14px; padding: 12px; text-align: left; border: 0; cursor: pointer;
+  display: flex; flex-direction: row; align-items: center; gap: 14px; padding: 12px; text-align: left; border: 0; cursor: pointer;
 }
 .example-thumb {
   flex: none; width: 112px; aspect-ratio: 16 / 10; display: grid; place-items: center; overflow: hidden; border-radius: var(--r-sm);
@@ -83,7 +83,7 @@ a.brand:hover { background: var(--hover); }
 }
 .example-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .example .frame { width: 58%; max-width: 58%; max-height: 70%; color: var(--text-3); }
-.example-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: var(--fs-sm); }
+.example-text { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: var(--fs-sm); }
 .example-text b { font-size: var(--fs-md); font-weight: 600; }
 /* three lines at most, whatever the example says: the cards keep one height (the whole text on hover) */
 .example-about { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }

@@ -124,8 +124,7 @@ export function Providers({ keys, actions, intro, relayed, forget }: { keys: Key
   const anything = connected.length + custom.length > 0;
   return (
     <>
-      <Section title={t('settings.connectedProviders')}>
-        <p class="faint">{intro}</p>
+      <Section title={t('settings.connectedProviders')} hint={intro}>
         {keys === null
           ? <span class="faint">{t('common.searching')}</span>
           : !anything && <span class="faint">{t('settings.noProviderConnected')}</span>}

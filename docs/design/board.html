@@ -137,7 +137,7 @@
   color-scheme: light;
   --bg: #f0f4f7; --surface: #ffffff; --surface-2: #f3f7fa; --raised: #ffffff;
   --field: #ebeff2; --field-hover: #e3e7ea; --field-active: #dadfe1; --stage: #e7ecef;
-  --text: #181f24; --text-2: #495156; --text-3: #646d73; --text-4: #909aa0;
+  --text: #181f24; --text-2: #495156; --text-3: #59616a; --text-4: #909aa0;
   --line: rgba(24, 31, 36, 0.08); --line-strong: rgba(24, 31, 36, 0.14); --line-soft: rgba(24, 31, 36, 0.05);
   --hover: rgba(24, 31, 36, 0.045); --press: rgba(24, 31, 36, 0.08);
   --accent: #0b8075; --accent-hover: #096b62; --accent-soft: rgba(11, 128, 117, 0.12); --accent-line: rgba(11, 128, 117, 0.45); --accent-text: #08746a; --on-accent: #ffffff;
@@ -156,6 +156,58 @@
   --mark: #ffffff; --mark-ring: rgba(0, 0, 0, 0.45); --out-range: rgba(0, 0, 0, 0.08);
   --error-bg: rgba(250, 226, 226, 0.96); --error-text: #9b2424;
   --tour-overlay: #1c2328; --tour-overlay-opacity: 0.34;
+}
+
+/* lin : un clair chaud, crème ; les mêmes rôles que papier, teintés de chaud */
+:root[data-theme="linen"] {
+  color-scheme: light;
+  --bg: #f7f3ec; --surface: #fffdf8; --surface-2: #f5f0e7; --raised: #fffdf8;
+  --field: #efe9de; --field-hover: #e7e0d3; --field-active: #ded6c7; --stage: #eee8dd;
+  --text: #221d14; --text-2: #57503f; --text-3: #615a49; --text-4: #999189;
+  --line: rgba(34, 29, 20, 0.08); --line-strong: rgba(34, 29, 20, 0.14); --line-soft: rgba(34, 29, 20, 0.05);
+  --hover: rgba(34, 29, 20, 0.045); --press: rgba(34, 29, 20, 0.08);
+  --accent: #0c7f6b; --accent-hover: #0a6a5a; --accent-soft: rgba(12, 127, 107, 0.12); --accent-line: rgba(12, 127, 107, 0.45); --accent-text: #086f5d; --on-accent: #ffffff;
+  --ok: #187548; --danger: #c23535; --key: #8f5d10; --expr: #2a64b8; --link: #337320; --on-danger: #ffffff;
+  --ok-soft: rgba(24, 117, 72, 0.12); --danger-soft: rgba(194, 53, 53, 0.1); --key-soft: rgba(143, 93, 16, 0.12); --expr-soft: rgba(42, 100, 184, 0.1); --link-soft: rgba(51, 115, 32, 0.1);
+  --t-shape: #3f7fd8; --t-text: #b8772c; --t-image: #3a9a5c; --t-group: #6f7a82; --t-code: #3d7fd6; --t-audio: #c0506a;
+  --float: rgba(255, 253, 248, 0.9); --scrim: rgba(34, 29, 20, 0.28);
+  --shadow-1: 0 1px 2px rgba(72, 58, 32, 0.07), 0 0 0 1px var(--line);
+  --shadow-2: 0 12px 32px rgba(72, 58, 32, 0.13), 0 0 0 1px var(--line);
+  --shadow-3: 0 28px 80px rgba(72, 58, 32, 0.19), 0 0 0 1px var(--line);
+  --picture-shadow: 0 0 0 1px var(--line), 0 24px 60px rgba(72, 58, 32, 0.2);
+  --checker-a: #ebe5d8; --checker-b: #e2dbcc;
+  --scroll: rgba(34, 29, 20, 0.16); --scroll-hover: rgba(34, 29, 20, 0.26);
+  --code: #1f5fa8;
+  --grid: rgba(255, 255, 255, 0.35); --handle: #453e30; --handle-line: rgba(0, 0, 0, 0.35);
+  --mark: #ffffff; --mark-ring: rgba(0, 0, 0, 0.45); --out-range: rgba(0, 0, 0, 0.08);
+  --error-bg: rgba(250, 234, 226, 0.96); --error-text: #9b2424;
+  --tour-overlay: #2a241a; --tour-overlay-opacity: 0.34;
+}
+
+/* porcelaine : un clair froid, presque blanc bleuté ; les mêmes rôles que papier, teintés de froid */
+:root[data-theme="porcelain"] {
+  color-scheme: light;
+  --bg: #eef2f6; --surface: #ffffff; --surface-2: #f0f5f9; --raised: #ffffff;
+  --field: #e5ebf1; --field-hover: #dce3eb; --field-active: #d2dae3; --stage: #e3eaf0;
+  --text: #151a21; --text-2: #454e59; --text-3: #555e68; --text-4: #8d97a2;
+  --line: rgba(21, 26, 33, 0.08); --line-strong: rgba(21, 26, 33, 0.15); --line-soft: rgba(21, 26, 33, 0.05);
+  --hover: rgba(21, 26, 33, 0.045); --press: rgba(21, 26, 33, 0.08);
+  --accent: #0b7f95; --accent-hover: #096a7d; --accent-soft: rgba(11, 127, 149, 0.12); --accent-line: rgba(11, 127, 149, 0.45); --accent-text: #087083; --on-accent: #ffffff;
+  --ok: #187548; --danger: #c23535; --key: #8f5d10; --expr: #2a64b8; --link: #337320; --on-danger: #ffffff;
+  --ok-soft: rgba(24, 117, 72, 0.12); --danger-soft: rgba(194, 53, 53, 0.1); --key-soft: rgba(143, 93, 16, 0.12); --expr-soft: rgba(42, 100, 184, 0.1); --link-soft: rgba(51, 115, 32, 0.1);
+  --t-shape: #3f7fd8; --t-text: #b8772c; --t-image: #3a9a5c; --t-group: #6f7a82; --t-code: #3d7fd6; --t-audio: #c0506a;
+  --float: rgba(255, 255, 255, 0.9); --scrim: rgba(21, 26, 33, 0.28);
+  --shadow-1: 0 1px 2px rgba(16, 24, 32, 0.07), 0 0 0 1px var(--line);
+  --shadow-2: 0 12px 32px rgba(16, 24, 32, 0.13), 0 0 0 1px var(--line);
+  --shadow-3: 0 28px 80px rgba(16, 24, 32, 0.19), 0 0 0 1px var(--line);
+  --picture-shadow: 0 0 0 1px var(--line), 0 24px 60px rgba(16, 24, 32, 0.2);
+  --checker-a: #e1e8ee; --checker-b: #d7dfe7;
+  --scroll: rgba(21, 26, 33, 0.16); --scroll-hover: rgba(21, 26, 33, 0.26);
+  --code: #1f5fa8;
+  --grid: rgba(255, 255, 255, 0.35); --handle: #343b44; --handle-line: rgba(0, 0, 0, 0.35);
+  --mark: #ffffff; --mark-ring: rgba(0, 0, 0, 0.45); --out-range: rgba(0, 0, 0, 0.08);
+  --error-bg: rgba(226, 236, 250, 0.96); --error-text: #9b2424;
+  --tour-overlay: #1a2128; --tour-overlay-opacity: 0.34;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -236,7 +288,10 @@ svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
 }
 .seg button:hover { color: var(--text-2); }
 .seg button.on { background: var(--raised); color: var(--text); box-shadow: var(--shadow-1); }
-:root[data-theme="paper"] .seg button.on { background: var(--surface); }
+/* les thèmes clairs : le segment actif se pose sur la surface, comme papier */
+:root[data-theme="paper"] .seg button.on,
+:root[data-theme="linen"] .seg button.on,
+:root[data-theme="porcelain"] .seg button.on { background: var(--surface); }
 .seg button.on svg.i { color: var(--accent-text); }
 .seg button svg.i { width: 14px; height: 14px; }
 .seg.lg button { height: 28px; padding: 0 14px; font-size: var(--fs-md); }
@@ -580,6 +635,8 @@ main { max-width: 1320px; margin: 0 auto; padding: 36px 28px 120px; display: fle
     <button data-theme="carbon">Carbone</button>
     <button data-theme="dusk">Crépuscule</button>
     <button data-theme="paper">Papier</button>
+    <button data-theme="linen">Lin</button>
+    <button data-theme="porcelain">Porcelaine</button>
   </div>
 </header>
 
@@ -919,7 +976,7 @@ main { max-width: 1320px; margin: 0 auto; padding: 36px 28px 120px; display: fle
 // le thème : sur <html>, comme dans l'application (data-theme)
 const root = document.documentElement;
 const ROLES = ['bg', 'surface', 'surface-2', 'raised', 'field', 'field-hover', 'stage', 'text', 'text-2', 'text-3', 'text-4', 'line', 'line-strong', 'accent', 'accent-hover', 'accent-soft', 'accent-text', 'on-accent', 'ok', 'danger', 'key', 'expr', 'link', 't-shape', 't-text', 't-image', 't-audio'];
-const THEMES = [['studio', 'Studio'], ['obsidian', 'Obsidienne'], ['carbon', 'Carbone'], ['dusk', 'Crépuscule'], ['paper', 'Papier'], ['system', 'Système']];
+  const THEMES = [['studio', 'Studio'], ['obsidian', 'Obsidienne'], ['carbon', 'Carbone'], ['dusk', 'Crépuscule'], ['paper', 'Papier'], ['linen', 'Lin'], ['porcelain', 'Porcelaine'], ['system', 'Système']];
 
 function swatches() {
   const cs = getComputedStyle(root);
