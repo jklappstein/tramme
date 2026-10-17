@@ -724,11 +724,12 @@ svg.i.flip { transform: rotate(180deg); }
 .proposal-head .ptag { font-size: 10.5px; padding: 2px 6px; border-radius: 4px; background: var(--expr-soft); color: var(--expr); white-space: nowrap; }
 .proposal-head .ptag.ok { background: rgba(76,195,138,.12); color: var(--ok); }
 .proposal-head .ptag.no { background: rgba(255,107,107,.1); color: var(--danger); }
-.proposal ul { list-style: none; margin: 0; padding: 0 12px 8px; display: flex; flex-direction: column; gap: 3px; max-height: 180px; overflow: auto; }
-.proposal li { font-size: 11px; color: var(--text-2); display: flex; gap: 6px; min-width: 0; }
-.proposal li .op { font-family: var(--mono); font-size: 10px; color: var(--text-3); width: 14px; flex: none; text-align: center; }
-.proposal li .op.add { color: var(--ok); } .proposal li .op.remove { color: var(--danger); } .proposal li .op.replace { color: var(--key); }
-.proposal li .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the changes of a proposal, one line each (the atelier's proposal card, the studio's take) */
+.op-lines { list-style: none; margin: 0; padding: 0 12px 8px; display: flex; flex-direction: column; gap: 3px; max-height: 180px; overflow: auto; }
+.op-lines li { font-size: 11px; color: var(--text-2); display: flex; gap: 6px; min-width: 0; }
+.op-lines li .op { font-family: var(--mono); font-size: 10px; color: var(--text-3); width: 14px; flex: none; text-align: center; }
+.op-lines li .op.add { color: var(--ok); } .op-lines li .op.remove { color: var(--danger); } .op-lines li .op.replace { color: var(--key); }
+.op-lines li .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .proposal-actions { display: flex; gap: 6px; padding: 8px 10px 10px; border-top: 1px solid var(--line); align-items: center; }
 .proposal-actions .grow { flex: 1; }
 .proposal.question { box-shadow: 0 0 0 1px var(--key); }
@@ -800,8 +801,9 @@ svg.i.flip { transform: rotate(180deg); }
 .toast.error { box-shadow: var(--shadow-soft), 0 0 0 1px rgba(255,107,107,.5); color: var(--error-text); }
 
 /* ── assistant: route, model, access ───────────────────────── */
-.assistant .route { padding: 1px 6px; border-radius: 9px; font-size: 10px; font-weight: 600; letter-spacing: .02em; background: var(--field); color: var(--text-2); }
-.assistant .route.companion { background: rgba(76, 195, 138, .14); color: var(--ok); }
+/* where the assistant runs, beside its model (the assistant panel, the studio's notes) */
+.route { padding: 1px 6px; border-radius: 9px; font-size: 10px; font-weight: 600; letter-spacing: .02em; background: var(--field); color: var(--text-2); }
+.route.companion, .route.local { background: rgba(76, 195, 138, .14); color: var(--ok); }
 .model-pick {
   display: inline-flex; align-items: center; gap: 2px; height: 22px; max-width: 132px; min-width: 0; padding: 0 3px 0 7px; border: 0; border-radius: var(--radius-sm);
   background: var(--field); color: var(--text-2); font-size: 11px; cursor: pointer; flex: 0 1 auto;
@@ -828,7 +830,6 @@ svg.i.flip { transform: rotate(180deg); }
 .model-note { display: flex; flex-direction: column; gap: 4px; padding: 2px 8px 4px; font-size: 11px; line-height: 1.45; color: var(--text-3); }
 .model-note .btn { align-self: flex-start; }
 .model-note svg.i { width: 14px; height: 14px; }
-.assistant .route.local { background: rgba(76, 195, 138, .14); color: var(--ok); }
 .ai-settings { width: 300px; max-height: calc(100vh - 16px); overflow: auto; display: flex; flex-direction: column; gap: 8px; font-size: 11.5px; }
 .ai-settings .field { height: 28px; }
 .ai-settings details summary { cursor: pointer; font-size: 11px; }
@@ -1241,60 +1242,6 @@ html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .menu { max-height: calc(100dvh - 16px); overflow-y: auto; }
 }
 
-/* ── the display modes: the same interface, laid out so the film leads (settings, Display) ── */
-:root[data-display="cinema"] .workspace, :root[data-display="conversation"] .workspace { display: block; }
-:root[data-display="cinema"] .center, :root[data-display="conversation"] .center { position: absolute; inset: 0; }
-:root[data-display="cinema"] .resizer, :root[data-display="conversation"] .resizer { display: none; }
-:root[data-display="cinema"] .topbar, :root[data-display="conversation"] .topbar {
-  position: relative; z-index: 30; background: var(--glass); backdrop-filter: blur(14px); border-bottom-color: transparent;
-}
-
-/* the panels become floating glass cards, summoned from the edges */
-:root[data-display="cinema"] .col.left, :root[data-display="cinema"] .col.right,
-:root[data-display="conversation"] .col.left, :root[data-display="conversation"] .col.right {
-  position: fixed; z-index: 40; overflow: hidden; border-radius: 14px; border: 1px solid var(--line-strong);
-  background: var(--float); backdrop-filter: blur(16px); box-shadow: var(--shadow);
-  transition: transform .18s var(--ease);
-}
-:root[data-display="cinema"] .col.left { left: 12px; top: 58px; bottom: 20px; width: 300px; transform: translateX(calc(-100% - 24px)); }
-:root[data-display="cinema"] .col.right { right: 12px; top: 58px; bottom: 20px; width: 340px; transform: translateX(calc(100% + 24px)); }
-/* conversation: the thread is the main column, always there; the film sits beside it */
-:root[data-display="conversation"] .col.right { left: 12px; top: 58px; bottom: 20px; width: 380px; }
-:root[data-display="conversation"] .center { left: 404px; }
-/* the conversation card put away from its left edge: the film takes the whole width */
-:root[data-display="conversation"] .app[data-chat="hidden"] .col.right { transform: translateX(calc(-100% - 24px)); }
-:root[data-display="conversation"] .app[data-chat="hidden"] .center { left: 0; }
-:root[data-display="conversation"] .col.left { right: 12px; top: 58px; bottom: 20px; width: 300px; transform: translateX(calc(100% + 24px)); }
-:root[data-display="conversation"] .inspector-wrap { display: none; }
-:root[data-display="conversation"] .col.right > :last-child { height: auto !important; flex: 1 !important; }
-:root[data-display="cinema"] .app[data-summon="left"] .col.left { transform: none; }
-:root[data-display="cinema"] .app[data-summon="right"] .col.right { transform: none; }
-:root[data-display="conversation"] .app[data-summon="right"] .col.left { transform: none; }
-
-/* the transport and the timeline: a drawer at the bottom */
-:root[data-display="cinema"] .bottom, :root[data-display="conversation"] .bottom {
-  position: fixed !important; left: 50%; bottom: 16px; z-index: 40;
-  width: min(1020px, calc(100vw - 44px)); height: 320px !important;
-  transform: translate(-50%, calc(100% + 32px));
-  transition: transform .18s var(--ease);
-  flex-direction: column; gap: 4px; padding: 10px 12px;
-  border-radius: 14px; border: 1px solid var(--line-strong);
-  background: var(--float); backdrop-filter: blur(16px); box-shadow: var(--shadow);
-}
-.app[data-summon="bottom"] .bottom { transform: translate(-50%, 0) !important; }
-
-/* the edges that summon the cards */
-.summon { display: contents; }
-.summon .edge { position: fixed; z-index: 41; width: 30px; height: 46px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line-strong); background: var(--float); backdrop-filter: blur(12px); color: var(--text-3); }
-.summon .edge:hover { color: var(--text); }
-.summon .edge.on { color: var(--accent); border-color: var(--accent-line); }
-.summon .edge.at-left { left: 0; top: 50%; transform: translateY(-50%); border-left: 0; border-radius: 0 10px 10px 0; }
-.summon .edge.at-right { right: 0; top: 50%; transform: translateY(-50%); border-right: 0; border-radius: 10px 0 0 10px; }
-.summon .edge.at-bottom { left: 50%; bottom: 0; transform: translateX(-50%); border-bottom: 0; border-radius: 10px 10px 0 0; width: 56px; height: 26px; }
-
 /* a row whose control is wide (the theme chips): the label and the hint above, the control below */
 .set-row.stack { grid-template-columns: 1fr; }
 .set-row.stack .set-control { justify-content: flex-start; }
-
-/* the composition properties, summoned as a card in the conversation display mode */
-.summon-card { position: fixed; right: 12px; top: 58px; bottom: 20px; width: 340px; z-index: 40; overflow: hidden auto; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--float); backdrop-filter: blur(16px); box-shadow: var(--shadow); }

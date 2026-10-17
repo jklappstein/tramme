@@ -5,9 +5,9 @@
 // only changes through proposals the user applies.
 
 import { applyOps, Evaluator, getAt, isTranscript, pointer, remapTranscript, silences, toolInputIssues, toolOutput, validate, type TrammeDoc, type Op, type Registry, type ToolContext, type Transcript } from '@tramme/core';
-import { editorRegistry } from '../vocabulary.ts';
 import { DOCUMENT, isChatPath, MANIFEST, pathIssue, srcPath } from '@tramme/project';
-import { Renderer, VideoFrames } from '@tramme/render';
+import { VideoFrames } from '@tramme/render';
+import { Stills } from '../frames.ts';
 import type { ToolResult } from '@tramme/assistant';
 import { inputIssues, vocabularyDetail, vocabularyIndex } from './answers.ts';
 import { uid } from './calls.ts';
@@ -34,8 +34,8 @@ export class ToolRunner {
   private signal: AbortSignal = new AbortController().signal;
   /** the last plugin tool's message for the user */
   notice = '';
-  private renderer: Renderer | null = null;
-  private canvas = document.createElement('canvas');
+  /** stills drawn on a renderer of their own (never the preview's) */
+  private stills = new Stills();
   /** events for the conversation (images, proposals, reloads), read after each tool */
   events: AiEvent[] = [];
   /** where a running tool reports how far it is (set by the call that runs it) */
@@ -50,25 +50,17 @@ export class ToolRunner {
     try { return applyOps(doc, this.pending.ops).doc; } catch { return doc; }
   }
 
-  /** a renderer of its own (never the preview's), on the given document */
-  private async rendererFor(doc: TrammeDoc, compId?: string): Promise<Renderer> {
-    const base = new URL(S.docUrl.peek(), location.href).href;
-    if (!this.renderer) this.renderer = await Renderer.open(doc, editorRegistry(), base, this.canvas, { compId, raster: 'gpu' });
-    else await this.renderer.setDoc(doc, { compId: compId ?? doc.root, trusted: true });
-    return this.renderer;
-  }
-
   /** the vocabulary of a document: the editor's when its plugins are the same */
   private async registry(doc: TrammeDoc): Promise<Registry> {
     const cur = S.doc.peek();
     const same = JSON.stringify(doc.plugins ?? []) === JSON.stringify(cur.plugins ?? []) && (doc.plugins ?? []).every((id) => doc.assets[id]?.src === cur.assets[id]?.src);
-    return same ? S.registry.peek() : (await this.rendererFor(doc)).registry;
+    return same ? S.registry.peek() : (await this.stills.rendererFor(doc)).registry;
   }
 
   /** the user applied or refused the proposal, or wrote a new message without deciding */
   clear() { this.pending = null; }
 
-  dispose() { this.renderer?.dispose(); this.renderer = null; for (const v of this.videos.values()) v.then((x) => x.dispose()).catch(() => {}); this.videos.clear(); }
+  dispose() { this.stills.dispose(); for (const v of this.videos.values()) v.then((x) => x.dispose()).catch(() => {}); this.videos.clear(); }
 
   // ── video dressing ───────────────────────────────────────────
   private videos = new Map<string, Promise<VideoFrames>>();
@@ -247,18 +239,9 @@ ${r.content[0].type === 'text' ? r.content[0].text : ''}`);
   }
 
   /** a still of the live document, as a JPEG data URL */
-  private async stillUrl(t: number, compId?: string): Promise<string> {
+  private stillUrl(t: number, compId?: string): Promise<string> {
     const doc = this.liveDoc();
-    const id = compId && doc.compositions[compId] ? compId : doc.root;
-    const r = await this.rendererFor(doc, id);
-    r.setScale(Math.min(1, STILL_WIDTH / doc.compositions[id].width));
-    await r.renderComplete(t);
-    r.render(t);
-    // copied right after drawing, before the WebGL canvas is presented
-    const copy = document.createElement('canvas');
-    copy.width = this.canvas.width; copy.height = this.canvas.height;
-    copy.getContext('2d')!.drawImage(this.canvas, 0, 0);
-    return copy.toDataURL('image/jpeg', 0.86);
+    return this.stills.still(doc, t, compId && doc.compositions[compId] ? compId : doc.root, STILL_WIDTH);
   }
 
   private async still(t: number, compId: string | undefined, caption?: string): Promise<ToolResult> {

@@ -16,7 +16,7 @@ export const activity = (name: string, input: Record<string, unknown>) => TOOLS.
 /** runs the call; yields its activity (none for the proposals, shown as a card) and what the tool added, returns its result */
 export async function* runCall(runner: ToolRunner, name: string, input: Record<string, unknown>, signal?: AbortSignal): AsyncGenerator<AiEvent, ToolResult> {
   const item = SILENT.has(name) ? '' : uid();
-  if (item) yield { type: 'item', item: { id: item, role: 'assistant', tool: { name, summary: activity(name, input) } } };
+  if (item) yield { type: 'item', item: { id: item, role: 'assistant', tool: { name, summary: activity(name, input), ...(name === 'use_tool' && typeof input.name === 'string' ? { use: input.name } : {}) } } };
   // the tool runs while its progress, the last reported, is yielded as it comes
   const state: { latest: ToolProgress | null; done: boolean; wake: (() => void) | null } = { latest: null, done: false, wake: null };
   runner.onProgress = (done, total, step) => { state.latest = { done, total, step }; state.wake?.(); };

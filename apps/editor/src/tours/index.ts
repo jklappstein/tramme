@@ -3,6 +3,7 @@
 // calling window.tramme.tours.register.
 
 import './home.ts';
+import './studio.ts';
 import './editor.ts';
 import './drawn.ts';
 import './sound.ts';

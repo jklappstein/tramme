@@ -12,6 +12,7 @@ import { signal } from '@preact/signals';
 import { driver, type Driver, type DriveStep } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import { addModuleMessages, t } from '../i18n/index.ts';
+import { prefs } from '../settings.ts';
 
 export type TourPage = 'home' | 'editor';
 
@@ -47,6 +48,10 @@ export interface Tour {
   /** the tour makes sense here and now (a layer of the right kind exists…) */
   available?: () => boolean;
 }
+
+/** a tour of the studio's places, or of the atelier's (the other view does not show them) */
+export const inStudio = () => prefs.value.view === 'studio';
+export const inAtelier = () => prefs.value.view === 'atelier';
 
 // ── registry ─────────────────────────────────────────────────
 const tours = new Map<string, Tour>();

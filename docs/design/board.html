@@ -1,0 +1,963 @@
+<!doctype html>
+<!--
+  tramme · direction artistique : la planche de référence.
+
+  Trois parties, dans cet ordre :
+    1. TOKENS      : les thèmes et les échelles. Ce bloc se copie tel quel dans
+                     apps/editor/src/theme/tokens.css (voir docs/design/da-plan.md).
+    2. COMPOSANTS  : la forme de chaque composant, écrite avec les tokens seuls.
+                     C'est la spécification de apps/editor/src/theme/components.css.
+    3. PLANCHE     : la mise en page de cette page (titres, grilles, maquettes).
+                     Rien de cette partie ne va dans l'application.
+
+  Ouvrir dans un navigateur ; le sélecteur en haut change de thème.
+-->
+<html lang="fr" data-theme="studio">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tramme · direction artistique</title>
+<!-- la planche seulement : l'application embarque Geist (@fontsource-variable), sans réseau -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   1. TOKENS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* les échelles : les mêmes pour tous les thèmes */
+:root {
+  /* l'application embarque @fontsource-variable/geist et geist-mono : leurs familles s'appellent « … Variable » */
+  --ui: 'Geist Variable', 'Geist', 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --mono: 'Geist Mono Variable', 'Geist Mono', 'Cascadia Mono', 'SF Mono', ui-monospace, Consolas, monospace;
+
+  --fs-xs: 11px;      /* méta, légendes, étiquettes de règle */
+  --fs-sm: 12px;      /* texte secondaire, petits boutons */
+  --fs-md: 13px;      /* la base de l'interface */
+  --fs-lg: 15px;      /* titres de carte, nom du calque */
+  --fs-xl: 18px;      /* titres de section, de dialogue */
+  --fs-2xl: 24px;
+  --fs-hero: clamp(32px, 4.6vw, 48px);
+  --lh-ui: 1.45;
+  --lh-text: 1.6;
+
+  --r-xs: 4px;        /* repères minuscules : images clés, marques */
+  --r-sm: 8px;        /* champs, lignes de liste, étiquettes, boutons icône */
+  --r-md: 12px;       /* menus, cartes internes, vignettes */
+  --r-lg: 14px;       /* panneaux, cartes, médias, popovers (comme le site) */
+  --r-xl: 20px;       /* dialogues, boîte de direction de l'accueil */
+  --r-pill: 999px;    /* boutons texte, contrôles segmentés, puces, pastilles */
+
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --gutter: 8px;      /* entre les panneaux de l'atelier et du studio */
+
+  --h-xs: 22px; --h-sm: 26px; --h-md: 30px; --h-lg: 36px;
+  --row: 28px;        /* une ligne de liste (calques, timeline) */
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 120ms; --t-med: 180ms; --t-slow: 260ms;
+
+  /* ce qui se pose sur une image, quel que soit le thème */
+  --on-media: #ffffff;
+  --media-scrim: rgba(0, 0, 0, 0.6);
+
+  --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-line);
+}
+
+/* studio : le thème par défaut, un gris-bleu nuit */
+:root, :root[data-theme="studio"] {
+  color-scheme: dark;
+  --bg: #090f13; --surface: #12181c; --surface-2: #181e22; --raised: #1c2327;
+  --field: #21272c; --field-hover: #282f33; --field-active: #30363b; --stage: #060b0e;
+  --text: #e8eef1; --text-2: #b1b7ba; --text-3: #858a8d; --text-4: #575c5f;
+  --line: rgba(232, 238, 241, 0.07); --line-strong: rgba(232, 238, 241, 0.13); --line-soft: rgba(232, 238, 241, 0.045);
+  --hover: rgba(232, 238, 241, 0.05); --press: rgba(232, 238, 241, 0.09);
+  --accent: #2ec4b6; --accent-hover: #4fd3c6; --accent-soft: rgba(46, 196, 182, 0.14); --accent-line: rgba(46, 196, 182, 0.5); --accent-text: #2ec4b6; --on-accent: #03211e;
+  --ok: #46c28a; --danger: #f2665c; --key: #f4b860; --expr: #7cb7ff; --link: #9bd770; --on-danger: #2a0b09;
+  --ok-soft: rgba(70, 194, 138, 0.14); --danger-soft: rgba(242, 102, 92, 0.14); --key-soft: rgba(244, 184, 96, 0.14); --expr-soft: rgba(124, 183, 255, 0.12); --link-soft: rgba(155, 215, 112, 0.12);
+  --t-shape: #5b9bf0; --t-text: #e8a55a; --t-image: #6cc08b; --t-group: #8a949c; --t-code: #7cb7ff; --t-audio: #e07a8e;
+  --float: rgba(28, 35, 39, 0.86); --scrim: rgba(3, 6, 8, 0.62);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.28), 0 0 0 1px var(--line);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.42), 0 0 0 1px var(--line-strong);
+  --shadow-3: 0 28px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line-strong);
+  --picture-shadow: 0 0 0 1px var(--line), 0 24px 70px rgba(0, 0, 0, 0.5);
+  --checker-a: #151b1f; --checker-b: #11171b;
+  --scroll: rgba(232, 238, 241, 0.12); --scroll-hover: rgba(232, 238, 241, 0.2);
+  --code: #bfe3ff;
+  /* technique : ce qui se dessine sur l'image et dans la timeline, la visite guidée, l'erreur de rendu */
+  --grid: rgba(255, 255, 255, 0.12); --handle: #ffffff; --handle-line: rgba(255, 255, 255, 0.35);
+  --mark: #ffffff; --mark-ring: rgba(0, 0, 0, 0.6); --out-range: rgba(0, 0, 0, 0.35);
+  --error-bg: rgba(60, 20, 22, 0.92); --error-text: #ffd0d0;
+  --tour-overlay: #000000; --tour-overlay-opacity: 0.62;
+}
+
+/* obsidienne : presque noir, la pièce s'éteint autour de l'image */
+:root[data-theme="obsidian"] {
+  --bg: #050708; --surface: #0c0f10; --surface-2: #111416; --raised: #15191a;
+  --field: #1a1e1f; --field-hover: #212526; --field-active: #282c2e; --stage: #030405;
+  --text: #e9eef0; --text-2: #b2b7b9; --text-3: #858a8c; --text-4: #575c5d;
+  --line: rgba(233, 238, 240, 0.07); --line-strong: rgba(233, 238, 240, 0.12); --line-soft: rgba(233, 238, 240, 0.04);
+  --hover: rgba(233, 238, 240, 0.045); --press: rgba(233, 238, 240, 0.08);
+  --float: rgba(21, 25, 26, 0.86); --scrim: rgba(0, 0, 0, 0.68);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--line);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line-strong);
+  --shadow-3: 0 28px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--line-strong);
+  --picture-shadow: 0 0 0 1px var(--line), 0 24px 70px rgba(0, 0, 0, 0.7);
+  --checker-a: #0f1314; --checker-b: #0b0e0f;
+  --scroll: rgba(233, 238, 240, 0.1); --scroll-hover: rgba(233, 238, 240, 0.18);
+}
+
+/* carbone : graphite pur, aucune teinte */
+:root[data-theme="carbon"] {
+  --bg: #101010; --surface: #191919; --surface-2: #1f1f1f; --raised: #242424;
+  --field: #292929; --field-hover: #303030; --field-active: #383838; --stage: #0c0c0c;
+  --text: #ededed; --text-2: #b6b6b6; --text-3: #898989; --text-4: #5b5b5b;
+  --line: rgba(237, 237, 237, 0.07); --line-strong: rgba(237, 237, 237, 0.13); --line-soft: rgba(237, 237, 237, 0.045);
+  --hover: rgba(237, 237, 237, 0.05); --press: rgba(237, 237, 237, 0.09);
+  --float: rgba(36, 36, 36, 0.86); --scrim: rgba(5, 5, 5, 0.62);
+  --checker-a: #1c1c1c; --checker-b: #171717;
+  --scroll: rgba(237, 237, 237, 0.12); --scroll-hover: rgba(237, 237, 237, 0.2);
+}
+
+/* crépuscule : un sombre chaud, pour les longues séances */
+:root[data-theme="dusk"] {
+  --bg: #150f0a; --surface: #1e1812; --surface-2: #241e18; --raised: #29231d;
+  --field: #2d2821; --field-hover: #352f29; --field-active: #3d3730; --stage: #100b06;
+  --text: #f4ebe2; --text-2: #bdb4ab; --text-3: #90887f; --text-4: #615951;
+  --line: rgba(244, 235, 226, 0.07); --line-strong: rgba(244, 235, 226, 0.13); --line-soft: rgba(244, 235, 226, 0.045);
+  --hover: rgba(244, 235, 226, 0.05); --press: rgba(244, 235, 226, 0.09);
+  --float: rgba(41, 35, 29, 0.86); --scrim: rgba(8, 6, 3, 0.62);
+  --checker-a: #221c16; --checker-b: #1c1711;
+  --scroll: rgba(244, 235, 226, 0.12); --scroll-hover: rgba(244, 235, 226, 0.2);
+}
+
+/* papier : le clair, celui du site ; les surfaces au-dessus du fond */
+:root[data-theme="paper"] {
+  color-scheme: light;
+  --bg: #f0f4f7; --surface: #ffffff; --surface-2: #f3f7fa; --raised: #ffffff;
+  --field: #ebeff2; --field-hover: #e3e7ea; --field-active: #dadfe1; --stage: #e7ecef;
+  --text: #181f24; --text-2: #495156; --text-3: #646d73; --text-4: #909aa0;
+  --line: rgba(24, 31, 36, 0.08); --line-strong: rgba(24, 31, 36, 0.14); --line-soft: rgba(24, 31, 36, 0.05);
+  --hover: rgba(24, 31, 36, 0.045); --press: rgba(24, 31, 36, 0.08);
+  --accent: #0b8075; --accent-hover: #096b62; --accent-soft: rgba(11, 128, 117, 0.12); --accent-line: rgba(11, 128, 117, 0.45); --accent-text: #08746a; --on-accent: #ffffff;
+  --ok: #187548; --danger: #c23535; --key: #8f5d10; --expr: #2a64b8; --link: #337320; --on-danger: #ffffff;
+  --ok-soft: rgba(24, 117, 72, 0.12); --danger-soft: rgba(194, 53, 53, 0.1); --key-soft: rgba(143, 93, 16, 0.12); --expr-soft: rgba(42, 100, 184, 0.1); --link-soft: rgba(51, 115, 32, 0.1);
+  --t-shape: #3f7fd8; --t-text: #b8772c; --t-image: #3a9a5c; --t-group: #6f7a82; --t-code: #3d7fd6; --t-audio: #c0506a;
+  --float: rgba(255, 255, 255, 0.88); --scrim: rgba(24, 31, 36, 0.28);
+  --shadow-1: 0 1px 2px rgba(16, 24, 32, 0.06), 0 0 0 1px var(--line);
+  --shadow-2: 0 12px 32px rgba(16, 24, 32, 0.12), 0 0 0 1px var(--line);
+  --shadow-3: 0 28px 80px rgba(16, 24, 32, 0.18), 0 0 0 1px var(--line);
+  --picture-shadow: 0 0 0 1px var(--line), 0 24px 60px rgba(16, 24, 32, 0.18);
+  --checker-a: #e6ebee; --checker-b: #dde3e7;
+  --scroll: rgba(24, 31, 36, 0.16); --scroll-hover: rgba(24, 31, 36, 0.26);
+  --code: #1f5fa8;
+  --grid: rgba(255, 255, 255, 0.35); --handle: #3a3f48; --handle-line: rgba(0, 0, 0, 0.35);
+  --mark: #ffffff; --mark-ring: rgba(0, 0, 0, 0.45); --out-range: rgba(0, 0, 0, 0.08);
+  --error-bg: rgba(250, 226, 226, 0.96); --error-text: #9b2424;
+  --tour-overlay: #1c2328; --tour-overlay-opacity: 0.34;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   2. COMPOSANTS
+   ═══════════════════════════════════════════════════════════════ */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 400 var(--fs-md)/var(--lh-ui) var(--ui); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.t2 { color: var(--text-2); } .t3 { color: var(--text-3); }
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+:focus-visible { outline: none; box-shadow: var(--focus); }
+::selection { background: var(--accent-soft); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--scroll); border: 3px solid transparent; background-clip: padding-box; border-radius: var(--r-pill); }
+::-webkit-scrollbar-thumb:hover { background-color: var(--scroll-hover); }
+
+/* boutons : texte en pilule, icône en carré arrondi */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: var(--h-md); padding: 0 14px;
+  border: 0; border-radius: var(--r-pill); background: var(--field); color: var(--text);
+  font: 500 var(--fs-md)/1 var(--ui); letter-spacing: -0.005em; white-space: nowrap;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.btn:hover { background: var(--field-hover); }
+.btn:active { transform: scale(0.98); background: var(--field-active); }
+.btn:disabled { opacity: 0.45; pointer-events: none; }
+.btn.primary { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.outline { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.btn.outline:hover { background: var(--hover); }
+.btn.ghost { background: transparent; color: var(--text-2); }
+.btn.ghost:hover { background: var(--hover); color: var(--text); }
+.btn.danger { background: var(--danger-soft); color: var(--danger); }
+.btn.danger.solid { background: var(--danger); color: var(--on-danger); }
+.btn.sm { height: var(--h-sm); padding: 0 11px; font-size: var(--fs-sm); gap: 6px; }
+.btn.lg { height: var(--h-lg); padding: 0 18px; }
+.btn.sm svg.i { width: 14px; height: 14px; }
+.icon-btn {
+  display: inline-grid; place-items: center; width: var(--h-md); height: var(--h-md); flex: none; padding: 0;
+  border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2);
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.icon-btn:hover { background: var(--hover); color: var(--text); }
+.icon-btn:active { background: var(--press); }
+.icon-btn.on { background: var(--accent-soft); color: var(--accent-text); }
+.icon-btn.sm { width: var(--h-sm); height: var(--h-sm); }
+.icon-btn.sm svg.i { width: 14px; height: 14px; }
+.icon-btn.round { border-radius: var(--r-pill); }
+
+/* champs */
+.field {
+  display: flex; align-items: center; gap: 6px; height: var(--h-md); min-width: 0; padding: 0 10px;
+  border-radius: var(--r-sm); background: var(--field); transition: background-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.field:hover { background: var(--field-hover); }
+.field:focus-within { background: var(--field); box-shadow: 0 0 0 2px var(--accent-line); }
+.field input, .field textarea { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: none; background: transparent; color: var(--text); }
+.field input::placeholder, .field textarea::placeholder { color: var(--text-3); }
+.field .axis, .field .unit { color: var(--text-3); font-size: var(--fs-xs); }
+.field.num input { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.field.area { height: auto; align-items: stretch; padding: 8px 10px; }
+.field.area textarea { resize: vertical; line-height: var(--lh-text); }
+.field svg.i { color: var(--text-3); width: 15px; height: 15px; }
+/* la liste de choix : un champ et son chevron ; il ouvre un menu (pas le menu natif) */
+.select { justify-content: space-between; cursor: pointer; }
+.select svg.i { width: 14px; height: 14px; }
+
+/* le contrôle segmenté : un seul, pour les vues, les onglets, les formats, avant/après */
+.seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--r-pill); background: var(--field); flex: none; }
+.seg button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 24px; padding: 0 12px; border: 0;
+  border-radius: var(--r-pill); background: transparent; color: var(--text-3); font: 500 12.5px/1 var(--ui); white-space: nowrap;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.seg button:hover { color: var(--text-2); }
+.seg button.on { background: var(--raised); color: var(--text); box-shadow: var(--shadow-1); }
+:root[data-theme="paper"] .seg button.on { background: var(--surface); }
+.seg button.on svg.i { color: var(--accent-text); }
+.seg button svg.i { width: 14px; height: 14px; }
+.seg.lg button { height: 28px; padding: 0 14px; font-size: var(--fs-md); }
+
+.toggle { position: relative; width: 34px; height: 20px; flex: none; border: 0; border-radius: var(--r-pill); background: var(--field-active); padding: 0; transition: background-color var(--t-med) var(--ease); }
+.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--text-2); transition: transform var(--t-med) var(--ease), background-color var(--t-med) var(--ease); }
+.toggle.on { background: var(--accent); }
+.toggle.on::after { transform: translateX(14px); background: var(--on-accent); }
+
+/* étiquettes (à lire) et puces (à cliquer) */
+.tag { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border-radius: 6px; background: var(--field); color: var(--text-2); font: 500 var(--fs-xs)/1 var(--ui); white-space: nowrap; }
+.tag svg.i { width: 11px; height: 11px; }
+.tag.accent { background: var(--accent-soft); color: var(--accent-text); }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.danger { background: var(--danger-soft); color: var(--danger); }
+.tag.key { background: var(--key-soft); color: var(--key); }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: var(--h-md); padding: 0 13px; border: 0; border-radius: var(--r-pill);
+  background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text-2); font: 500 var(--fs-md)/1 var(--ui); white-space: nowrap;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.chip:hover { background: var(--hover); color: var(--text); }
+.chip.on { background: var(--accent-soft); box-shadow: none; color: var(--text); }
+.chip svg.i { width: 14px; height: 14px; color: var(--text-3); }
+.chip.on svg.i { color: var(--accent-text); }
+
+kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 5px; background: var(--field); box-shadow: inset 0 -1px 0 var(--line-strong); color: var(--text-2); font: 500 10.5px var(--mono); }
+
+/* ce qui flotte : menus, popovers, dialogues, notifications */
+.menu { min-width: 220px; padding: 6px; border-radius: var(--r-md); background: var(--raised); box-shadow: var(--shadow-2); }
+.menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 6px 10px; border: 0; border-radius: var(--r-sm);
+  background: transparent; color: var(--text); text-align: left; font: 400 var(--fs-md)/1.3 var(--ui);
+}
+.menu-item:hover, .menu-item.active { background: var(--hover); }
+.menu-item svg.i { color: var(--text-2); }
+.menu-item .menu-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.menu-item .menu-detail { color: var(--text-3); font-size: var(--fs-sm); }
+.menu-item .menu-hint { margin-left: auto; color: var(--text-3); font: 400 var(--fs-xs) var(--mono); }
+.menu-item.danger, .menu-item.danger svg.i { color: var(--danger); }
+.menu-item .check { color: var(--accent-text); margin-left: auto; }
+.menu-label { padding: 8px 10px 4px; color: var(--text-3); font: 500 var(--fs-xs)/1 var(--ui); }
+.menu hr { height: 1px; margin: 6px 4px; border: 0; background: var(--line); }
+
+.popover { padding: var(--sp-4); border-radius: var(--r-lg); background: var(--raised); box-shadow: var(--shadow-2); }
+.dialog { width: 460px; max-width: 100%; border-radius: var(--r-xl); background: var(--raised); box-shadow: var(--shadow-3); overflow: hidden; }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 16px 6px 22px; font: 600 var(--fs-lg)/1.3 var(--ui); letter-spacing: -0.01em; }
+.dialog-body { display: flex; flex-direction: column; gap: 14px; padding: 8px 22px 22px; color: var(--text-2); line-height: var(--lh-text); }
+.dialog-foot { display: flex; justify-content: flex-end; gap: 8px; padding-top: 6px; }
+.label { color: var(--text-2); font: 500 var(--fs-sm)/1 var(--ui); }
+.toast { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--r-md); background: var(--raised); box-shadow: var(--shadow-2); font-size: var(--fs-md); }
+.toast svg.i { color: var(--ok); }
+.toast.error { box-shadow: var(--shadow-2), inset 0 0 0 1px var(--danger); }
+.toast.error svg.i { color: var(--danger); }
+.progress { height: 4px; border-radius: var(--r-pill); background: var(--field-active); overflow: hidden; }
+.progress i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+
+/* les surfaces : panneau de travail, carte */
+.panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); overflow: hidden; }
+.panel-head { display: flex; align-items: center; gap: 6px; height: 44px; flex: none; padding: 0 8px 0 12px; }
+.panel-head .title { font: 600 var(--fs-md)/1 var(--ui); }
+.panel-head .grow { flex: 1; }
+.card { border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); transition: box-shadow var(--t-med) var(--ease), transform var(--t-med) var(--ease); }
+.card.interactive:hover { box-shadow: var(--shadow-2); transform: translateY(-2px); }
+.well { border-radius: var(--r-md); background: var(--surface-2); }
+
+/* une ligne de liste : calques, conversations, navigation des paramètres */
+.row-item {
+  display: flex; align-items: center; gap: 8px; height: var(--row); margin: 0 6px; padding: 0 8px; border-radius: var(--r-sm);
+  color: var(--text-2); font-size: var(--fs-md); white-space: nowrap;
+}
+button.row-item { border: 0; background: transparent; font: inherit; text-align: left; justify-content: flex-start; }
+.row-item:hover { background: var(--hover); color: var(--text); }
+.row-item.on { background: var(--accent-soft); color: var(--text); }
+.row-item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.row-item svg.i { width: 14px; height: 14px; }
+
+/* l'assistant, c'est tramme : sa marque, l'accent du thème */
+.mark { display: inline-grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent-text); }
+.mark svg { width: 14px; height: 14px; fill: currentColor; }
+.mark.working svg { animation: work 1.4s var(--ease) infinite; }
+@keyframes work { 50% { opacity: 0.35; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   3. PLANCHE (mise en page de cette page seulement)
+   ═══════════════════════════════════════════════════════════════ */
+
+.board-top {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px; height: 60px; padding: 0 28px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); box-shadow: 0 1px 0 var(--line);
+}
+.board-top .brand { display: flex; align-items: center; gap: 9px; font: 600 15px/1 var(--ui); letter-spacing: -0.02em; }
+.board-top .brand svg { width: 20px; height: 20px; fill: var(--accent); }
+.board-top .grow { flex: 1; }
+main { max-width: 1320px; margin: 0 auto; padding: 36px 28px 120px; display: flex; flex-direction: column; gap: 72px; }
+.sec h2 { margin: 0 0 6px; font: 650 var(--fs-2xl)/1.15 var(--ui); letter-spacing: -0.03em; }
+.sec > p { margin: 0 0 22px; max-width: 760px; color: var(--text-2); font-size: 14px; line-height: var(--lh-text); }
+.grid { display: grid; gap: 16px; }
+.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.specimen { padding: 18px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); }
+.specimen h3 { margin: 0 0 14px; color: var(--text-3); font: 500 var(--fs-xs)/1 var(--ui); letter-spacing: 0.02em; }
+.specimen .line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.specimen .line + .line { margin-top: 12px; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+
+.principles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.principles div { padding: 16px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); }
+.principles b { display: block; margin-bottom: 6px; font-size: 14px; letter-spacing: -0.01em; }
+.principles span { color: var(--text-2); font-size: var(--fs-sm); line-height: var(--lh-text); }
+
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.swatch { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-1); min-width: 0; }
+.swatch i { width: 34px; height: 34px; flex: none; border-radius: var(--r-sm); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.swatch b { display: block; font: 500 var(--fs-sm)/1.2 var(--mono); }
+.swatch span { display: block; color: var(--text-3); font: 400 10.5px/1.3 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.type-row { display: grid; grid-template-columns: 150px 1fr; align-items: baseline; gap: 16px; padding: 10px 0; box-shadow: 0 1px 0 var(--line); }
+.type-row:last-child { box-shadow: none; }
+.type-row .t3 { font: 400 var(--fs-xs) var(--mono); }
+
+/* maquettes : un cadre d'application */
+.frame { border-radius: 18px; background: var(--bg); box-shadow: var(--shadow-2); overflow: hidden; }
+.app-top { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 12px 0 16px; }
+.app-top .brand { display: flex; align-items: center; gap: 8px; font: 600 14px/1 var(--ui); letter-spacing: -0.02em; }
+.app-top .brand svg { width: 18px; height: 18px; fill: var(--accent); }
+.app-top .sep { width: 1px; height: 18px; background: var(--line-strong); }
+.app-top .grow { flex: 1; }
+.app-top .project { font: 600 13.5px/1 var(--ui); letter-spacing: -0.01em; }
+.saved { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); font-size: var(--fs-sm); }
+.saved i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+
+/* l'atelier : des panneaux posés sur le fond, séparés par des gouttières */
+.atelier { display: grid; grid-template-columns: 236px minmax(0, 1fr) 280px; grid-template-rows: minmax(0, 1fr) 236px; gap: var(--gutter); height: 720px; padding: 0 var(--gutter) var(--gutter); }
+.atelier .left { grid-row: 1 / 3; }
+.atelier .right { grid-row: 1 / 3; grid-column: 3; display: flex; flex-direction: column; gap: var(--gutter); min-height: 0; }
+.atelier .right .panel:first-child { flex: 1; }
+.atelier .view { grid-column: 2; position: relative; background: var(--stage); }
+.atelier .bottom { grid-column: 2; }
+.picture { position: absolute; left: 50%; top: 54%; width: 78%; aspect-ratio: 16 / 9; transform: translate(-50%, -50%); border-radius: 6px; box-shadow: var(--picture-shadow); overflow: hidden; background: #0d1114; }
+.picture .ttl { position: absolute; left: 7%; top: 16%; color: #e9eef0; font: 700 clamp(18px, 2.4vw, 30px)/1 var(--ui); letter-spacing: -0.04em; }
+.picture .cards { position: absolute; left: 7%; right: 7%; bottom: 14%; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4%; }
+.picture .cards span { aspect-ratio: 3 / 4; border-radius: 6px; background: #161c20; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); display: grid; place-items: center; }
+.picture .cards span i { width: 34%; aspect-ratio: 1; border-radius: 22%; }
+.view-tools { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: var(--r-pill); background: var(--float); backdrop-filter: blur(14px); box-shadow: var(--shadow-2); }
+.view-tools .zoom { padding: 0 10px; color: var(--text-2); font: 500 var(--fs-sm) var(--mono); }
+.view-tools .divider { width: 1px; height: 16px; margin: 0 4px; background: var(--line-strong); }
+.tree { display: flex; flex-direction: column; gap: 1px; padding-bottom: 8px; }
+.tree .row-item .kind { display: grid; color: var(--t-shape); }
+.tree .depth { width: 14px; flex: none; }
+.search { margin: 0 10px 8px; }
+.insp-head { display: flex; align-items: center; gap: 10px; padding: 14px 14px 10px; }
+.insp-head .kind { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-sm); background: var(--surface-2); color: var(--t-text); }
+.insp-head b { display: block; font: 600 var(--fs-lg)/1.2 var(--ui); letter-spacing: -0.01em; }
+.insp-head span { color: var(--text-3); font-size: var(--fs-sm); }
+.insp-sec { padding: 6px 14px 12px; }
+.insp-sec + .insp-sec { box-shadow: 0 -1px 0 var(--line); }
+.insp-sec h4 { display: flex; align-items: center; gap: 6px; margin: 6px 0 8px; font: 600 var(--fs-md)/1 var(--ui); }
+.insp-sec h4 svg.i { width: 12px; height: 12px; color: var(--text-3); transform: rotate(90deg); }
+.prop { display: grid; grid-template-columns: 14px 78px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 32px; }
+.prop .k { width: 9px; height: 9px; transform: rotate(45deg); border-radius: 2px; box-shadow: inset 0 0 0 1.5px var(--text-4); }
+.prop.keyed .k { background: var(--key); box-shadow: none; }
+.prop.keyed .plabel { color: var(--key); }
+.prop .plabel { color: var(--text-2); font-size: var(--fs-sm); }
+.prop .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.transport { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 10px 0 12px; }
+.play { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--text); color: var(--bg); }
+.play svg.i { width: 14px; height: 14px; fill: currentColor; stroke: none; }
+.tc { font: 600 15px var(--mono); letter-spacing: 0.01em; }
+.tl { position: relative; flex: 1; display: grid; grid-template-columns: 150px minmax(0, 1fr); min-height: 0; }
+.tl-names { padding-top: 26px; }
+.tl-names .row-item { height: 26px; margin: 0 6px 2px; font-size: var(--fs-sm); }
+.tl-track { position: relative; margin-right: 10px; }
+.ruler { position: relative; height: 26px; color: var(--text-3); font: 400 10.5px var(--mono); }
+.ruler span { position: absolute; top: 6px; }
+.ruler span::before { content: ''; position: absolute; left: -1px; top: 14px; width: 1px; height: 6px; background: var(--line-strong); }
+.lane { position: relative; height: 26px; margin-bottom: 2px; }
+.clip { position: absolute; top: 3px; bottom: 3px; display: flex; align-items: center; padding: 0 8px; border-radius: 6px; overflow: hidden; color: var(--text); font-size: var(--fs-xs); white-space: nowrap;
+  background: color-mix(in srgb, var(--c) 20%, var(--surface-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); }
+.clip.on { background: color-mix(in srgb, var(--c) 34%, var(--surface-2)); box-shadow: inset 0 0 0 1px var(--c), 0 0 0 1.5px var(--accent); }
+.kf { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; transform: rotate(45deg); border-radius: 2px; background: var(--key); box-shadow: 0 0 0 1.5px var(--surface); }
+.playhead { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--text); border-radius: 1px; pointer-events: none; }
+.playhead::before { content: ''; position: absolute; top: 2px; left: -5px; width: 12px; height: 12px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--surface); }
+.assistant-mini { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.composer { display: flex; flex-direction: column; border-radius: var(--r-md); background: var(--field); }
+.composer .ph { padding: 11px 12px 6px; color: var(--text-3); }
+.composer .bar { display: flex; align-items: center; gap: 4px; padding: 4px 6px 6px 8px; }
+.composer .bar .grow { flex: 1; }
+.send { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); }
+.send svg.i { width: 15px; height: 15px; }
+
+/* les paramètres : la navigation, des rangées groupées en cartes */
+.settings { display: grid; grid-template-columns: 220px minmax(0, 1fr); height: 600px; }
+.settings nav { display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; box-shadow: 1px 0 0 var(--line); }
+.settings nav .group-title { padding: 14px 10px 6px; color: var(--text-3); font: 500 var(--fs-xs)/1 var(--ui); }
+.settings nav .row-item { width: 100%; height: 34px; margin: 0; border-radius: 10px; }
+.settings nav .row-item.on { background: var(--hover); color: var(--text); font-weight: 600; }
+.settings nav .row-item.on svg.i { color: var(--accent-text); }
+.settings .pane { padding: 22px 26px; overflow: auto; display: flex; flex-direction: column; gap: 22px; }
+.settings .pane h3 { margin: 0; font: 600 var(--fs-xl)/1.2 var(--ui); letter-spacing: -0.02em; }
+.set-group { border-radius: var(--r-lg); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.set-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 20px; padding: 14px 16px; }
+.set-row + .set-row { box-shadow: 0 -1px 0 var(--line); }
+.set-row b { display: block; font: 500 var(--fs-md)/1.3 var(--ui); }
+.set-row span { display: block; margin-top: 3px; color: var(--text-3); font-size: var(--fs-sm); line-height: 1.45; }
+.set-row.stack { grid-template-columns: 1fr; }
+.theme-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+.theme-card { display: flex; flex-direction: column; gap: 7px; padding: 0; border: 0; background: none; color: var(--text-2); font-size: var(--fs-sm); text-align: left; }
+.theme-card .prev { position: relative; aspect-ratio: 16 / 10; border-radius: var(--r-md); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.theme-card .prev .s { position: absolute; left: 12%; top: 18%; right: 12%; bottom: 0; border-radius: 6px 6px 0 0; }
+.theme-card .prev .l { position: absolute; left: 22%; top: 34%; width: 40%; height: 7%; border-radius: 2px; }
+.theme-card .prev .a { position: absolute; left: 22%; top: 54%; width: 22%; height: 12%; border-radius: 9px; }
+.theme-card.on { color: var(--text); font-weight: 600; }
+.theme-card.on .prev { box-shadow: 0 0 0 2px var(--accent); }
+
+/* l'accueil */
+.home { padding: 0 0 36px; }
+.hero { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 44px 24px 8px; text-align: center; }
+.hero h1 { margin: 0; font: 650 var(--fs-hero)/1.04 var(--ui); letter-spacing: -0.035em; }
+.hero p { margin: 0 0 10px; color: var(--text-2); font-size: 15.5px; }
+.direction-box { width: min(760px, 100%); border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-2); text-align: left; }
+.direction-box.focus { box-shadow: var(--shadow-2), 0 0 0 2px var(--accent-line); }
+.direction-box .ph { padding: 18px 20px 26px; color: var(--text-3); font-size: 15.5px; line-height: 1.55; }
+.direction-box .bar { display: flex; align-items: center; gap: 6px; padding: 8px 10px 10px 12px; }
+.direction-box .bar .grow { flex: 1; }
+.ideas { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 4px; }
+.films { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding: 0 32px; }
+.films h4 { grid-column: 1 / -1; margin: 18px 0 0; font: 600 var(--fs-lg)/1 var(--ui); letter-spacing: -0.01em; }
+.film { overflow: hidden; }
+.film .thumb { aspect-ratio: 16 / 10; background: #0d1114; display: grid; place-items: center; color: #e9eef0; font: 700 18px var(--ui); letter-spacing: -0.03em; }
+.film .meta { display: flex; align-items: center; gap: 8px; padding: 12px 10px 12px 14px; }
+.film .meta div { flex: 1; min-width: 0; }
+.film .meta b { display: block; font: 600 var(--fs-md)/1.3 var(--ui); }
+.film .meta span { color: var(--text-3); font-size: var(--fs-sm); }
+.home-menu { position: absolute; right: 16px; top: 50px; width: 300px; z-index: 2; }
+
+/* le studio : ce qui change */
+.studio-bits { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.stage-demo { position: relative; height: 380px; border-radius: var(--r-lg); background: var(--stage); box-shadow: var(--shadow-1); overflow: hidden; }
+.stage-demo .picture { top: 52%; width: 70%; }
+/* tramme au travail : un liseré d'accent qui respire autour de l'image (l'image, elle, ne bouge pas) */
+.stage-demo .picture.working { outline: 2px solid var(--accent); outline-offset: 4px; animation: ring 1.6s var(--ease) infinite; }
+@keyframes ring { 50% { outline-color: var(--accent-soft); } }
+.pill { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 6px 0 8px; border-radius: var(--r-pill); background: var(--float); backdrop-filter: blur(16px); box-shadow: var(--shadow-2); white-space: nowrap; }
+.pill .stage-name { font: 600 var(--fs-md)/1 var(--ui); }
+.pill .detail { color: var(--text-3); font-size: var(--fs-sm); }
+.pill .stop { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: var(--field-active); color: var(--text); }
+.pill .stop svg.i { width: 11px; height: 11px; fill: currentColor; stroke: none; }
+.pin { position: absolute; transform: translate(-3px, -100%); display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 7px; border-radius: 12px 12px 12px 3px; background: var(--accent); color: var(--on-accent); font: 700 11px var(--mono); box-shadow: 0 0 0 2px var(--on-media), 0 6px 16px var(--media-scrim); }
+.thread { display: flex; flex-direction: column; gap: 10px; }
+.note { padding: 11px 13px; border-radius: var(--r-md); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.note-head { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; font-size: var(--fs-sm); color: var(--text-3); }
+.note-n { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px 9px 9px 2px; background: var(--accent-soft); color: var(--accent-text); font: 700 10px/18px var(--mono); text-align: center; }
+.note-who { color: var(--text); font-weight: 600; }
+.note-tc { color: var(--accent-text); font: 500 var(--fs-xs) var(--mono); text-decoration: underline; text-underline-offset: 2px; }
+.work { display: flex; flex-direction: column; gap: 9px; margin-left: 9px; padding-left: 14px; box-shadow: -2px 0 0 var(--line-strong); }
+.work.live { box-shadow: -2px 0 0 var(--accent); }
+.work-head { display: flex; align-items: center; gap: 8px; font: 600 var(--fs-sm)/1 var(--ui); }
+.stages { display: flex; flex-wrap: wrap; gap: 4px; }
+.stages .tag i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-4); }
+.stages .tag.accent i { background: var(--accent); }
+.take { border-radius: var(--r-md); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--accent-line); overflow: hidden; }
+.take-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; }
+.take-head .label { color: var(--accent-text); font-weight: 600; }
+.take-head b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 var(--fs-md)/1.2 var(--ui); }
+.take .actions { display: flex; align-items: center; gap: 6px; padding: 0 10px 10px; }
+.take .actions .grow { flex: 1; }
+.storyboard-demo { display: flex; gap: 3px; padding: 10px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); }
+.scene { position: relative; flex: 1; height: 60px; border-radius: var(--r-sm); background: #0d1114; overflow: hidden; }
+.scene.on { box-shadow: 0 0 0 2px var(--accent); }
+.scene .lbl { position: absolute; left: 5px; bottom: 5px; display: flex; gap: 5px; padding: 3px 6px; border-radius: 6px; background: var(--media-scrim); color: var(--on-media); font: 500 10.5px/1 var(--ui); }
+.scene .lbl b { opacity: 0.65; font-family: var(--mono); }
+
+@media (max-width: 980px) {
+  .cols-3, .cols-4, .principles, .films { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-2, .studio-bits { grid-template-columns: 1fr; }
+  .theme-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .atelier { grid-template-columns: 1fr; grid-template-rows: auto; height: auto; }
+  .atelier .left, .atelier .right, .atelier .view, .atelier .bottom { grid-row: auto; grid-column: auto; }
+  .atelier .view { height: 320px; }
+  .settings { grid-template-columns: 1fr; height: auto; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- la marque de tramme (brand/tramme-logo-light.svg) -->
+  <symbol id="mark" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><rect x="2.5" y="2.6" width="19" height="5" rx="1.8"/><rect x="8.8" y="8.7" width="6.4" height="3.9" rx="1.2"/><rect x="9.9" y="13.7" width="6.4" height="3.9" rx="1.2" opacity=".66"/><rect x="11" y="18.7" width="6.4" height="3.9" rx="1.2" opacity=".36"/></g></symbol>
+  <symbol id="i-play" viewBox="0 0 16 16"><path d="M5 3.5v9l7.5-4.5z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></symbol>
+  <symbol id="i-film" viewBox="0 0 16 16"><path d="M2.5 2.5h11v11h-11zM5 2.5v11M11 2.5v11M2.5 5.5H5M2.5 8H5M2.5 10.5H5M11 5.5h2.5M11 8h2.5M11 10.5h2.5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 16 16"><path d="M8 10.5V3M5 6l3-3 3 3M3 10.5v2.5h10v-2.5"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 16 16"><path d="M8 10.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4zM12.35 6.5l2.15.35v2.3l-2.15.35-.22.52 1.28 1.77-1.62 1.62-1.77-1.28-.52.22-.35 2.15h-2.3l-.35-2.15-.52-.22-1.77 1.28-1.62-1.62 1.28-1.77-.22-.52-2.15-.35v-2.3l2.15-.35.22-.52-1.28-1.77 1.62-1.62 1.77 1.28.52-.22.35-2.15h2.3l.35 2.15.52.22 1.77-1.28 1.62 1.62-1.28 1.77z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 16 16"><path d="M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM6.2 6.3a1.9 1.9 0 0 1 3.7.5c0 1.3-1.9 1.6-1.9 2.8M8 11.3h.01"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 16 16"><path d="M4 6h6a3 3 0 0 1 0 6H7M6.5 3.5 4 6l2.5 2.5"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 16 16"><path d="M12 6H6a3 3 0 0 0 0 6h3M9.5 3.5 12 6 9.5 8.5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 16 16"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></symbol>
+  <symbol id="i-chevr" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><path d="M7 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zM10.6 10.6l3.4 3.4"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 16 16"><path d="M8 2.5 14 5.5 8 8.5 2 5.5zM2 8.5l6 3 6-3M2 11l6 3 6-3"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 16 16"><path d="M3 4h6M12 4h1M3 8h1M7 8h6M3 12h7M10.5 2.5v3M5.5 6.5v3M11.5 10.5v3"/></symbol>
+  <symbol id="i-text" viewBox="0 0 16 16"><path d="M3.5 4V3h9v1M8 3v10M6 13h4"/></symbol>
+  <symbol id="i-rect" viewBox="0 0 16 16"><path d="M3 4h10v8H3z"/></symbol>
+  <symbol id="i-group" viewBox="0 0 16 16"><path d="M2.5 4.5h4l1.5 1.5h5.5v6.5h-11z"/></symbol>
+  <symbol id="i-audio" viewBox="0 0 16 16"><path d="M6 11.5V3.5l7-1.5v8M6 11.5a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM13 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8zM8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 16 16"><path d="M2.5 2.5h11v11h-11zM6.2 2.5v11M9.8 2.5v11M2.5 6.2h11M2.5 9.8h11"/></symbol>
+  <symbol id="i-safe" viewBox="0 0 16 16"><path d="M2.5 3.5h11v9h-11zM4.5 5.5h7v5h-7z"/></symbol>
+  <symbol id="i-frame" viewBox="0 0 16 16"><path d="M2.5 5.5v-3h3M10.5 2.5h3v3M13.5 10.5v3h-3M5.5 13.5h-3v-3M6 8h4"/></symbol>
+  <symbol id="i-attach" viewBox="0 0 16 16"><path d="M10.6 4.6 5.9 9.3a1.4 1.4 0 0 0 2 2l5-5a2.9 2.9 0 0 0-4.1-4.1l-5 5a4.4 4.4 0 0 0 6.2 6.2l4.1-4.1"/></symbol>
+  <symbol id="i-send" viewBox="0 0 16 16"><path d="M8 13V3.5M3.8 7.5 8 3.3l4.2 4.2"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 16 16"><path d="M2 4.5h4.5L8 6h6v7H2z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 16 16"><path d="M8 14.5s4.5-4.2 4.5-7.7a4.5 4.5 0 0 0-9 0c0 3.5 4.5 7.7 4.5 7.7zM8 8.5a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z"/></symbol>
+  <symbol id="i-target" viewBox="0 0 16 16"><path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3M8 8h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M3.5 8.5 6.5 11.5 12.5 4.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></symbol>
+  <symbol id="i-more" viewBox="0 0 16 16"><path d="M3.5 8h.01M8 8h.01M12.5 8h.01"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><path d="M5.5 5.5h7v7h-7zM3.5 10.5v-7h7"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 16 16"><path d="M10.5 3 13 5.5 6 12.5H3.5V10zM9 4.5 11.5 7"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 16 16"><path d="M8 2a6 6 0 1 0 0 12c1 0 1.5-.6 1.5-1.4 0-.9-.7-1.2-.7-2s.6-1.3 1.5-1.3H12a2 2 0 0 0 2-2C14 4.4 11.3 2 8 2zM5 7.5h.01M6.5 5h.01M9.5 5h.01"/></symbol>
+  <symbol id="i-link" viewBox="0 0 16 16"><path d="M6.5 9.5l3-3M7.5 4.5 9 3a2.5 2.5 0 0 1 3.5 3.5L11 8M8.5 11.5 7 13a2.5 2.5 0 0 1-3.5-3.5L5 8"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></symbol>
+  <symbol id="i-eye2" viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8zM8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></symbol>
+  <!-- nouvelle icône : la claquette, pour une prise (et pas une étincelle) -->
+  <symbol id="i-clap" viewBox="0 0 16 16"><path d="M2.5 6.5h11v7h-11zM2.5 6.5 3.3 3l10 .1-.5 3.4M6.3 3.1 5.4 6.5M10 3.1l-.9 3.4"/></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 16 16"><path d="M2.5 4.5H5c3.2 0 3.3 7 6.5 7h2M11.5 9.5l2 2-2 2M2.5 11.5H5c1.1 0 1.8-.8 2.4-1.9M8.6 6.4c.6-1.1 1.3-1.9 2.4-1.9h2.5M11.5 2.5l2 2-2 2"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 16 16"><path d="M4.5 4.5h7v7h-7z"/></symbol>
+</svg>
+
+<header class="board-top">
+  <div class="brand"><svg><use href="#mark"/></svg>tramme · direction artistique</div>
+  <span class="grow"></span>
+  <span class="t3" style="font-size: var(--fs-sm)">Thème</span>
+  <div class="seg" id="themes">
+    <button data-theme="studio" class="on">Studio</button>
+    <button data-theme="obsidian">Obsidienne</button>
+    <button data-theme="carbon">Carbone</button>
+    <button data-theme="dusk">Crépuscule</button>
+    <button data-theme="paper">Papier</button>
+  </div>
+</header>
+
+<main>
+
+<section class="sec" id="principes">
+  <h2>Un seul design, partout</h2>
+  <p>L'accueil, le studio, l'atelier, les paramètres, les menus et les dialogues parlent la même langue : des surfaces arrondies posées sur un fond calme, la couleur du thème et rien d'autre, l'image toujours en premier. C'est la direction du site (Geist, le teal seul accent, des panneaux à 14 px, des boutons en pilule), étendue à toute l'application.</p>
+  <div class="principles">
+    <div><b>L'image d'abord</b><span>Le chrome s'efface : fonds sombres et neutres, peu de lignes, l'accent réservé à ce qui compte.</span></div>
+    <div><b>Une seule matière</b><span>Des panneaux arrondis séparés par de l'espace, pas par des filets. La profondeur vient des surfaces et d'ombres douces.</span></div>
+    <div><b>La couleur du thème, rien d'autre</b><span>Aucune valeur en dur. Un seul accent, le teal, pour l'action, la sélection, le focus et tramme au travail.</span></div>
+    <div><b>Pas de clichés IA</b><span>Ni violet, ni dégradé, ni halo, ni étincelle. L'assistant, c'est tramme : sa marque et l'accent.</span></div>
+  </div>
+</section>
+
+<section class="sec" id="palette">
+  <h2>Le thème en cours</h2>
+  <p>Chaque thème définit les mêmes rôles. Les composants n'utilisent que ces rôles : changer de thème change tout, sans exception.</p>
+  <div class="swatches" id="swatches"></div>
+</section>
+
+<section class="sec" id="type">
+  <h2>Typographie</h2>
+  <p>Geist pour l'interface, Geist Mono pour les temps, les valeurs et les tailles. La base passe de 12 à 13 px ; les titres resserrent leur interlettrage comme sur le site.</p>
+  <div class="specimen">
+    <div class="type-row"><span class="t3">héros · 48 · 650</span><span style="font: 650 40px/1.05 var(--ui); letter-spacing: -0.035em">Quel film fait-on ?</span></div>
+    <div class="type-row"><span class="t3">2xl · 24 · 650</span><span style="font: 650 24px/1.2 var(--ui); letter-spacing: -0.03em">Vos films</span></div>
+    <div class="type-row"><span class="t3">xl · 18 · 600</span><span style="font: 600 18px/1.3 var(--ui); letter-spacing: -0.02em">Apparence</span></div>
+    <div class="type-row"><span class="t3">lg · 15 · 600</span><span style="font: 600 15px/1.3 var(--ui); letter-spacing: -0.01em">Titre « Écrit comme un document »</span></div>
+    <div class="type-row"><span class="t3">md · 13 · 400</span><span>Le studio : vous dirigez le film avec des mots, tramme le met en scène.</span></div>
+    <div class="type-row"><span class="t3">sm · 12 · 400</span><span class="t2" style="font-size: 12px">1920×1080 · 45 s · il y a 3 minutes</span></div>
+    <div class="type-row"><span class="t3">mono · 15 · 600</span><span class="mono" style="font-size: 15px; font-weight: 600">00:13:28</span></div>
+  </div>
+</section>
+
+<section class="sec" id="composants">
+  <h2>Composants</h2>
+  <p>Un composant par motif. Les boutons texte sont des pilules, les boutons icône des carrés arrondis à 8 px ; les champs n'ont pas de bordure, le focus est un anneau d'accent.</p>
+  <div class="grid cols-3">
+    <div class="specimen">
+      <h3>Boutons</h3>
+      <div class="line"><button class="btn primary"><svg class="i"><use href="#i-down"/></svg>Exporter</button><button class="btn">Annuler</button><button class="btn outline">Matière</button><button class="btn ghost">Plus tard</button></div>
+      <div class="line"><button class="btn sm primary">Garder</button><button class="btn sm">Écarter</button><button class="btn sm danger">Supprimer</button><button class="btn sm danger solid">Supprimer</button></div>
+      <div class="line"><button class="icon-btn"><svg class="i"><use href="#i-undo"/></svg></button><button class="icon-btn"><svg class="i"><use href="#i-redo"/></svg></button><button class="icon-btn on"><svg class="i"><use href="#i-grid"/></svg></button><button class="icon-btn"><svg class="i"><use href="#i-gear"/></svg></button><button class="icon-btn sm"><svg class="i"><use href="#i-more"/></svg></button></div>
+    </div>
+    <div class="specimen">
+      <h3>Champs</h3>
+      <div class="stack">
+        <div class="field"><svg class="i"><use href="#i-search"/></svg><input placeholder="Chercher un calque"></div>
+        <div class="line" style="flex-wrap: nowrap"><div class="field num" style="flex:1"><span class="axis">X</span><input value="960"><span class="unit">px</span></div><div class="field num" style="flex:1"><span class="axis">Y</span><input value="540"><span class="unit">px</span></div></div>
+        <div class="field select"><span>30 i/s</span><svg class="i"><use href="#i-chev"/></svg></div>
+        <div class="field" style="box-shadow: 0 0 0 2px var(--accent-line)"><input value="Launch film"></div>
+      </div>
+    </div>
+    <div class="specimen">
+      <h3>Contrôle segmenté, interrupteur</h3>
+      <div class="stack">
+        <div class="line"><div class="seg lg"><button class="on"><svg class="i"><use href="#mark"/></svg>Studio</button><button><svg class="i"><use href="#i-sliders"/></svg>Atelier</button></div></div>
+        <div class="line"><div class="seg"><button class="on">Calques</button><button>Assets</button><button>Jetons</button></div></div>
+        <div class="line"><div class="seg"><button>Avant</button><button class="on">Après</button></div><div class="seg"><button class="on">16:9</button><button>9:16</button><button>1:1</button><button>4:5</button></div></div>
+        <div class="line"><button class="toggle on"></button><button class="toggle"></button><span class="t2">Visites à l'ouverture</span></div>
+      </div>
+    </div>
+    <div class="specimen">
+      <h3>Étiquettes et puces</h3>
+      <div class="line"><span class="tag">Clé serveur</span><span class="tag accent">Prise 2</span><span class="tag ok"><svg class="i"><use href="#i-check"/></svg>Gardée</span><span class="tag key">3 alertes</span><span class="tag danger">Erreur</span></div>
+      <div class="line"><button class="chip">Film de lancement</button><button class="chip">Teaser vertical</button><button class="chip on"><svg class="i"><use href="#i-target"/></svg>Modifiers</button></div>
+      <div class="line"><span class="t2">Raccourcis</span><kbd>N</kbd><kbd>P</kbd><kbd>Esc</kbd><kbd>Ctrl</kbd><kbd>,</kbd></div>
+    </div>
+    <div class="specimen">
+      <h3>Menu (avec une ligne de détail)</h3>
+      <div class="menu">
+        <div class="menu-label">Commencer autrement</div>
+        <button class="menu-item"><svg class="i"><use href="#i-plus"/></svg><span class="menu-text"><span>Projet vierge</span><span class="menu-detail">Le format et la cadence de votre choix</span></span></button>
+        <button class="menu-item active"><svg class="i"><use href="#i-film"/></svg><span class="menu-text"><span>Depuis une vidéo</span><span class="menu-detail">Habiller une vidéo où quelqu'un parle</span></span></button>
+        <hr>
+        <button class="menu-item"><svg class="i"><use href="#i-upload"/></svg><span class="menu-text"><span>Ouvrir un fichier</span><span class="menu-detail">Un projet .tramme ou une animation Lottie</span></span><span class="menu-hint">Ctrl O</span></button>
+      </div>
+    </div>
+    <div class="specimen">
+      <h3>Liste de choix ouverte, menu contextuel</h3>
+      <div class="stack">
+        <div class="menu">
+          <button class="menu-item">24 i/s</button>
+          <button class="menu-item">25 i/s</button>
+          <button class="menu-item active">30 i/s<svg class="i check"><use href="#i-check"/></svg></button>
+          <button class="menu-item">60 i/s</button>
+        </div>
+        <div class="menu">
+          <button class="menu-item"><svg class="i"><use href="#i-edit"/></svg>Renommer<span class="menu-hint">F2</span></button>
+          <button class="menu-item"><svg class="i"><use href="#i-copy"/></svg>Dupliquer<span class="menu-hint">Ctrl D</span></button>
+          <hr>
+          <button class="menu-item danger"><svg class="i"><use href="#i-trash"/></svg>Supprimer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grid cols-2" style="margin-top: 16px">
+    <div class="specimen" style="background: var(--scrim); box-shadow: none; display: grid; place-items: center; padding: 28px">
+      <div class="dialog">
+        <div class="dialog-head"><span>Supprimer le projet</span><button class="icon-btn sm"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <div class="dialog-body">
+          « Launch film » et tous ses fichiers seront supprimés. Pour le garder, enregistrez d'abord son archive .tramme.
+          <div class="dialog-foot"><button class="btn ghost">Annuler</button><button class="btn danger solid"><svg class="i"><use href="#i-trash"/></svg>Supprimer</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="specimen stack" style="justify-content: center">
+      <h3>Popover, notifications, progression</h3>
+      <div class="popover" style="width: 320px">
+        <div style="font: 600 var(--fs-md) var(--ui); margin-bottom: 10px">Exporter</div>
+        <div class="stack" style="gap: 4px">
+          <button class="row-item on" style="height: auto; padding: 8px 10px; margin: 0; flex-direction: column; align-items: flex-start; gap: 2px; border: 0; text-align: left"><span style="color: var(--text); font-weight: 500">MP4 · H.264</span><span class="t3" style="font-size: 12px">vidéo et son, pour les réseaux et le web</span></button>
+          <button class="row-item" style="height: auto; padding: 8px 10px; margin: 0; flex-direction: column; align-items: flex-start; gap: 2px; border: 0; background: none; text-align: left"><span style="color: var(--text); font-weight: 500">WebM · VP9</span><span class="t3" style="font-size: 12px">avec alpha, pour le web</span></button>
+        </div>
+        <div class="progress" style="margin: 14px 0 10px"><i style="width: 62%"></i></div>
+        <button class="btn primary" style="width: 100%"><svg class="i"><use href="#i-down"/></svg>Exporter</button>
+      </div>
+      <div class="line"><span class="toast"><svg class="i"><use href="#i-check"/></svg>Prise 2 gardée</span><span class="toast error"><svg class="i"><use href="#i-x"/></svg>Impossible d'enregistrer</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="accueil">
+  <h2>L'accueil</h2>
+  <p>La boîte de direction est une carte à 20 px : pas de bordure en dégradé, un anneau d'accent quand elle a le focus. « Autres façons de commencer » ouvre le menu à détails. Les cartes de film se soulèvent au survol.</p>
+  <div class="frame" style="position: relative">
+    <div class="app-top">
+      <div class="brand"><svg><use href="#mark"/></svg>tramme</div>
+      <span class="grow"></span>
+      <button class="icon-btn"><svg class="i"><use href="#i-help"/></svg></button>
+      <button class="icon-btn"><svg class="i"><use href="#i-gear"/></svg></button>
+      <button class="btn outline sm"><svg class="i"><use href="#i-plus"/></svg>Autres façons de commencer</button>
+    </div>
+    <div class="menu home-menu">
+      <button class="menu-item active"><svg class="i"><use href="#i-plus"/></svg><span class="menu-text"><span>Projet vierge</span><span class="menu-detail">Le format et la cadence de votre choix</span></span></button>
+      <button class="menu-item"><svg class="i"><use href="#i-film"/></svg><span class="menu-text"><span>Depuis une vidéo</span><span class="menu-detail">Habiller une vidéo où quelqu'un parle</span></span></button>
+      <hr>
+      <button class="menu-item"><svg class="i"><use href="#i-upload"/></svg><span class="menu-text"><span>Ouvrir un fichier</span><span class="menu-detail">Un projet .tramme ou une animation Lottie</span></span></button>
+    </div>
+    <div class="home">
+      <div class="hero">
+        <h1>Quel film fait-on ?</h1>
+        <p>Décrivez-le en quelques mots. tramme le met en scène, le fabrique et le revoit : vous dirigez.</p>
+        <div class="direction-box focus">
+          <div class="ph">Un film de lancement de 30 s pour Nimbus, une app de méditation : calme, lumineux, trois bénéfices clés, le logo à la fin…</div>
+          <div class="bar">
+            <button class="btn ghost sm"><svg class="i"><use href="#i-attach"/></svg>Matière</button>
+            <button class="icon-btn sm"><svg class="i"><use href="#i-folder"/></svg></button>
+            <span class="grow"></span>
+            <div class="seg"><button class="on">16:9</button><button>9:16</button><button>1:1</button><button>4:5</button></div>
+            <button class="btn primary">Lancer<svg class="i"><use href="#i-arrow"/></svg></button>
+          </div>
+        </div>
+        <div class="ideas"><button class="chip">Film de lancement</button><button class="chip">Vidéo explicative</button><button class="chip">Teaser vertical</button><button class="chip">Chiffres clés</button><button class="chip">Événement</button></div>
+      </div>
+      <div class="films">
+        <h4>Vos films</h4>
+        <div class="card interactive film"><div class="thumb">tramme</div><div class="meta"><div><b>Launch film</b><span>1920×1080 · 45 s · à l'instant</span></div><button class="icon-btn sm"><svg class="i"><use href="#i-more"/></svg></button></div></div>
+        <div class="card interactive film"><div class="thumb" style="background: #f2e9dc; color: #2b2118">Nimbus</div><div class="meta"><div><b>Teaser Nimbus</b><span>1080×1920 · 15 s · hier</span></div><button class="icon-btn sm"><svg class="i"><use href="#i-more"/></svg></button></div></div>
+        <div class="card interactive film"><div class="thumb" style="background: #f0476f">Showreel</div><div class="meta"><div><b>Showreel</b><span>1920×1080 · 15 s · lundi</span></div><button class="icon-btn sm"><svg class="i"><use href="#i-more"/></svg></button></div></div>
+        <div class="card interactive film"><div class="thumb" style="background: #e9eef0; color: #12181c">Q3</div><div class="meta"><div><b>Chiffres du trimestre</b><span>1080×1350 · 22 s · 2 oct.</span></div><button class="icon-btn sm"><svg class="i"><use href="#i-more"/></svg></button></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="parametres">
+  <h2>Les paramètres</h2>
+  <p>Un grand dialogue à 20 px. À gauche la navigation (lignes arrondies, sans majuscules criées), à droite des rangées groupées dans des cartes, séparées par un filet discret. Le thème se choisit sur des aperçus dessinés avec ses propres couleurs.</p>
+  <div class="frame">
+    <div class="settings">
+      <nav>
+        <div class="field" style="margin-bottom: 4px"><svg class="i"><use href="#i-search"/></svg><input placeholder="Rechercher"></div>
+        <div class="group-title">Éditeur</div>
+        <button class="row-item on"><svg class="i"><use href="#i-palette"/></svg><span class="name">Apparence</span></button>
+        <button class="row-item"><svg class="i"><use href="#i-eye"/></svg><span class="name">Aperçu</span></button>
+        <button class="row-item"><svg class="i"><use href="#i-audio"/></svg><span class="name">Son</span></button>
+        <button class="row-item"><svg class="i"><use href="#i-help"/></svg><span class="name">Visites guidées</span></button>
+        <div class="group-title">Assistant</div>
+        <button class="row-item"><svg class="i"><use href="#i-link"/></svg><span class="name">Fournisseurs</span></button>
+        <button class="row-item"><svg class="i"><use href="#i-sliders"/></svg><span class="name">Modèle</span></button>
+        <button class="row-item"><svg class="i"><use href="#i-chat"/></svg><span class="name">Comportement</span></button>
+      </nav>
+      <div class="pane">
+        <h3>Apparence</h3>
+        <div class="set-group">
+          <div class="set-row"><div><b>Langue</b><span>Celle du navigateur (français, sinon anglais). La page se recharge pour l'appliquer.</span></div><div class="seg"><button>Automatique</button><button class="on">Français</button><button>English</button></div></div>
+          <div class="set-row"><div><b>Vue</b><span>Le studio : vous dirigez le film avec des mots. L'atelier : les calques, la timeline et l'inspecteur.</span></div><div class="seg"><button class="on"><svg class="i"><use href="#mark"/></svg>Studio</button><button><svg class="i"><use href="#i-sliders"/></svg>Atelier</button></div></div>
+        </div>
+        <div class="set-group">
+          <div class="set-row stack"><div><b>Thème</b><span>Une palette pour toute l'interface. Système suit le réglage clair ou sombre de l'ordinateur.</span></div>
+            <div class="theme-cards" id="theme-cards"></div>
+          </div>
+        </div>
+        <div class="set-group">
+          <div class="set-row"><div><b>Google Gemini <span class="tag" style="display: inline-flex; margin-left: 6px">Clé serveur</span></b><span>Clé définie sur le serveur. Une clé ajoutée ici prend sa place.</span></div><button class="btn sm outline">Changer la clé</button></div>
+          <div class="set-row"><div><b>Anthropic</b><span>Claude, avec une clé de votre compte Anthropic</span></div><button class="btn sm"><svg class="i"><use href="#i-plus"/></svg>Connecter</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="atelier">
+  <h2>L'atelier</h2>
+  <p>Les mêmes outils, une autre matière : chaque zone est un panneau arrondi posé sur le fond, séparé des autres par une gouttière de 8 px. Les poignées de redimensionnement vivent dans les gouttières. La sélection est une ligne arrondie en retrait, pas une barre pleine largeur. La tête de lecture est la même que celle du storyboard.</p>
+  <div class="frame">
+    <div class="app-top">
+      <div class="brand"><svg><use href="#mark"/></svg>tramme</div>
+      <span class="sep"></span>
+      <span class="project">Launch film</span>
+      <span class="saved"><i></i>Enregistré</span>
+      <span class="grow"></span>
+      <div class="seg lg"><button><svg class="i"><use href="#mark"/></svg>Studio</button><button class="on"><svg class="i"><use href="#i-sliders"/></svg>Atelier</button></div>
+      <span class="grow"></span>
+      <button class="icon-btn"><svg class="i"><use href="#i-undo"/></svg></button>
+      <button class="icon-btn"><svg class="i"><use href="#i-redo"/></svg></button>
+      <div class="field select" style="width: 150px"><span>16:9 · 1920×1080</span><svg class="i"><use href="#i-chev"/></svg></div>
+      <div class="field select" style="width: 86px"><span>30 i/s</span><svg class="i"><use href="#i-chev"/></svg></div>
+      <button class="icon-btn"><svg class="i"><use href="#i-help"/></svg></button>
+      <button class="icon-btn"><svg class="i"><use href="#i-gear"/></svg></button>
+      <button class="btn primary"><svg class="i"><use href="#i-down"/></svg>Exporter</button>
+    </div>
+    <div class="atelier">
+      <div class="panel left">
+        <div class="panel-head"><div class="seg"><button class="on">Calques</button><button>Assets</button><button>Jetons</button></div><span class="grow"></span><button class="icon-btn sm"><svg class="i"><use href="#i-plus"/></svg></button></div>
+        <div class="field search"><svg class="i"><use href="#i-search"/></svg><input placeholder="Chercher un calque"></div>
+        <div class="tree">
+          <div class="row-item"><span class="kind" style="color: var(--t-group)"><svg class="i"><use href="#i-group"/></svg></span><span class="name">modifiers</span></div>
+          <div class="row-item on"><span class="depth"></span><span class="kind" style="color: var(--t-text)"><svg class="i"><use href="#i-text"/></svg></span><span class="name">Titre</span><svg class="i" style="color: var(--text-3)"><use href="#i-eye"/></svg></div>
+          <div class="row-item"><span class="depth"></span><span class="kind" style="color: var(--t-shape)"><svg class="i"><use href="#i-rect"/></svg></span><span class="name">Carte spring</span></div>
+          <div class="row-item"><span class="depth"></span><span class="kind" style="color: var(--t-shape)"><svg class="i"><use href="#i-rect"/></svg></span><span class="name">Carte wiggle</span></div>
+          <div class="row-item"><span class="depth"></span><span class="kind" style="color: var(--t-shape)"><svg class="i"><use href="#i-rect"/></svg></span><span class="name">Carte loop</span></div>
+          <div class="row-item"><span class="kind" style="color: var(--t-audio)"><svg class="i"><use href="#i-audio"/></svg></span><span class="name">whoosh-cards</span></div>
+          <div class="row-item"><span class="kind" style="color: var(--t-audio)"><svg class="i"><use href="#i-audio"/></svg></span><span class="name">music-a</span></div>
+        </div>
+      </div>
+      <div class="panel view">
+        <div class="view-tools"><span class="zoom">42 %</span><span class="divider"></span><button class="icon-btn sm round"><svg class="i"><use href="#i-safe"/></svg></button><button class="icon-btn sm round on"><svg class="i"><use href="#i-grid"/></svg></button><span class="divider"></span><button class="btn sm ghost"><svg class="i"><use href="#i-frame"/></svg>Net</button></div>
+        <div class="picture">
+          <div class="ttl">Stack modifiers.</div>
+          <div class="cards"><span><i style="background: #2ec4b6"></i></span><span><i style="background: #f4b860; border-radius: 50%"></i></span><span><i style="background: #7cb7ff"></i></span><span><i style="background: #9bd770"></i></span><span><i style="background: #e9eef0"></i></span></div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="panel">
+          <div class="insp-head"><span class="kind"><svg class="i"><use href="#i-text"/></svg></span><div><b>Titre</b><span>Texte · 0,00 – 4,00 s</span></div></div>
+          <div class="insp-sec">
+            <h4><svg class="i"><use href="#i-chevr"/></svg>Transformation</h4>
+            <div class="prop keyed"><i class="k"></i><span class="plabel">Position</span><div class="pair"><div class="field num"><input value="320"></div><div class="field num"><input value="214"></div></div></div>
+            <div class="prop"><i class="k"></i><span class="plabel">Échelle</span><div class="field num"><input value="100"><span class="unit">%</span></div></div>
+            <div class="prop"><i class="k"></i><span class="plabel">Opacité</span><div class="field num"><input value="100"><span class="unit">%</span></div></div>
+          </div>
+          <div class="insp-sec">
+            <h4><svg class="i"><use href="#i-chevr"/></svg>Texte</h4>
+            <div class="prop"><i class="k"></i><span class="plabel">Police</span><div class="field select"><span>Geist</span><svg class="i"><use href="#i-chev"/></svg></div></div>
+            <div class="prop"><i class="k"></i><span class="plabel">Taille</span><div class="field num"><input value="72"><span class="unit">px</span></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="mark"><svg><use href="#mark"/></svg></span><span class="title">Notes</span><span class="grow"></span><span class="tag">Gemini</span><button class="icon-btn sm"><svg class="i"><use href="#i-more"/></svg></button></div>
+          <div class="assistant-mini">
+            <div class="composer"><div class="ph">Dites à tramme ce que vous voulez…</div><div class="bar"><button class="icon-btn sm"><svg class="i"><use href="#i-attach"/></svg></button><span class="grow"></span><button class="send"><svg class="i"><use href="#i-send"/></svg></button></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel bottom">
+        <div class="transport">
+          <button class="play"><svg class="i"><use href="#i-play"/></svg></button>
+          <span class="tc">00:13:28</span><span class="t3 mono" style="font-size: 11px">image 404 / 1350</span>
+          <span style="flex: 1"></span>
+          <div class="seg"><button class="on">Timeline</button><button>Courbes</button></div>
+        </div>
+        <div class="tl">
+          <div class="tl-names">
+            <div class="row-item on"><span class="name">Titre</span></div>
+            <div class="row-item"><span class="name">Carte spring</span></div>
+            <div class="row-item"><span class="name">Carte wiggle</span></div>
+            <div class="row-item"><span class="name">music-a</span></div>
+          </div>
+          <div class="tl-track">
+            <div class="ruler"><span style="left: 0%">0 s</span><span style="left: 20%">10 s</span><span style="left: 40%">20 s</span><span style="left: 60%">30 s</span><span style="left: 80%">40 s</span></div>
+            <div class="lane"><div class="clip on" style="--c: var(--t-text); left: 26%; width: 18%">Titre</div><i class="kf" style="left: 27%"></i><i class="kf" style="left: 31%"></i></div>
+            <div class="lane"><div class="clip" style="--c: var(--t-shape); left: 27%; width: 16%">Carte spring</div></div>
+            <div class="lane"><div class="clip" style="--c: var(--t-shape); left: 28%; width: 15%">Carte wiggle</div></div>
+            <div class="lane"><div class="clip" style="--c: var(--t-audio); left: 0%; width: 54%">music-a</div></div>
+            <div class="playhead" style="left: 30%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="studio">
+  <h2>Le studio, corrigé</h2>
+  <p>Même organisation, sans le violet ni les effets : tramme au travail, c'est sa marque dans l'accent qui respire et un liseré d'accent autour de l'image ; une prise, c'est la claquette, pas une étincelle. Les numéros de note et les épingles prennent l'accent du thème.</p>
+  <div class="studio-bits">
+    <div class="stack">
+      <div class="stage-demo">
+        <div class="pill"><span class="mark working"><svg><use href="#mark"/></svg></span><span class="stage-name">Fabrication</span><span class="detail">Outil : film · 3 / 7</span><span class="t3 mono" style="font-size: 11px">42 s</span><button class="stop"><svg class="i"><use href="#i-stop"/></svg></button></div>
+        <div class="picture working">
+          <div class="ttl">Stack modifiers.</div>
+          <div class="cards"><span><i style="background: #2ec4b6"></i></span><span><i style="background: #f4b860; border-radius: 50%"></i></span><span><i style="background: #7cb7ff"></i></span><span><i style="background: #9bd770"></i></span><span><i style="background: #e9eef0"></i></span></div>
+          <span class="pin" style="left: 63%; top: 58%">2</span>
+        </div>
+      </div>
+      <div class="storyboard-demo">
+        <div class="scene"><span class="lbl"><b>01</b>A ball</span></div>
+        <div class="scene"><span class="lbl"><b>02</b>Thesis</span></div>
+        <div class="scene on"><span class="lbl"><b>03</b>Modifiers</span></div>
+        <div class="scene"><span class="lbl"><b>04</b>Shaders</span></div>
+        <div class="scene"><span class="lbl"><b>05</b>The mark</span></div>
+      </div>
+    </div>
+    <div class="panel" style="padding: 14px">
+      <div class="thread">
+        <div class="note"><div class="note-head"><span class="note-n">2</span><span class="note-who">Vous</span><span class="note-tc">00:13:28</span><span class="tag"><svg class="i"><use href="#i-target"/></svg>Modifiers</span><svg class="i" style="width: 12px; height: 12px; color: var(--accent-text)"><use href="#i-pin"/></svg></div>Ce titre devrait entrer plus franchement, avec un léger dépassement.</div>
+        <div class="work live">
+          <div class="work-head"><span class="mark working"><svg><use href="#mark"/></svg></span>tramme<span class="t3 mono" style="margin-left: auto; font-size: 11px; font-weight: 400">42 s</span></div>
+          <div class="stages"><span class="tag"><i></i>Lecture</span><span class="tag"><i></i>Mise en scène</span><span class="tag accent"><i></i>Fabrication</span></div>
+          <div class="take">
+            <div class="take-head"><svg class="i" style="color: var(--accent-text)"><use href="#i-clap"/></svg><span class="label">Prise 2</span><b>Titre « Écrit comme un document »</b></div>
+            <div class="actions"><div class="seg"><button>Avant</button><button class="on">Après</button></div><span class="grow"></span><button class="btn sm">Écarter</button><button class="btn sm primary"><svg class="i"><use href="#i-check"/></svg>Garder</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+// le thème : sur <html>, comme dans l'application (data-theme)
+const root = document.documentElement;
+const ROLES = ['bg', 'surface', 'surface-2', 'raised', 'field', 'field-hover', 'stage', 'text', 'text-2', 'text-3', 'text-4', 'line', 'line-strong', 'accent', 'accent-hover', 'accent-soft', 'accent-text', 'on-accent', 'ok', 'danger', 'key', 'expr', 'link', 't-shape', 't-text', 't-image', 't-audio'];
+const THEMES = [['studio', 'Studio'], ['obsidian', 'Obsidienne'], ['carbon', 'Carbone'], ['dusk', 'Crépuscule'], ['paper', 'Papier'], ['system', 'Système']];
+
+function swatches() {
+  const cs = getComputedStyle(root);
+  document.getElementById('swatches').innerHTML = ROLES.map((r) => {
+    const v = cs.getPropertyValue(`--${r}`).trim();
+    return `<div class="swatch"><i style="background: var(--${r})"></i><div style="min-width: 0"><b>--${r}</b><span>${v}</span></div></div>`;
+  }).join('');
+}
+
+// les aperçus de thème des paramètres : chacun dessiné avec ses propres couleurs
+function themeCards() {
+  const probe = document.createElement('div');
+  document.body.appendChild(probe);
+  const read = (id) => {
+    const keep = root.dataset.theme;
+    root.dataset.theme = id === 'system' ? 'studio' : id;
+    const cs = getComputedStyle(root), get = (n) => cs.getPropertyValue(`--${n}`).trim();
+    const v = { bg: get('bg'), surface: get('surface'), text: get('text'), accent: get('accent') };
+    root.dataset.theme = keep;
+    return v;
+  };
+  const current = root.dataset.theme;
+  document.getElementById('theme-cards').innerHTML = THEMES.map(([id, name]) => {
+    const v = read(id), p = id === 'system' ? read('paper') : null;
+    const bg = p ? `linear-gradient(90deg, ${v.bg} 50%, ${p.bg} 50%)` : v.bg;
+    return `<button class="theme-card${id === current ? ' on' : ''}"><span class="prev" style="background: ${bg}"><span class="s" style="background: ${v.surface}"></span><span class="l" style="background: ${v.text}"></span><span class="a" style="background: ${v.accent}"></span></span>${name}</button>`;
+  }).join('');
+  probe.remove();
+}
+
+function setTheme(id) {
+  root.dataset.theme = id;
+  document.querySelectorAll('#themes button').forEach((b) => b.classList.toggle('on', b.dataset.theme === id));
+  swatches();
+  themeCards();
+}
+document.querySelectorAll('#themes button').forEach((b) => b.addEventListener('click', () => setTheme(b.dataset.theme)));
+setTheme(new URLSearchParams(location.search).get('theme') || 'studio');
+</script>
+</body>
+</html>

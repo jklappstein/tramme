@@ -362,17 +362,28 @@ export function Timeline() {
   );
 }
 
-/** the waveform of an audio clip, its file read once in the background */
-function ClipWave({ layer, from, seconds, width }: { layer: Layer; from: number; seconds: number; width: number }) {
+/**
+ * The waveform of a sound file in a box `width` pixels wide: the file from
+ * `offset` seconds, `seconds` of the composition played at `rate`; its file
+ * read once in the background (the timeline's clips, the studio's storyboard).
+ */
+export function Wave({ asset, offset, seconds, rate, width, class: cls }: { asset: string; offset: number; seconds: number; rate: number; width: number; class?: string }) {
   void wavesReady.value;
-  const asset = staticValue(layer.props?.audio), r = preview.renderer;
-  if (typeof asset !== 'string' || !r || width < 8) return null;
+  const r = preview.renderer;
+  if (!r || width < 8) return null;
   let url: string;
   try { url = r.assets.url(asset); } catch { return null; }
   const p = peaksOf(url);
   if (!p) return null;
+  return <svg class={cls} viewBox={`0 0 ${width} 100`} preserveAspectRatio="none" aria-hidden="true"><path d={wavePath(p, offset, seconds, rate, width)} /></svg>;
+}
+
+/** the waveform of an audio clip */
+function ClipWave({ layer, from, seconds, width }: { layer: Layer; from: number; seconds: number; width: number }) {
+  const asset = staticValue(layer.props?.audio);
+  if (typeof asset !== 'string') return null;
   const rate = Number(staticValue(layer.props?.rate) ?? 1) || 1, offset = Number(staticValue(layer.props?.start) ?? 0) + (from - (layer.in ?? 0)) * rate;
-  return <svg class="wave" viewBox={`0 0 ${width} 100`} preserveAspectRatio="none" aria-hidden="true"><path d={wavePath(p, offset, seconds, rate, width)} /></svg>;
+  return <Wave class="wave" asset={asset} offset={offset} seconds={seconds} rate={rate} width={width} />;
 }
 
 /** plays a sound layer alone in the preview, or with the others again */

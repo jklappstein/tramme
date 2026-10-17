@@ -9,6 +9,8 @@ registerTour({
   summary: m('tours.home.createOpenAndFind'),
   page: 'home',
   auto: true,
+  // 2: the home starts a film from words
+  version: 2,
   order: 10,
   steps: [
     {
@@ -16,9 +18,9 @@ registerTour({
       body: m('tours.home.trammeIsAMotion'),
     },
     {
-      target: 'home-new', side: 'bottom', align: 'end',
+      target: 'home-new', side: 'bottom', align: 'center',
       title: m('common.newProject'),
-      body: m('tours.home.everythingStartsHere'),
+      body: m('tours.home.describeTheFilm'),
     },
     {
       target: 'home-projects', side: 'bottom', align: 'start',

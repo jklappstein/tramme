@@ -372,9 +372,17 @@ export interface TurnContext {
   time?: number;
   frame?: number;
   selection?: { id: string; name: string; type: string }[];
+  /** the scene of the film the message is about (the studio's storyboard): its name and its span in the composition */
+  scene?: { name: string; from: number; to: number };
+  /** the message is a note pinned on the picture: where, in fractions of the frame from its top left corner, and the layer under it */
+  point?: [number, number];
+  under?: { id: string; name: string; type: string };
   /** the user's changes apply without them (they may be away): the turn works on its own */
   autonomous?: boolean;
 }
+
+/** a fraction of the frame, as a percentage */
+const pct = (x: number) => `${Math.round(x * 100)} %`;
 
 /** what a turn left alone is told: it never waits on the user */
 const AUTONOMOUS = 'Mode: on your own. Your changes apply without the user, who may be away for a long while: do not stop on a question a sensible choice answers (a format, a voice, a wording, a direction). Where the rules say to ask or to propose directions first, take the one you would recommend and go on; say in your summary what you chose and assumed. Stop only when truly blocked (a missing key or source). Paid generations are not asked for: each turn has an allowance, and the library or synth take over once it is used.';
@@ -384,6 +392,8 @@ export function userPrompt(text: string, ctx: TurnContext, notes: string[]): str
   const lines = [
     `Composition: ${ctx.compId} · time ${ctx.time} s (frame ${ctx.frame})`,
     `Selection: ${ctx.selection?.length ? ctx.selection.map((s) => `${s.name} (${s.id}, ${s.type})`).join(', ') : 'none'}`,
+    ...(ctx.scene ? [`Scene: "${ctx.scene.name}", from ${ctx.scene.from} s to ${ctx.scene.to} s: the message is about this scene; leave the others as they are unless it asks otherwise.`] : []),
+    ...(ctx.point ? [`Note pinned on the picture at ${pct(ctx.point[0])} across and ${pct(ctx.point[1])} down the frame, at ${ctx.time} s: it is about what shows there${ctx.under ? `, on the layer ${ctx.under.name} (${ctx.under.id}, ${ctx.under.type}) of this composition` : ''} (render that frame to see it).`] : []),
     ...(ctx.autonomous ? [AUTONOMOUS] : []),
     ...notes,
   ];

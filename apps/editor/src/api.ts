@@ -22,10 +22,14 @@ export interface ChatItem {
   text?: string;
   /** user: what the message was about */
   context?: string;
+  /** user: the moment of the film the message was written at (s), the scene it is about, and where on the picture it is pinned (fractions of the frame) */
+  at?: number;
+  scene?: string;
+  pin?: [number, number];
   /** user: files joined to the message (files of the project) */
   attachments?: { path: string; name: string; kind: FileKind; asset?: string }[];
-  /** assistant activity: tool name and short description */
-  tool?: { name: string; summary: string; done?: boolean; error?: boolean; progress?: ToolProgress };
+  /** assistant activity: tool name and short description; use: the vocabulary's tool a use_tool call runs */
+  tool?: { name: string; summary: string; use?: string; done?: boolean; error?: boolean; progress?: ToolProgress };
   /** a still the assistant rendered (data URL) */
   image?: { url: string; caption: string };
   /** what the assistant thinks before answering (summary streamed by the API); start and duration in ms */

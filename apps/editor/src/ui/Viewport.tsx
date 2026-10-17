@@ -4,12 +4,13 @@
 // the inspector (a key at the current time when the property is animated).
 
 import { signal } from '@preact/signals';
+import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Evaluator, layerActive, propKind, anchorShift, movePathVertex, setPathTangent, insertPathVertex, removePathVertex, nearestOnPath, pathD, localFrame, neighbourDrawings, type Composition, type TrammeDoc, type EvaluatedLayer, type Handle, type PathValue, type Rect, type Vec2 } from '@tramme/core';
 import { drawingRect } from '@tramme/nodes';
 import { localMatrix } from '@tramme/render';
 import { comp, commit, draft, cancelDraft, S, select, viewDoc, previewDoc, toast } from '../state.ts';
-import { decide } from './Assistant.tsx';
+import { decide } from '../ai/conversation.ts';
 import { editAtOps, flatTree, layerName, parentOf, propPath, rawProp } from '../model.ts';
 import { assetData, preview, previewInfo } from '../preview.ts';
 import { prefs, setPrefs, settingsOpen, type Preferences } from '../settings.ts';
@@ -91,7 +92,21 @@ function QualityButton() {
   );
 }
 
-export function Viewport() {
+export interface ViewportProps {
+  /** the studio's stage: the picture alone, no toolbar, banner, outlines nor handles (the studio shows its own) */
+  bare?: boolean;
+  /** room kept free around the picture, in pixels: top, right, bottom, left (what floats over the stage) */
+  inset?: [number, number, number, number];
+  /** drawn over the picture and sized like it (the studio's pins) */
+  overlay?: ComponentChildren;
+  /** a press on the picture, in composition pixels, taken before the selection sees it (a note pinned): true when taken; hit: the layer under it */
+  intercept?: (p: Vec2, e: PointerEvent, hit: () => string | null) => boolean;
+}
+
+/** the room the atelier keeps around the picture: its toolbar above */
+const INSET: [number, number, number, number] = [60, 28, 32, 28];
+
+export function Viewport({ bare = false, inset = INSET, overlay, intercept }: ViewportProps = {}) {
   const host = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -115,8 +130,8 @@ export function Viewport() {
     return () => { removeEventListener('keydown', down); removeEventListener('keyup', up); };
   }, []);
 
-  const pad = 28;
-  const fit = Math.min((box.w - pad * 2) / c.width, (box.h - pad * 2 - 36) / c.height);
+  const [inTop, inRight, inBottom, inLeft] = inset;
+  const fit = Math.min((box.w - inLeft - inRight) / c.width, (box.h - inTop - inBottom) / c.height);
   const scale = zoom.value === 'fit' ? Math.max(0.02, fit) : zoom.value;
   const sw = c.width * scale, sh = c.height * scale;
   // the preview renders at the displayed size (device pixels), in a few steps to avoid resizing all the time
@@ -125,7 +140,9 @@ export function Viewport() {
     const k = [0.25, 0.375, 0.5, 0.75, 1].find((s) => s >= need - 0.01) ?? 1;
     if (S.previewScale.peek() !== k) S.previewScale.value = k;
   }, [scale]);
-  const left = (box.w - sw) / 2 + pan.value[0], top = (box.h - sh) / 2 + 14 + pan.value[1];
+  /** where a picture of this size sits before the view is moved */
+  const origin = (w: number, h: number): Vec2 => [inLeft + (box.w - inLeft - inRight - w) / 2, inTop + (box.h - inTop - inBottom - h) / 2];
+  const left = origin(sw, sh)[0] + pan.value[0], top = origin(sw, sh)[1] + pan.value[1];
 
   /** pointer to composition pixels */
   const toComp = (e: { clientX: number; clientY: number }): Vec2 => {
@@ -156,7 +173,7 @@ export function Viewport() {
   };
 
   const selected = S.selection.value.filter((id) => c.layers[id]);
-  const geo = selected.length === 1 ? geometry(ev, c, compId, selected[0], now) : null;
+  const geo = !bare && selected.length === 1 ? geometry(ev, c, compId, selected[0], now) : null;
   const [vertex, setVertex] = useState<number | null>(null);
   useEffect(() => { setVertex(null); }, [selected[0]]);
 
@@ -363,9 +380,9 @@ export function Viewport() {
     touches.current.set(e.pointerId, [e.clientX, e.clientY]);
     const g = pinch.current;
     if (!g || touches.current.size < 2) return;
-    const s = Math.min(8, Math.max(0.05, (g.s0 * dist()) / g.d0)), m = mid();
+    const s = Math.min(8, Math.max(0.05, (g.s0 * dist()) / g.d0)), m = mid(), o = origin(c.width * s, c.height * s);
     zoom.value = s;
-    pan.value = [m[0] - g.u[0] * s - (box.w - c.width * s) / 2, m[1] - g.u[1] * s - (box.h - c.height * s) / 2 - 14];
+    pan.value = [m[0] - g.u[0] * s - o[0], m[1] - g.u[1] * s - o[1]];
   };
   const touchUp = (e: PointerEvent) => {
     touches.current.delete(e.pointerId);
@@ -376,6 +393,7 @@ export function Viewport() {
     if (e.button === 1 || (e.button === 0 && spaceDown)) { e.preventDefault(); dragPan(e); return; }
     if (e.button !== 0 || S.draft.peek()) return;
     const p = toComp(e);
+    if (intercept?.(p, e, () => pick(p))) return;
     if (geo && selected.length === 1 && inside(geo, p) && !e.altKey) { dragMove(e, selected[0], geo); return; }
     const id = pick(p);
     if (!id && e.pointerType === 'touch') { dragPan(e, () => { if (!e.shiftKey) select([]); }); return; }
@@ -387,7 +405,7 @@ export function Viewport() {
   };
 
   const onMove = (e: PointerEvent) => {
-    if (e.buttons) return;
+    if (e.buttons || bare) return;
     const id = pick(toComp(e));
     setHover(id && !selected.includes(id) ? id : null);
   };
@@ -436,8 +454,8 @@ export function Viewport() {
   const grid = S.grid.value, safe = S.safe.value, onion = S.onion.value;
 
   return (
-    <div class="viewport" data-tour="viewport" ref={host} onWheel={onWheel} onPointerDownCapture={touchDown} onPointerMove={touchMove} onPointerUp={touchUp} onPointerCancel={touchUp} style={{ cursor: spaceDown ? 'grab' : undefined }}>
-      <div class="toolbar" onPointerDown={(e) => e.stopPropagation()}>
+    <div class={`viewport${bare ? ' bare' : ''}`} data-tour="viewport" ref={host} onWheel={onWheel} onPointerDownCapture={touchDown} onPointerMove={touchMove} onPointerUp={touchUp} onPointerCancel={touchUp} style={{ cursor: spaceDown ? 'grab' : undefined }}>
+      {!bare && <div class="toolbar" onPointerDown={(e) => e.stopPropagation()}>
         <button class="zoom" onClick={zoomMenu} title={t('viewport.zoomCtrlWheel')}>{Math.round(scale * 100)} %</button>
         <span class="sep" />
         <button class={`icon-btn sm${safe ? ' on' : ''}`} title={t('viewport.safeZones')} onClick={() => { S.safe.value = !safe; }}><Icon name="safe" /></button>
@@ -445,7 +463,7 @@ export function Viewport() {
         <button class={`icon-btn sm${onion ? ' on' : ''}`} title={t('viewport.onionSkin')} onClick={() => { S.onion.value = !onion; }}><Icon name="onion" /></button>
         <span class="sep" />
         <QualityButton />
-      </div>
+      </div>}
       <div class="stage" ref={stageRef} style={{ left, top, width: sw, height: sh }} onPointerDown={onPointerDown} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
         <svg class="overlay" ref={svgRef} viewBox={`0 0 ${c.width} ${c.height}`} preserveAspectRatio="none">
           {grid && <g>
@@ -460,7 +478,7 @@ export function Viewport() {
           </g>)}
           {onionSkin()}
           {hoverGeo && <polygon class="gizmo-hover" points={poly(corners(hoverGeo.bounds).map((p) => apply(hoverGeo.matrix, p)))} />}
-          {selected.length > 1 && selected.map((id) => { const g = geometry(ev, c, compId, id, now); return g && <polygon key={id} class="gizmo-box" points={poly(corners(g.bounds).map((p) => apply(g.matrix, p)))} />; })}
+          {!bare && selected.length > 1 && selected.map((id) => { const g = geometry(ev, c, compId, id, now); return g && <polygon key={id} class="gizmo-box" points={poly(corners(g.bounds).map((p) => apply(g.matrix, p)))} />; })}
           {geo && (() => {
             const pts = corners(geo.bounds).map((p) => apply(geo.matrix, p));
             const tr = geo.layer.transform;
@@ -513,10 +531,11 @@ export function Viewport() {
             </g>;
           })()}
         </svg>
+        {overlay}
       </div>
       {!preview.renderer && !S.renderError.value && <div class="loading">{t('viewport.loadingAssets')}</div>}
       {S.renderError.value && <div class="error">{S.renderError.value}</div>}
-      {pending && (
+      {pending && !bare && (
         <div class="banner ai">
           <Icon name="chat" />
           <span class="label">{S.showProposal.value ? t('viewport.proposalPreview') : t('viewport.proposalHidden')} : {S.proposal.value!.label}</span>

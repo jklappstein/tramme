@@ -15,7 +15,7 @@ registerTour({
   auto: false,                 // true: offered by itself the first time the page opens
   version: 1,                  // raise it when the tour changes: it is offered again
   order: 50,                   // place in the menu (smaller first)
-  available: () => true,       // the tour makes sense here and now
+  available: () => true,       // the tour makes sense here and now (inStudio, inAtelier: one view's places)
   steps: [
     { title: 'Welcome', body: 'A message in the middle, with no target.' },
     {
@@ -30,7 +30,7 @@ registerTour({
 });
 ```
 
-A step whose target is not on screen (a panel hidden on a phone, for example) is skipped.
+A step whose target is not on screen (a panel hidden on a phone, for example) is skipped. A project opens in one of two views, the studio (the film directed in notes) or the atelier (layers, timeline, inspector): a tour about one view's places sets `available: inStudio` or `available: inAtelier`, so the help menu offers it only there.
 
 ## Where to point
 
@@ -38,12 +38,13 @@ Tours point at `data-tour` markers, not CSS classes: the interface can change it
 
 | Page | Markers |
 |---|---|
-| Home | `home-new`, `home-open`, `home-projects`, `home-examples`, `settings`, `help` |
-| Editor, top | `project`, `history`, `format`, `settings`, `help`, `export` |
-| Editor, panels | `left-panel`, `left-tab-layers`, `left-tab-assets`, `left-tab-tokens`, `inspector` |
-| Editor, preview | `viewport`, `quality` |
-| Editor, bottom | `transport`, `timeline`, `bottom-tab-timeline`, `bottom-tab-graph` |
-| Assistant | `assistant`, `assistant-model`, `assistant-access`, `assistant-history`, `assistant-composer` |
+| Home | `home-new` (the direction box), `home-more`, `home-projects`, `home-examples`, `settings`, `help` |
+| Editor, top | `project`, `view-switch`, `history`, `format`, `settings`, `help`, `export` |
+| Studio | `stage`, `direct` (the direction bar), `pin`, `storyboard`, `notes`, `direction-tab`, `viewport` |
+| Atelier, panels | `left-panel`, `left-tab-layers`, `left-tab-assets`, `left-tab-tokens`, `inspector` |
+| Atelier, preview | `viewport`, `quality` |
+| Atelier, bottom | `transport`, `timeline`, `bottom-tab-timeline`, `bottom-tab-graph` |
+| Assistant | `assistant`, `assistant-model`, `assistant-access`, `assistant-history`, `assistant-composer` (the model and access markers are in the studio's notes too) |
 
 `press(name)` clicks a marker the way the user would (to open a tab before talking about it). For a new area of the interface, give it a `data-tour` attribute.
 

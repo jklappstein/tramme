@@ -1,28 +1,31 @@
-// Home screen: the projects in storage, most recent first; a new project; a
-// .tramme archive or a Lottie animation opened from the computer (button or
-// drop); the examples. Each card opens its project, its menu renames,
+// Home screen: a film starts from words. The direction box takes what the
+// user wants (the subject, the tone, the length) and the material it is made
+// from (documents, pictures, videos, sounds, a whole folder, dropped or
+// picked), in the format chosen; the project opens in the studio with the
+// assistant already at work. Below, the projects in storage, most recent
+// first, and the examples. A blank project, a .tramme archive or a Lottie
+// animation are a menu away; each card opens its project, its menu renames,
 // duplicates, saves the archive on the computer or deletes.
 
-import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Manifest } from '@tramme/project';
 import { api, ApiError } from '../api.ts';
 import { saveBlob } from '../download.ts';
 import { safeName } from '../files.ts';
 import { ago } from '../model.ts';
-import { droppedOf, importArchive, ImportError, importFile, importSources, isSourceFile, isVideoFile, pickedOf, type Picked, type Progress } from '../importer.ts';
+import { createFromWords, droppedOf, importArchive, ImportError, importFile, importSources, importVideo, isSourceFile, isVideoFile, pickedOf, type Picked, type Progress } from '../importer.ts';
+import { kindOf } from '../sources.ts';
 import { toast } from '../state.ts';
-import { MenuHost, Modal, longPress, openMenu } from './controls.tsx';
+import { Modal, longPress, openMenu } from './controls.tsx';
 import { Icon } from './icons.tsx';
 import { LogoMark } from './Logo.tsx';
-import { Toasts } from './App.tsx';
-import { QuestionDialog } from './QuestionDialog.tsx';
-import { SettingsDialog } from './Settings.tsx';
+import { Overlays } from './shell.tsx';
 import { HelpButton } from './Help.tsx';
 import { WindowControls, windowBar } from './WindowControls.tsx';
 import { personal } from '../mode.ts';
 import { offerTours } from '../tours/index.ts';
 import { settingsOpen } from '../settings.ts';
+import { IDEAS } from '../ideas.ts';
 import { t } from '../i18n/index.ts';
 
 interface Example { file: string; name: string; description: string; width: number; height: number; duration: number; thumbnail?: string }
@@ -34,6 +37,9 @@ const PRESETS: [string, string, number, number][] = [
   ['4x5', t('home.portrait'), 1080, 1350],
   ['4k', '4K', 3840, 2160],
 ];
+/** the formats a film starts in (4K is a blank project's) */
+const FILM_FORMATS = PRESETS.filter(([id]) => id !== '4k');
+
 
 const open = (id: string) => location.assign(`/p/${encodeURIComponent(id)}`);
 
@@ -62,7 +68,7 @@ function NewProject({ onClose }: { onClose: () => void }) {
     } catch (x) { toast(t('home.couldNotCreateError', { error: (x as Error).message }), 'error'); setBusy(false); }
   };
   return (
-    <Modal title={t('common.newProject')} onClose={onClose} wide>
+    <Modal title={t('home.blankProject')} onClose={onClose} wide>
       <form class="modal-body" onSubmit={create}>
         <label class="lbl">{t('common.name')}</label>
         <div class="field"><input value={name} autoFocus onFocus={(e) => (e.target as HTMLInputElement).select()} onInput={(e) => setName((e.target as HTMLInputElement).value)} /></div>
@@ -170,6 +176,63 @@ function Card({ m, onMenu }: { m: Manifest; onMenu: (e: MouseEvent | { clientX: 
   );
 }
 
+/** the direction box: the words of the film, the material it is made from, its format */
+function DirectionBox({ busy, onStart }: { busy: boolean; onStart: (words: string, material: Picked[], format: [number, number]) => void }) {
+  const [words, setWords] = useState('');
+  const [material, setMaterial] = useState<Picked[]>([]);
+  const [format, setFormat] = useState('16x9');
+  const area = useRef<HTMLTextAreaElement>(null);
+  const files = useRef<HTMLInputElement>(null);
+  const folder = useRef<HTMLInputElement>(null);
+  useEffect(() => { const el = area.current; if (el) { el.style.height = 'auto'; el.style.height = `${Math.min(260, Math.max(92, el.scrollHeight))}px`; } }, [words]);
+  const add = (list: Picked[]) => setMaterial((had) => [...had, ...list.filter((p) => !had.some((h) => h.path === p.path))]);
+  const ready = !busy && (words.trim().length > 0 || material.length > 0);
+  const start = () => { if (!ready) return; const f = FILM_FORMATS.find(([id]) => id === format)!; onStart(words.trim(), material, [f[2], f[3]]); };
+  const chosen = (e: Event) => { const input = e.target as HTMLInputElement, list = pickedOf(input.files ?? []); input.value = ''; add(list); };
+  return (
+    <div class="hero">
+      <h1>{t('home.heroTitle')}</h1>
+      <p class="hero-sub">{t('home.heroSub')}</p>
+      <form class="brief-box" data-tour="home-new" onSubmit={(e) => { e.preventDefault(); start(); }}
+        onDragOver={(e) => { if (e.dataTransfer?.types.includes('Files')) { e.preventDefault(); e.stopPropagation(); } }}
+        onDrop={(e) => { if (!e.dataTransfer) return; e.preventDefault(); e.stopPropagation(); droppedOf(e.dataTransfer).then((list) => add(list.filter((p) => isSourceFile(p.file)))); }}>
+        <textarea ref={area} value={words} placeholder={t('home.heroPlaceholder')} autoFocus
+          onInput={(e) => setWords((e.target as HTMLTextAreaElement).value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); start(); } }} />
+        {material.length > 0 && (
+          <div class="brief-files">
+            {material.map((p) => (
+              <span key={p.path} class={`file-chip ${kindOf(p.file)}`} title={p.path}>
+                <Icon name={kindOf(p.file) === 'image' ? 'image' : kindOf(p.file) === 'video' ? 'film' : kindOf(p.file) === 'audio' ? 'audio' : 'doc'} />
+                <span class="file-name">{p.file.name}</span>
+                <button type="button" class="icon-btn xs" title={t('common.remove')} onClick={() => setMaterial(material.filter((x) => x !== p))}><Icon name="x" /></button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div class="brief-bar">
+          <button type="button" class="btn sm ghost" title={t('home.addMaterialHint')} onClick={() => files.current?.click()}><Icon name="attach" />{t('home.addMaterial')}</button>
+          <button type="button" class="icon-btn sm" title={t('home.fromSourcesFolder')} onClick={() => folder.current?.click()}><Icon name="folder" /></button>
+          <input ref={files} type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,application/pdf,.md,.markdown,.json,.ttf,.otf,.woff,.woff2" onChange={chosen} />
+          <input ref={folder} type="file" multiple hidden {...{ webkitdirectory: true }} onChange={chosen} />
+          <span class="grow" />
+          <div class="brief-formats" role="radiogroup" aria-label={t('common.format')}>
+            {FILM_FORMATS.map(([id, label, w, h]) => (
+              <button type="button" key={id} role="radio" aria-checked={format === id} class={format === id ? 'on' : ''} title={`${label} · ${w}×${h}`} onClick={() => setFormat(id)}>
+                <i style={{ aspectRatio: `${w} / ${h}`, [w >= h ? 'width' : 'height']: '14px' }} />{id.replace('x', ':')}
+              </button>
+            ))}
+          </div>
+          <button type="submit" class="btn primary go" disabled={!ready}><Icon name={busy ? 'spinner' : 'spark'} />{t('home.start')}</button>
+        </div>
+      </form>
+      <div class="hero-ideas">
+        {IDEAS.map(({ label, words: w }) => <button key={label} onClick={() => { setWords(t(w)); requestAnimationFrame(() => { const el = area.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }); }}>{t(label)}</button>)}
+      </div>
+    </div>
+  );
+}
+
 export function Home() {
   const [projects, setProjects] = useState<Manifest[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -179,8 +242,6 @@ export function Home() {
   const [drag, setDrag] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const video = useRef<HTMLInputElement>(null);
-  const sources = useRef<HTMLInputElement>(null);
-  const folder = useRef<HTMLInputElement>(null);
 
   const refresh = () => api.list().then(setProjects).catch((e) => setLoadError((e as Error).message));
   // the home tour, the first time, once the page has its content
@@ -206,6 +267,13 @@ export function Home() {
       setBusy(null);
       setDialog({ kind: 'failure', error: e as Error });
     }
+  };
+  /** the direction box: words alone make a film; one video is dressed or used as the words say; other material is read first */
+  const start = (words: string, material: Picked[], [width, height]: [number, number]) => {
+    if (!material.length) { run(t('home.starting'), () => createFromWords(words, { width, height })); return; }
+    const lone = material.length === 1 && isVideoFile(material[0].file) ? material[0].file : null;
+    if (lone) run(t('home.uploadingTheVideoName', { name: lone.name }), (p) => importVideo(lone, p, { prompt: words }), true);
+    else run(t('home.uploadingSources', { n: material.length }), (p) => importSources(material, p, { prompt: words, format: { width, height } }), true);
   };
   const fromSources = (list: Picked[]) => run(t('home.uploadingSources', { n: list.length }), (p) => importSources(list, p), true);
   const openFiles = (picked: Picked[]) => {
@@ -249,38 +317,26 @@ export function Home() {
         <span class="grow" />
         <HelpButton page="home" />
         <button class="icon-btn" data-tour="settings" title={t('common.settingsCtrl')} onClick={() => { settingsOpen.value = true; }}><Icon name="gear" /></button>
-        {/* one door: every way to start, blank or from material (a drop on the page opens a file too) */}
-        <button class="btn primary" data-tour="home-new" onClick={(e) => openMenu((e.currentTarget as HTMLElement).getBoundingClientRect(), [
+        {/* the other ways in: a blank project, a video to dress, a file to open */}
+        <button class="btn" data-tour="home-more" onClick={(e) => openMenu((e.currentTarget as HTMLElement).getBoundingClientRect(), [
           { label: t('home.blankProject'), icon: 'plus', onClick: () => setDialog({ kind: 'new' }) },
-          'sep',
           { label: t('home.fromAVideo'), icon: 'film', onClick: () => video.current?.click() },
-          { label: t('home.fromSourcesFiles'), icon: 'doc', onClick: () => sources.current?.click() },
-          { label: t('home.fromSourcesFolder'), icon: 'folder', onClick: () => folder.current?.click() },
           'sep',
           { label: t('common.openAFile'), icon: 'upload', onClick: () => input.current?.click() },
-        ])}><Icon name="plus" /><span class="label">{t('common.newProject')}</span></button>
+        ])}><Icon name="plus" /><span class="label">{t('home.otherWays')}</span></button>
         <input ref={input} type="file" accept=".tramme,.trame,.emotion,.zip,.json,application/json" hidden onChange={(e) => openFiles(chosen(e))} />
         <input ref={video} type="file" accept="video/*,.mp4,.mov,.webm,.mkv" hidden onChange={(e) => openFiles(chosen(e))} />
-        <input ref={sources} type="file" multiple accept="image/*,video/*,audio/*,.pdf,application/pdf,.md,.markdown,.json,.ttf,.otf,.woff,.woff2" hidden onChange={(e) => { const list = chosen(e); if (list.length) fromSources(list); }} />
-        {/* a whole folder (the kit prompt's tramme/, say): its files and its kit */}
-        <input ref={folder} type="file" multiple hidden {...{ webkitdirectory: true }} onChange={(e) => { const list = chosen(e); if (list.length) fromSources(list); }} />
         <WindowControls />
       </header>
       <main class="home-main">
+        <DirectionBox busy={!!busy} onStart={start} />
         <section data-tour="home-projects">
-          <div class="home-h"><h2>{t('home.projects')}</h2>{projects && projects.length > 0 && <span class="faint">{projects.length}</span>}</div>
+          <div class="home-h"><h2>{t('home.yourFilms')}</h2>{projects && projects.length > 0 && <span class="faint">{projects.length}</span>}</div>
           {/* personal mode: nothing is kept on the server, the user should know where the projects are */}
           {personal && <div class="home-note"><Icon name="info" /><span>{t('personal.storedHere')}</span></div>}
           {loadError && <div class="home-note err"><Icon name="alert" /><span>{t('home.projectsCannotBeRead', { error: loadError })}</span></div>}
           {!projects && !loadError && <div class="cards">{[0, 1, 2].map((i) => <div key={i} class="card ghost-card"><div class="card-thumb" /><div class="card-meta"><i /><i /></div></div>)}</div>}
-          {projects && projects.length === 0 && (
-            <div class="home-empty">
-              <Icon name="film" />
-              <div><b>{t('home.noProjectsYet')}</b></div>
-              <div class="faint">{t('home.createAProjectStart')}</div>
-              <button class="btn primary" onClick={() => setDialog({ kind: 'new' })}><Icon name="plus" />{t('common.newProject')}</button>
-            </div>
-          )}
+          {projects && projects.length === 0 && <div class="home-empty"><Icon name="film" /><div class="faint">{t('home.noFilmsYet')}</div></div>}
           {projects && projects.length > 0 && <div class="cards">{projects.map((m) => <Card key={m.id} m={m} onMenu={(e) => menu(e, m)} />)}</div>}
         </section>
         {examples.length > 0 && (
@@ -311,11 +367,7 @@ export function Home() {
       {dialog?.kind === 'rename' && <Rename project={dialog.m} onClose={() => setDialog(null)} onDone={refresh} />}
       {dialog?.kind === 'remove' && <Remove project={dialog.m} onClose={() => setDialog(null)} onDone={refresh} />}
       {dialog?.kind === 'failure' && <Failure error={dialog.error} onClose={() => setDialog(null)} />}
-      <SettingsDialog />
-      <MenuHost />
-      <Toasts />
-      {/* last, over the import's progress: the question waits on top of it */}
-      <QuestionDialog />
+      <Overlays />
     </div>
   );
 }

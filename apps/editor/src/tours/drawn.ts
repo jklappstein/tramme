@@ -1,7 +1,7 @@
 // Drawn animation: drawings frame by frame, the exposure sheet.
 
 import { comp, S, select } from '../state.ts';
-import { press, registerTour } from './engine.ts';
+import { press, registerTour, inAtelier } from './engine.ts';
 import { m } from '../i18n/index.ts';
 
 /** the first sequence layer of the open composition, if any */
@@ -41,5 +41,5 @@ registerTour({
       body: m('tours.drawn.playWithSpaceThe'),
     },
   ],
-  available: () => S.ready.value,
+  available: () => S.ready.value && inAtelier(),
 });

@@ -2,7 +2,7 @@
 // sound layer sounds, the mix checked and exported.
 
 import { comp, S, select } from '../state.ts';
-import { press, registerTour } from './engine.ts';
+import { press, registerTour, inAtelier } from './engine.ts';
 import { m } from '../i18n/index.ts';
 
 /** the first sound layer of the open composition, if any */
@@ -52,5 +52,5 @@ registerTour({
       body: m('tours.sound.mp4AndWebmCarry'),
     },
   ],
-  available: () => S.ready.value,
+  available: () => S.ready.value && inAtelier(),
 });

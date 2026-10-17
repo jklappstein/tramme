@@ -1,6 +1,6 @@
 // The assistant: how it reaches Claude, what it can do, how to keep control.
 
-import { registerTour } from './engine.ts';
+import { registerTour, inAtelier } from './engine.ts';
 import { m } from '../i18n/index.ts';
 
 registerTour({
@@ -8,6 +8,7 @@ registerTour({
   title: m('tours.assistant.workingWithTheAssistant'),
   summary: m('tours.assistant.accessModelProposalsConversations'),
   page: 'editor',
+  available: inAtelier,
   order: 30,
   steps: [
     {

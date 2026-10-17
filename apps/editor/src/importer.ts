@@ -125,15 +125,37 @@ export async function importLottie(file: File, progress?: Progress): Promise<Man
   return done;
 }
 
-/** where the editor finds, on first opening, what a project was made from (a video, sources) */
+/** where the editor finds, on first opening, what a project was made from (a video, sources, words) */
 export const startKey = (id: string) => `tramme.start.${id}`;
+
+/** what a project was made from, read once when it first opens (start.ts) */
+export interface Start { asset?: string; path?: string; name?: string; size?: number; sources?: number; kit?: boolean; prompt?: string }
+
+/** kept for the first opening of the project; lost, the editor opens without its greeting */
+function remember(id: string, start: Start) {
+  try { sessionStorage.setItem(startKey(id), JSON.stringify(start)); } catch { /* the editor opens without the greeting */ }
+}
+
+/** a project's name from the words that describe it: their first line, short */
+function nameOf(words: string): string {
+  const line = words.split(/\n|(?<=[.!?])\s/)[0].replace(/\s+/g, ' ').trim();
+  const name = line.length > 48 ? `${line.slice(0, 47).replace(/\s+\S*$/, '')}…` : line;
+  return (name.charAt(0).toUpperCase() + name.slice(1)) || t('home.untitled');
+}
+
+/** a project from words alone: the format chosen, the words handed to the assistant as the project opens */
+export async function createFromWords(prompt: string, format: { width: number; height: number }): Promise<Manifest> {
+  const project = await api.create({ name: nameOf(prompt), ...format, fps: 30 });
+  remember(project.id, { prompt });
+  return project;
+}
 
 /**
  * A video as a new project: the composition takes its size, cadence and
  * length, the video sits on a layer, ready to be dressed with the assistant.
  * Progress counts bytes sent.
  */
-export async function importVideo(file: File, progress?: Progress): Promise<Manifest> {
+export async function importVideo(file: File, progress?: Progress, opts: { prompt?: string } = {}): Promise<Manifest> {
   let info: Awaited<ReturnType<typeof probeVideo>>;
   try { info = await probeVideo(file); } catch (e) { throw new ImportError(`${file.name} : ${(e as Error).message}`); }
   if (!info.decodable) throw new ImportError(t('importer.nameVideoCodecNot', { name: file.name, codec: info.codec ?? t('common.unknown') }));
@@ -156,7 +178,7 @@ export async function importVideo(file: File, progress?: Progress): Promise<Mani
     const issues = validate(doc, builtinRegistry());
     if (issues.length) throw new ImportError(t('importer.invalidVideoProject'), issues);
     await api.write(project.id, DOCUMENT, stringifyDoc(doc), { type: 'application/json' });
-    try { sessionStorage.setItem(startKey(project.id), JSON.stringify({ asset, path, name: file.name, size: file.size })); } catch { /* the editor opens without the greeting */ }
+    remember(project.id, { asset, path, name: file.name, size: file.size, ...(opts.prompt ? { prompt: opts.prompt } : {}) });
     return project;
   } catch (e) {
     await api.remove(project.id).catch(() => {});
@@ -222,7 +244,7 @@ async function kitAmong(items: Picked[]): Promise<{ kit: Kit; from: Picked } | n
  * them (brief.json) gives the tokens, the fonts it names and the brief.
  * Progress counts bytes sent.
  */
-export async function importSources(items: Picked[], progress?: Progress): Promise<Manifest> {
+export async function importSources(items: Picked[], progress?: Progress, opts: { prompt?: string; format?: { width: number; height: number } } = {}): Promise<Manifest> {
   const visible = items.filter((it) => !it.path.split('/').some((part) => part.startsWith('.')));
   const found = await kitAmong(visible);
   const fonts = new Set(found?.kit.fonts.map((f) => f.file?.split('/').pop()?.toLowerCase()).filter(Boolean));
@@ -235,9 +257,10 @@ export async function importSources(items: Picked[], progress?: Progress): Promi
   // named by the kit, otherwise after the first document, otherwise after the first file
   const lead = (usable.find((it) => kindOf(it.file) === 'document') ?? usable[0]).file;
   const name = found?.kit.name ?? (lead.name.replace(/\.[^.]+$/, '').trim() || t('importer.sources'));
-  const project = await api.create({ name, ...SOURCES_FORMAT, empty: true });
+  const format = { ...SOURCES_FORMAT, ...opts.format };
+  const project = await api.create({ name, ...format, empty: true });
   try {
-    const { doc } = newProject({ name, ...SOURCES_FORMAT, id: project.id });
+    const { doc } = newProject({ name, ...format, id: project.id });
     const taken = new Set<string>(), total = usable.reduce((n, it) => n + it.file.size, 0);
     /** the folder's paths, to the project's: the kit's paths are rewritten with it */
     const moved = new Map<string, string>();
@@ -261,7 +284,7 @@ export async function importSources(items: Picked[], progress?: Progress): Promi
     const issues = validate(doc, builtinRegistry());
     if (issues.length) throw new ImportError(t('importer.invalidSourcesProject'), issues);
     await api.write(project.id, DOCUMENT, stringifyDoc(doc), { type: 'application/json' });
-    try { sessionStorage.setItem(startKey(project.id), JSON.stringify({ sources: usable.length, kit: !!found })); } catch { /* the editor opens without the greeting */ }
+    remember(project.id, { sources: usable.length, kit: !!found, ...(opts.prompt ? { prompt: opts.prompt } : {}) });
     return project;
   } catch (e) {
     await api.remove(project.id).catch(() => {});

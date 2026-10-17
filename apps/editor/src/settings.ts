@@ -10,8 +10,8 @@ export interface Preferences {
   language: 'auto' | 'fr' | 'en';
   /** the theme: one palette (all are dark but paper), or as the system says */
   theme: ThemeId;
-  /** how the interface is laid out: the editor, or a display mode */
-  display: Display;
+  /** how the interface works: the studio (the film directed in notes) or the atelier (layers, timeline, inspector) */
+  view: View;
   /** render size while playing, dragging or scrubbing */
   motion: 'auto' | 'full' | 'half' | 'quarter';
   /** render size once still: the size shown on screen, or the composition's full size */
@@ -41,17 +41,16 @@ export interface Preferences {
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
-  language: 'auto', theme: 'studio', display: 'editor', motion: 'auto', still: 'display', blur: 'document', exactFrames: true,
+  language: 'auto', theme: 'studio', view: 'studio', motion: 'auto', still: 'display', blur: 'document', exactFrames: true,
   effectsDb: -8, musicDb: -14, duckDb: -12, varySounds: true, confirmPaid: true, paidPerTurn: 10, voiceProvider: 'auto', voice: '', voiceModel: '', previewVolume: 1, previewMuted: false,
 };
 
-// ── themes and display modes ────────────────────────────────
+// ── themes and views ─────────────────────────────────────────
 /** a theme is one palette; all are dark but paper, and system follows the computer */
 export type ThemeId = 'system' | 'studio' | 'obsidian' | 'carbon' | 'dusk' | 'paper';
-/** a display mode lays the same interface out differently: the editor, the film leading (cinema), the conversation leading */
-export type Display = 'editor' | 'cinema' | 'conversation';
+/** the studio: the film in front, directed by notes the assistant carries out; the atelier: the layers, the timeline and the inspector, for the detail */
+export type View = 'studio' | 'atelier';
 const THEME_IDS: ThemeId[] = ['system', 'studio', 'obsidian', 'carbon', 'dusk', 'paper'];
-const DISPLAY_IDS: Display[] = ['editor', 'cinema', 'conversation'];
 const DARK_LEGACY: string[] = ['studio', 'obsidian', 'carbon', 'dusk'], LIGHT_LEGACY: string[] = ['paper'];
 
 /** a theme as the picker shows it: its id and the three colours that tell it apart (its name's key lives beside the picker) */
@@ -66,8 +65,8 @@ export const THEMES: ThemeInfo[] = [
 ];
 /** the window bar's colour, per theme (system resolves to one of the two) */
 const BAR: Record<string, string> = { studio: '#0b0f12', obsidian: '#040607', carbon: '#0f1011', dusk: '#14110c', paper: '#d8dde0' };
-/** the display modes, in the order they are offered */
-export const DISPLAYS: Display[] = ['editor', 'cinema', 'conversation'];
+/** the views, in the order they are offered */
+export const VIEWS: View[] = ['studio', 'atelier'];
 const VOICE_PROVIDERS = ['auto', 'elevenlabs', 'openai', 'gemini'] as const;
 
 /** a number kept within its range, the default when it is not one */
@@ -98,7 +97,9 @@ function load(): Preferences {
     else if (legacyTheme === 'dark') p.theme = 'studio';
     else if (legacyTheme === 'light') p.theme = 'paper';
     if (!THEME_IDS.includes(p.theme)) p.theme = DEFAULT_PREFERENCES.theme;
-    if (!DISPLAY_IDS.includes(p.display)) p.display = DEFAULT_PREFERENCES.display;
+    // the former display modes (editor, cinema, conversation) gave way to the views: the studio first
+    delete (p as Partial<Preferences> & { display?: unknown }).display;
+    if (!VIEWS.includes(p.view)) p.view = DEFAULT_PREFERENCES.view;
     if (!['auto', 'fr', 'en'].includes(p.language)) p.language = DEFAULT_PREFERENCES.language;
     const d = DEFAULT_PREFERENCES;
     p.effectsDb = within(p.effectsDb, d.effectsDb, -40, 12);
@@ -138,19 +139,19 @@ const lightQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-color
 const systemLight = signal(lightQuery?.matches ?? false);
 lightQuery?.addEventListener('change', (e) => { systemLight.value = e.matches; });
 
-/** the theme on the page: data-theme and data-display on <html>, read by the stylesheet's tokens */
-let lastDisplay = '';
+/** the theme on the page: data-theme and data-view on <html>, read by the stylesheet's tokens */
+let lastView = '';
 effect(() => {
   if (typeof document === 'undefined') return;
   const p = prefs.value;
   const theme = p.theme === 'system' ? (systemLight.value ? 'paper' : 'studio') : p.theme;
   document.documentElement.dataset.theme = theme;
-  document.documentElement.dataset.display = p.display;
+  document.documentElement.dataset.view = p.view;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', BAR[theme] ?? BAR.studio);
   document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', theme === 'paper' ? 'light' : 'dark');
-  // the display modes change the size of the stage without a window resize: the viewport re-measures on this
-  if (lastDisplay && lastDisplay !== p.display) window.dispatchEvent(new Event('resize'));
-  lastDisplay = p.display;
+  // another view changes the size of the stage without a window resize: the viewport re-measures on this
+  if (lastView && lastView !== p.view) window.dispatchEvent(new Event('resize'));
+  lastView = p.view;
 });
 
 /** the settings dialog, opened from the top bar, the home screen or Ctrl+, */

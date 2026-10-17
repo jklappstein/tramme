@@ -1,6 +1,6 @@
 // The editor, the first time a project opens.
 
-import { press, registerTour } from './engine.ts';
+import { press, registerTour, inAtelier } from './engine.ts';
 import { m } from '../i18n/index.ts';
 
 registerTour({
@@ -8,6 +8,7 @@ registerTour({
   title: m('tours.editor.discoverTheEditor'),
   summary: m('tours.editor.theEditorSPanels'),
   page: 'editor',
+  available: inAtelier,
   auto: true,
   order: 10,
   steps: [

@@ -14,6 +14,7 @@ import { loadChats, runTool } from './ai/index.ts';
 import { App } from './ui/App.tsx';
 import { Home } from './ui/Home.tsx';
 import './styles.css';
+import './studio.css';
 import { offerTours } from './tours/index.ts';
 import { startProject } from './start.ts';
 import { t } from './i18n/index.ts';

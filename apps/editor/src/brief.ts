@@ -52,6 +52,28 @@ export function inventoryOf(doc: TrammeDoc): Omit<Brief, 'version' | 'kind' | 'u
 
 /** what the user and the assistant set, kept from one writing to the next */
 const KEPT = ['about', 'sources', 'tone', 'rules'] as const;
+export type BriefInput = Partial<Pick<Brief, (typeof KEPT)[number]>>;
+
+/** a brief read from its file, or null when there is none (or it is not one) */
+export function parseBrief(raw: string | null | undefined): Brief | null {
+  try { const p = JSON.parse(raw ?? 'null'); return isBrief(p) ? p : null; } catch { return null; }
+}
+
+/** the brief written again: the facts of the document, and what was set before unless given now (an empty one clears it) */
+export function briefOf(doc: TrammeDoc, prev: Brief | null, input: BriefInput): Brief {
+  const written: Brief = { version: 1, kind: 'brief', updated: new Date().toISOString(), ...inventoryOf(doc) };
+  for (const k of KEPT) {
+    const v = input[k] ?? prev?.[k];
+    if (v !== undefined && v !== '' && !(Array.isArray(v) && !v.length)) (written as unknown as Record<string, unknown>)[k] = v;
+  }
+  return written;
+}
+
+/** the brief's record in the document, added or brought up to date */
+export function briefOp(doc: TrammeDoc, path: string): Op {
+  const value = { type: 'json' as const, src: path };
+  return doc.assets.brief ? { op: 'replace', path: pointer('assets', 'brief'), value } : { op: 'add', path: pointer('assets', 'brief'), value };
+}
 
 const brief: ToolType<{ about?: string; sources?: string[]; tone?: string; rules?: string[] }> = {
   name: 'brief', title: 'Project brief', description: 'writes the brief of the project (assets/brief.json): the facts of the document, and what the piece is about, its sources, the tone and the rules kept; the assistant follows it over its defaults',
@@ -66,19 +88,11 @@ const brief: ToolType<{ about?: string; sources?: string[]; tone?: string; rules
   },
   ai: { when: 'after reading the sources of a project (about, sources), when a project starts to have a style of its own (after the first accepted proposal, after a kit), and whenever the user says a rule or a tone worth keeping; refresh it after big style decisions and keep it true from then on', avoid: 'rewriting the tone and rules the user set without asking; a brief that drifts from the document or the sources' },
   async run(input, ctx) {
-    const prevRaw = await ctx.readText(BRIEF_PATH).catch(() => null);
-    let prev: Brief | null = null;
-    try { const p = JSON.parse(prevRaw ?? 'null'); if (isBrief(p)) prev = p; } catch { /* no brief yet */ }
-    const written: Brief = { version: 1, kind: 'brief', updated: new Date().toISOString(), ...inventoryOf(ctx.doc) };
-    for (const k of KEPT) {
-      const v = input[k] ?? prev?.[k];
-      if (v !== undefined) (written as unknown as Record<string, unknown>)[k] = v;
-    }
+    const prev = parseBrief(await ctx.readText(BRIEF_PATH).catch(() => null));
+    const written = briefOf(ctx.doc, prev, input);
     const path = await ctx.writeFile(BRIEF_PATH, JSON.stringify(written, null, 1));
-    const value = { type: 'json' as const, src: path };
-    const op: Op = ctx.doc.assets.brief ? { op: 'replace', path: pointer('assets', 'brief'), value } : { op: 'add', path: pointer('assets', 'brief'), value };
     return {
-      ops: [op], label: t('brief.written'),
+      ops: [briefOp(ctx.doc, path)], label: t('brief.written'),
       text: `The brief is at ${BRIEF_PATH}${prev ? ' (what was set before and not given now is kept)' : ''}:\n${JSON.stringify(written, null, 1)}\nRead it: set its "tone" (two or three lines, the character of the piece) and its "rules" (the do and don't of this project, 3 to 8 lines) with another call when they are not set yet, and keep them true from then on. The brief wins over your defaults.`,
     };
   },

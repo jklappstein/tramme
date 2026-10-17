@@ -16,7 +16,7 @@ import { EffortPicker, ModelPicker } from './ModelPicker.tsx';
 import { aiSettings, aiStatus, connectProvider, disconnectProvider, ensureStatus, providersChanged, refreshStatus, removeCustomProvider, saveCustomProvider, serverName, setAiSettings, statusLabels } from '../ai/index.ts';
 import { allowNotifications, notificationState } from '../notify.ts';
 import { previewInfo } from '../preview.ts';
-import { DEFAULT_PREFERENCES, DISPLAYS, prefs, resetPrefs, setLanguage, setPrefs, settingsOpen, settingsSection, THEMES, type Preferences, type SettingsSection, type ThemeInfo } from '../settings.ts';
+import { DEFAULT_PREFERENCES, prefs, resetPrefs, setLanguage, setPrefs, settingsOpen, settingsSection, THEMES, type Preferences, type SettingsSection, type ThemeInfo } from '../settings.ts';
 import { S, toast } from '../state.ts';
 import { Modal, NumberField, Select, Seg, Toggle } from './controls.tsx';
 import { Icon } from './icons.tsx';
@@ -26,6 +26,7 @@ import { vaultOrigin } from '../mode.ts';
 import { tauri } from '../tauri.ts';
 import { fromVault } from '../vault/link.ts';
 import { Providers as ProviderList, type ProviderActions } from './Providers.tsx';
+import { ViewSwitch } from './views.tsx';
 import { Confirm, norm, Row, Search, Section } from './SettingsRows.tsx';
 
 const MOTION: Record<Preferences['motion'], string> = {
@@ -59,12 +60,6 @@ const THEME_NAME: Record<string, string> = {
   paper: m('settings.themes.paper'),
 };
 
-const DISPLAY_NAME: Record<string, string> = {
-  editor: m('app.displayEditor'),
-  cinema: m('app.displayCinema'),
-  conversation: m('app.displayConversation'),
-};
-
 function ThemeChips({ value, onPick }: { value: Preferences['theme']; onPick: (id: Preferences['theme']) => void }) {
   return (
     <div class="theme-chips">
@@ -92,8 +87,8 @@ function Appearance() {
       <Row label={t('settings.theme')} hint={t('settings.themeHint')} stack>
         <ThemeChips value={p.theme} onPick={(id) => setPrefs({ theme: id })} />
       </Row>
-      <Row label={t('settings.display')} hint={t('settings.displayHint')}>
-        <Seg value={p.display} options={DISPLAYS.map((id) => [id, t(DISPLAY_NAME[id])] as [Preferences['display'], string])} onChange={(v) => { setPrefs({ display: v as Preferences['display'] }); S.summon.value = 'none'; }} />
+      <Row label={t('settings.view')} hint={t('settings.viewHint')}>
+        <ViewSwitch />
       </Row>
     </Section>
   );

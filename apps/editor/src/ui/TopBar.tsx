@@ -1,4 +1,4 @@
-// Top bar: project, history, format, frame rate, export.
+// Top bar: project, the view (studio or atelier), history, format, frame rate, export.
 
 import { useRef, useState } from 'preact/hooks';
 import { pointer } from '@tramme/core';
@@ -12,7 +12,8 @@ import { openMenu, Popover, Select, type MenuItem } from './controls.tsx';
 import { VIDEO, WEB_FORMATS, type WebFormat } from '../formats.ts';
 import { Icon } from './icons.tsx';
 import { LogoMark } from './Logo.tsx';
-import { settingsOpen, setPrefs, prefs, DISPLAYS } from '../settings.ts';
+import { settingsOpen, prefs, VIEWS } from '../settings.ts';
+import { setView, VIEW_LABEL, ViewSwitch } from './views.tsx';
 import { HelpButton, helpMenu } from './Help.tsx';
 import { WindowControls, windowBar } from './WindowControls.tsx';
 import { t } from '../i18n/index.ts';
@@ -155,22 +156,29 @@ async function rename(value: string) {
 
 const FPS = [24, 25, 30, 50, 60];
 
-/** format, frame rate, compositions, help and settings, for the narrow bar */
-const DISPLAY_LABEL: Record<string, string> = { editor: t('app.displayEditor'), cinema: t('app.displayCinema'), conversation: t('app.displayConversation') };
+interface FormatChoice { fmt: string; fps: number; setFormat: (id: string) => void; setFps: (n: number) => void; comps: [string, string][] }
 
-function moreMenu(e: MouseEvent, o: { fmt: string; fps: number; setFormat: (id: string) => void; setFps: (n: number) => void; comps: [string, string][] }) {
-  const btn = e.currentTarget as HTMLElement, r = btn.getBoundingClientRect();
+/** the compositions, the format and the frame rate, as menu items */
+function formatItems(o: FormatChoice): MenuItem[] {
   const items: MenuItem[] = [];
   if (o.comps.length) items.push({ section: t('common.composition') }, ...o.comps.map(([id, name]): MenuItem => ({ label: name, icon: id === S.compId.peek() ? 'check' : undefined, onClick: () => { S.compId.value = id; S.selection.value = []; } })), 'sep');
   items.push({ section: t('common.format') }, ...FORMATS.map(([id, label]): MenuItem => ({ label, icon: id === o.fmt ? 'check' : undefined, onClick: () => o.setFormat(id) })));
   items.push('sep', { section: t('common.frameRate') }, ...FPS.map((n): MenuItem => ({ label: t('common.nFps', { n }), icon: n === o.fps ? 'check' : undefined, onClick: () => o.setFps(n) })));
-  items.push('sep',
-    { section: t('app.display') },
-    ...DISPLAYS.map((id): MenuItem => ({ label: DISPLAY_LABEL[id], icon: prefs.value.display === id ? 'check' : undefined, onClick: () => setPrefs({ display: id }) })),
+  return items;
+}
+
+/** format, frame rate, compositions, view, help and settings, for the narrow bar */
+function moreMenu(e: MouseEvent, o: FormatChoice) {
+  const btn = e.currentTarget as HTMLElement, r = btn.getBoundingClientRect();
+  openMenu({ clientX: r.right, clientY: r.bottom + 4 }, [
+    ...formatItems(o),
+    'sep',
+    { section: t('views.view') },
+    ...VIEWS.map((id): MenuItem => ({ label: t(VIEW_LABEL[id]), icon: prefs.value.view === id ? 'check' : undefined, onClick: () => setView(id) })),
     'sep',
     { label: t('common.helpAndGuidedTours'), icon: 'help', onClick: () => helpMenu({ currentTarget: btn } as unknown as MouseEvent, 'editor') },
-    { label: t('common.settings'), icon: 'gear', onClick: () => { settingsOpen.value = true; } });
-  openMenu({ clientX: r.right, clientY: r.bottom + 4 }, items);
+    { label: t('common.settings'), icon: 'gear', onClick: () => { settingsOpen.value = true; } },
+  ]);
 }
 
 export function TopBar() {
@@ -184,8 +192,10 @@ export function TopBar() {
     commit(t('topbar.formatName', { name: f[1] }), [{ op: 'replace', path: `${cp}/width`, value: f[2] }, { op: 'replace', path: `${cp}/height`, value: f[3] }]);
   };
   const comps = Object.entries(doc.compositions);
+  const studio = prefs.value.view === 'studio';
+  const choice: FormatChoice = { fmt, fps: c.fps, setFormat, setFps: (n) => commit(t('common.frameRate'), [{ op: 'replace', path: `${cp}/fps`, value: n }]), comps: comps.length > 1 ? comps.map(([id, x]) => [id, x.name] as [string, string]) : [] };
   return (
-    <header class="topbar" {...windowBar}>
+    <header class={`topbar${studio ? ' in-studio' : ''}`} {...windowBar}>
       <a class="brand" href="/" title={t('topbar.allProjects')} onClick={leave}><LogoMark /><span>tramme</span></a>
       <span class="sep" />
       <div class="project" data-tour="project">
@@ -197,30 +207,32 @@ export function TopBar() {
           <i class="dot" /><span>{save === 'saved' ? t('topbar.saved') : save === 'saving' ? t('topbar.saving') : save === 'error' ? t('topbar.notSaved') : t('topbar.modified')}</span>
         </span>
       </div>
-      {comps.length > 1 && <div style={{ width: 170 }}><Select value={S.compId.value} options={comps.map(([id, x]) => [id, x.name])} onChange={(v) => { S.compId.value = v; S.selection.value = []; }} /></div>}
+      {!studio && comps.length > 1 && <div style={{ width: 170 }} class="hide-sm"><Select value={S.compId.value} options={comps.map(([id, x]) => [id, x.name])} onChange={(v) => { S.compId.value = v; S.selection.value = []; }} /></div>}
+      <span class="grow" />
+      <ViewSwitch />
       <span class="grow" />
       <div class="group" data-tour="history">
         <button class="icon-btn" title={undoLabel.value ? t('topbar.undoActionCtrlZ', { action: undoLabel.value }) : t('topbar.undoCtrlZ')} disabled={!canUndo.value} onClick={undo}><Icon name="undo" /></button>
         <button class="icon-btn" title={redoLabel.value ? t('topbar.redoActionCtrlShift', { action: redoLabel.value }) : t('topbar.redoCtrlShiftZ')} disabled={!canRedo.value} onClick={redo}><Icon name="redo" /></button>
       </div>
       <span class="sep" />
-      <div class="settings" data-tour="format">
-        <div style={{ width: 168 }} class="hide-sm">
-          <Select value={fmt} options={[...FORMATS.map(([id, label]) => [id, label] as [string, string]), ...(fmt === 'custom' ? [['custom', `${c.width}×${c.height}`] as [string, string]] : [])]} onChange={setFormat} />
-        </div>
-        <div style={{ width: 84 }}>
-          <Select value={String(c.fps)} options={['24', '25', '30', '50', '60'].map((f) => [f, t('common.nFps', { n: f })])} onChange={(v) => commit(t('common.frameRate'), [{ op: 'replace', path: `${cp}/fps`, value: Number(v) }])} />
-        </div>
-      </div>
+      {studio
+        ? <button class="format-pill hide-sm" data-tour="format" title={t('studio.formatHint')} onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); openMenu({ clientX: r.left, clientY: r.bottom + 4 }, formatItems(choice)); }}>
+          <span>{FORMATS.find((f) => f[0] === fmt)?.[1].split(' · ')[0] ?? `${c.width}×${c.height}`}</span><i /><span>{t('common.nFps', { n: c.fps })}</span><i /><span>{fmtSeconds(c.duration)}</span><Icon name="chevronDown" />
+        </button>
+        : <div class="settings" data-tour="format">
+          <div style={{ width: 168 }} class="hide-sm">
+            <Select value={fmt} options={[...FORMATS.map(([id, label]) => [id, label] as [string, string]), ...(fmt === 'custom' ? [['custom', `${c.width}×${c.height}`] as [string, string]] : [])]} onChange={setFormat} />
+          </div>
+          <div style={{ width: 84 }}>
+            <Select value={String(c.fps)} options={['24', '25', '30', '50', '60'].map((f) => [f, t('common.nFps', { n: f })])} onChange={(v) => choice.setFps(Number(v))} />
+          </div>
+        </div>}
       <HelpButton page="editor" />
-      <button class="icon-btn" title={t('app.display')} onClick={(e) => {
-        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        openMenu({ clientX: r.right, clientY: r.bottom + 4 }, DISPLAYS.map((id): MenuItem => ({ label: DISPLAY_LABEL[id], icon: prefs.value.display === id ? 'check' : undefined, onClick: () => setPrefs({ display: id }) })));
-      }}><Icon name="expand" /></button>
       <button class="icon-btn" data-tour="settings" title={t('common.settingsCtrl')} onClick={() => { settingsOpen.value = true; }}><Icon name="gear" /></button>
       <button class="btn primary" data-tour="export" onClick={(e) => setExp(exp ? null : (e.currentTarget as HTMLElement))}><Icon name="download" /><span class="label">{t('common.export')}</span></button>
       {/* narrow screens: what no longer fits in the bar moves here */}
-      <button class="icon-btn more-btn" title={t('topbar.moreOptions')} aria-label={t('topbar.moreOptions')} onClick={(e) => moreMenu(e as unknown as MouseEvent, { fmt, fps: c.fps, setFormat, setFps: (n) => commit(t('common.frameRate'), [{ op: 'replace', path: `${cp}/fps`, value: n }]), comps: comps.length > 1 ? comps.map(([id, x]) => [id, x.name] as [string, string]) : [] })}><Icon name="more" /></button>
+      <button class="icon-btn more-btn" title={t('topbar.moreOptions')} aria-label={t('topbar.moreOptions')} onClick={(e) => moreMenu(e as unknown as MouseEvent, choice)}><Icon name="more" /></button>
       <WindowControls />
       {exp && <ExportPop anchor={exp} onClose={() => setExp(null)} />}
     </header>
