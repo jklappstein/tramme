@@ -5,8 +5,10 @@
 import './home.ts';
 import './studio.ts';
 import './editor.ts';
+import './tips.ts';
 import './drawn.ts';
 import './sound.ts';
+import './speech.ts';
 import './assistant.ts';
 
 export * from './engine.ts';

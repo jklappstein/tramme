@@ -548,7 +548,7 @@ function SpeechSection({ asset }: { asset: string }) {
   const done = !!S.doc.value.assets[transcriptIdOf(asset)], again = done && !transcribing(asset);
   return (
     <Section id="speech" title={t('transcribe.section')} right={again && <button class="icon-btn sm" title={t('panel.transcribeAgain')} onClick={() => transcribe(asset)}><Icon name="loop" /></button>}>
-      <div class="speech-row">
+      <div class="speech-row" data-tour="speech">
         <span class="faint">{done ? t('transcribe.readyHint') : t('transcribe.notYet')}</span>
         <TranscribeButton asset={asset} />
       </div>

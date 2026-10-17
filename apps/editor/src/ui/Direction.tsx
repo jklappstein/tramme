@@ -107,7 +107,7 @@ export function Direction() {
         </section>
       )}
 
-      <section class="dir-section">
+      <section class="dir-section" data-tour="material">
         <div class="dir-head"><h4>{t('studio.direction.material')}</h4><span class="faint">{sources.length || ''}</span></div>
         {sources.length > 0
           ? <div class="dir-sources">{sources.map((s) => (
