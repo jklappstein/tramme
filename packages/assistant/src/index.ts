@@ -243,7 +243,7 @@ export const TOOLS: ToolDef[] = [
 TOOLS.push(
   {
     name: 'get_transcript',
-    description: 'What is said in a sound or video of the project (asset), sentence by sentence with start and end times, long pauses and hesitations (candidates for cuts). words: true also gives each word with its time. Starts the transcription if it does not exist yet, and waits for it. Times are those of the file; after cut_media, use the transcript of the edit (composition time).',
+    description: 'What is said in a sound or video of the project (asset), sentence by sentence with start and end times, long pauses and hesitations (candidates for cuts). words: true also gives each word with its time. When the media is not transcribed yet, the user is asked to start it (they decide), and the call waits for it; declined, do without what is said. Times are those of the file; after cut_media, use the transcript of the edit (composition time).',
     schema: z.object({
       asset: z.string().describe('id of the sound or video asset, or of its transcript (json asset)'),
       from: z.number().optional().describe('start (s)'),

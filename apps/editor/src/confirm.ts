@@ -1,5 +1,5 @@
 // A question the user answers before something happens (a generation that
-// costs money): asked in the conversation while the assistant works, in a
+// costs money, a transcription the assistant needs): asked in the conversation while the assistant works, in a
 // dialog otherwise; the caller waits for the answer. When the assistant works
 // on its own (its changes applied without the user), nothing is asked: each
 // paid generation counts against the allowance of its turn (Sound settings),
@@ -38,6 +38,11 @@ export function confirmWith(title: string, text: string, yes: string): Promise<b
     question.peek()?.resolve(false);
     question.value = { title, text, yes, resolve, inChat: !!turn };
   });
+}
+
+/** asks the user before the assistant starts something only they decide (a transcription); a turn left alone is never asked: no */
+export async function askUser(title: string, text: string, yes: string): Promise<boolean> {
+  return !turn?.auto && confirmWith(title, text, yes);
 }
 
 export function answer(yes: boolean) {

@@ -99,7 +99,8 @@ async function frameOf(v: VideoFrames, at: number): Promise<HTMLCanvasElement | 
 /** what is said in a sound or video, in short (get_transcript gives it all, timed) */
 async function speech(ctx: ToolContext, asset: string): Promise<string> {
   try {
-    const tr = await ctx.transcript(asset);
+    // one question per source would be too many: the user transcribes what matters
+    const tr = await ctx.transcript(asset, { ask: false });
     if (!tr.words.length) return 'Nothing is said in it.';
     const said = tr.words.map((w) => w.w).join(' ');
     return `What is said (${tr.language ?? 'language?'}, ${tr.words.length} words${said.length > 3000 ? ', the beginning' : ''}; get_transcript gives it all, timed):\n${clip(said, 3000)}`;

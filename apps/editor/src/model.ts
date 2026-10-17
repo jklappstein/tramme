@@ -1,7 +1,7 @@
 // Pure helpers over the document for the editor: tree order, parents,
 // keyframes, time formatting, and the ops of common edits.
 
-import { getAt, pointer, propKind, setKeyframe, setProp, type Composition, type TrammeDoc, type Keyframe, type KeyframedProp, type Layer, type Op, type Prop } from '@tramme/core';
+import { getAt, pointer, propKind, setKeyframe, setProp, staticValue, type Composition, type TrammeDoc, type Keyframe, type KeyframedProp, type Layer, type Op, type Prop } from '@tramme/core';
 import { locale, t } from './i18n/index.ts';
 
 export interface TreeItem { id: string; layer: Layer; depth: number; parent: string | null }
@@ -151,6 +151,62 @@ export function shiftLayerOps(doc: TrammeDoc, compId: string, id: string, dt: nu
     for (const [name] of animatedProps(l)) ops.push({ op: 'replace', path: propPath(compId, lid, name), value: shiftProp(rawProp(doc, compId, lid, name)!, dt) });
   }
   return ops;
+}
+
+const r4 = (x: number) => +x.toFixed(4);
+
+/**
+ * Where a layer's source starts once its in point moves by `din`, so what
+ * plays stays where it was in time: a video goes further in its file, a sound
+ * too at its rate, a composition further in its time at its speed. Null when
+ * nothing carries (no source, a start animated or written as an expression, a
+ * composition remapped).
+ */
+export function carriedStart(l: Layer, din: number): number | null {
+  if (!din || !l.props) return null;
+  const p = l.props, raw = staticValue(p.start);
+  if (p.start !== undefined && typeof raw !== 'number') return null;
+  const s0 = (raw as number | undefined) ?? 0;
+  const factor = (v: unknown) => Number(staticValue(v) ?? 1) || 1;
+  if (l.type === 'video') return Math.max(0, s0 + din);
+  if (l.type === 'audio') return Math.max(0, s0 + din * factor(p.rate));
+  if (l.type === 'comp' && (p.remap ?? null) === null) return s0 + din * factor(p.speed);
+  return null;
+}
+
+/** the in point of a layer moved to `at`, what it plays staying in place (the head cut off, or brought back) */
+export function trimInOps(doc: TrammeDoc, compId: string, id: string, at: number): Op[] {
+  const l = doc.compositions[compId].layers[id], lp = pointer('compositions', compId, 'layers', id);
+  const ops: Op[] = [{ op: 'add', path: `${lp}/in`, value: r4(at) }];
+  const s = carriedStart(l, at - (l.in ?? 0));
+  if (s !== null) ops.push({ op: 'add', path: `${lp}/props/start`, value: r4(s) });
+  return ops;
+}
+
+/**
+ * A layer cut in two at `at`: it ends there, and a copy of it plays on from
+ * there to its old end (its source carried, its keyframes the same, just
+ * above it in the stack). Null when `at` is not inside it, or for a group.
+ */
+export function splitLayerOps(doc: TrammeDoc, compId: string, id: string, at: number): { ops: Op[]; id: string } | null {
+  const c = doc.compositions[compId], l = c.layers[id];
+  if (!l || l.children) return null;
+  const tin = l.in ?? 0, tout = l.out ?? c.duration;
+  if (at <= tin || at >= tout) return null;
+  const stem = id.replace(/-\d+$/, '');
+  let n = 2;
+  while (c.layers[`${stem}-${n}`]) n++;
+  const nid = `${stem}-${n}`;
+  const rest: Layer = { ...structuredClone(l), in: r4(at) };
+  const s = carriedStart(l, at - tin);
+  if (s !== null) rest.props = { ...rest.props, start: r4(s) };
+  const parent = parentOf(c, id), list = parent ? c.layers[parent].children! : c.order, i = list.indexOf(id);
+  const ops: Op[] = [
+    { op: 'add', path: pointer('compositions', compId, 'layers', id, 'out'), value: r4(at) },
+    { op: 'add', path: pointer('compositions', compId, 'layers', nid), value: rest },
+    { op: 'replace', path: parent ? pointer('compositions', compId, 'layers', parent, 'children') : pointer('compositions', compId, 'order'), value: [...list.slice(0, i + 1), nid, ...list.slice(i + 1)] },
+  ];
+  return { ops, id: nid };
 }
 
 /** a fresh id: base, base2, base3... */

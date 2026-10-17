@@ -10,6 +10,8 @@ import { addModifierOps, editAtOps, fixedOps, folderOf, imagesIn, keyAtOps, keyI
 import { modsOf, modifierParams } from '@tramme/core';
 import { ColorField, NumberField, openMenu, Popover, Select, Seg, TextInput, Toggle, type MenuItem } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
+import { mediaOf, transcribe, TranscribeButton } from './Transcribe.tsx';
+import { transcribing, transcriptIdOf } from '../speech.ts';
 import { m, t, tr } from '../i18n/index.ts';
 
 const UNIT: Record<string, string> = { px: 'px', deg: '°', '%': '%', em: 'em', s: 's', x: '×', dB: 'dB' };
@@ -422,6 +424,7 @@ function LayerInspector({ ctx, id }: { ctx: Ctx; id: string }) {
   const lp = pointer('compositions', ctx.compId, 'layers', id);
   const setField = (k: string, v: unknown, label: string) => commit(label, v === undefined ? (k in layer ? [{ op: 'remove', path: `${lp}/${k}` }] : []) : [{ op: 'add', path: `${lp}/${k}`, value: v }]);
   const clipCandidates = Object.entries(c.layers).filter(([lid, l]) => lid !== id && reg.hasNode(l.type) && reg.node(l.type).path);
+  const media = mediaOf(layer);
   return (
     <>
       <div class="insp-head">
@@ -449,6 +452,7 @@ function LayerInspector({ ctx, id }: { ctx: Ctx; id: string }) {
         </div><span /></div>
       </Section>
       {layer.type === 'video' && <VideoTrim ctx={ctx} id={id} />}
+      {media && <SpeechSection asset={media} />}
       {node?.render.canvas2d || node?.container || !node ? (
         <Section id="transform" title={t('inspector.transform')}>
           <SchemaRows ctx={ctx} schema={TRANSFORM_SCHEMA} basePath={`${lp}/transform`} baseAddress={`${id}.transform`} />
@@ -534,6 +538,19 @@ function VideoTrim({ ctx, id }: { ctx: Ctx; id: string }) {
         <span>{fmtSeconds(start)} → {fmtSeconds(end)}</span>
         <span class="grow" />
         <span>{fmtSeconds(dur)}</span>
+      </div>
+    </Section>
+  );
+}
+
+/** what the media of the layer says: transcribed when the user asks, then read by the captions and the assistant */
+function SpeechSection({ asset }: { asset: string }) {
+  const done = !!S.doc.value.assets[transcriptIdOf(asset)], again = done && !transcribing(asset);
+  return (
+    <Section id="speech" title={t('transcribe.section')} right={again && <button class="icon-btn sm" title={t('panel.transcribeAgain')} onClick={() => transcribe(asset)}><Icon name="loop" /></button>}>
+      <div class="speech-row">
+        <span class="faint">{done ? t('transcribe.readyHint') : t('transcribe.notYet')}</span>
+        <TranscribeButton asset={asset} />
       </div>
     </Section>
   );

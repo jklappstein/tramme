@@ -187,7 +187,9 @@ button.ctx-chip:hover { background: var(--field-hover); color: var(--text); }
 .dir-source { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 4px; border-radius: var(--r-sm); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-xs); }
 .dir-source img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 5px; }
 .dir-source svg.i { width: 100%; height: 44px; padding: 12px 0; color: var(--text-3); }
-.dir-source span { padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir-source > span:not(.tag) { padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir-source .tag { align-self: flex-start; max-width: 100%; }
+.dir-source .tag svg.i { width: 11px; height: 11px; padding: 0; color: inherit; }
 
 /* ── narrow screens: the film, the storyboard, the notes; the bar at the thumb ── */
 @media (max-width: 1180px) { .studio-body { grid-template-columns: minmax(0, 1fr) 330px; } }

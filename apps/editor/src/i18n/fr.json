@@ -138,8 +138,7 @@
   },
   "attachments": {
     "nameImageSoundVideo": "{name} : image, son, vidéo, PDF ou JSON attendus",
-    "attachmentName": "Pièce jointe : {name}",
-    "couldNotTranscribeName": "Transcription de {name} impossible : {error}"
+    "attachmentName": "Pièce jointe : {name}"
   },
   "figures": {
     "pointer": "Pointeur",
@@ -224,13 +223,13 @@
     "languageDetected": "langue détectée"
   },
   "start": {
-    "yourVideoIsOn": "Votre vidéo est sur la timeline et sa parole est en cours de transcription. Dites-moi ce que vous voulez :",
+    "yourVideoIsOn": "Votre vidéo est sur la timeline. Pour que je travaille sur ce qui s'y dit, transcrivez-la d'abord (Transcrire, sur la vidéo ci-dessous). Dites-moi ce que vous voulez :",
     "theFinalFormatLandscape": "- le **format final** (paysage, vertical 9:16, carré) et la **durée** visée ;",
     "whatToCutSilences": "- ce qu'il faut **couper** : silences, hésitations, passages précis ;",
     "theStyleOfCaptions": "- le **style** des sous-titres et des titres, les **mots à mettre en avant** ;",
     "theOverallToneUnderstated": "- le **ton** général : sobre, dynamique, coloré.",
     "iWillShowYou": "Je vous proposerai chaque changement en aperçu avant de l'appliquer.",
-    "sourcesAreIn": "Vos {n} ressources sont dans le projet, et la parole des vidéos et des sons est en cours de transcription. Voici comment je vais procéder :",
+    "sourcesAreIn": "Vos {n} ressources sont dans le projet. Pour que je lise ce qui se dit dans les vidéos et les sons, transcrivez-les d'abord (Transcrire, sur chacun dans le matériel). Voici comment je vais procéder :",
     "sourcesReadAll": "- je lis **tout** : les documents page par page, les images, les vidéos et les sons avec ce qui s'y dit ;",
     "sourcesBrief": "- ce que j'apprends va dans le **brief** du projet : sujet, public, messages clés, chiffres, couleurs de la marque ;",
     "sourcesDirections": "- puis je propose **deux ou trois pistes** de vidéo (format, durée, scène par scène) et je réalise celle que vous choisissez.",
@@ -868,7 +867,21 @@
     "curveToTheNext": "Courbe vers la clé suivante",
     "nLayers": "{n} calques",
     "animatedProperties": "Propriétés animées",
-    "deleteNKeyframes": "Supprimer {n} clés"
+    "deleteNKeyframes": "Supprimer {n} clés",
+    "atPlayhead": "À la tête de lecture, {time}",
+    "split": "Scinder à la tête de lecture",
+    "trimStartToPlayhead": "Couper le début jusqu'à la tête de lecture",
+    "trimEndToPlayhead": "Couper la fin après la tête de lecture",
+    "moveToPlayhead": "Amener à la tête de lecture",
+    "setTimeHere": "Placer la tête de lecture ici",
+    "addMarkerHere": "Ajouter un repère ici",
+    "endHere": "Finir la composition ici",
+    "selectAll": "Sélectionner tous les calques",
+    "zoomToFit": "Voir toute la timeline",
+    "goToMarker": "Aller au repère",
+    "deleteMarker": "Supprimer le repère",
+    "markerN": "Repère {n}",
+    "goToKey": "Aller à l'image clé"
   },
   "topbar": {
     "couldNotSaveTo": "Enregistrement dans le projet impossible : {error}",
@@ -1888,5 +1901,17 @@
     "oneStep": "1 étape",
     "more": "Lire la suite",
     "less": "Réduire"
+  },
+  "transcribe": {
+    "action": "Transcrire",
+    "hint": "Transformer ce qui est dit en mots minutés, pour les sous-titres et l'assistant",
+    "running": "Transcription",
+    "done": "Transcrit",
+    "doneHint": "Ce qui est dit est prêt pour les sous-titres et l'assistant",
+    "section": "Parole",
+    "notYet": "Pas encore transcrit. Transcrivez pour poser des sous-titres sur les mots et laisser l'assistant lire ce qui est dit.",
+    "readyHint": "Transcrit : les sous-titres et l'assistant peuvent utiliser les mots.",
+    "askTitle": "Transcrire la parole ?",
+    "askText": "L'assistant a besoin de ce qui est dit dans {name}. Le transcrire maintenant ?"
   }
 }

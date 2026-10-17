@@ -17,6 +17,7 @@ import { studio } from '../studio.ts';
 import { ATTACHABLE } from './composer.tsx';
 import { resolveColor } from './controls.tsx';
 import { Icon } from './icons.tsx';
+import { TranscribeButton } from './Transcribe.tsx';
 import { LogoMark } from './Logo.tsx';
 import { t } from '../i18n/index.ts';
 
@@ -113,6 +114,7 @@ export function Direction() {
             <span key={s.ref} class={`dir-source ${s.kind}`} title={s.path}>
               {s.kind === 'image' ? <img src={api.fileUrl(project, s.path)} alt="" loading="lazy" /> : <Icon name={s.kind === 'video' ? 'film' : s.kind === 'audio' ? 'audio' : 'doc'} />}
               <span>{s.name}</span>
+              {(s.kind === 'audio' || s.kind === 'video') && s.asset && <TranscribeButton asset={s.asset} small />}
             </span>
           ))}</div>
           : <p class="dir-hint">{t('studio.direction.noMaterial')}</p>}

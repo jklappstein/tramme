@@ -11,6 +11,7 @@ import { frames } from '../frames.ts';
 import { current, filmDoc, focused, focusScene, notes, scenes, studio } from '../studio.ts';
 import { snap, timecode } from '../model.ts';
 import type { Scene } from '../scenes.ts';
+import { noBrowserMenu } from './controls.tsx';
 import { Icon } from './icons.tsx';
 import { Wave } from './Timeline.tsx';
 import { t } from '../i18n/index.ts';
@@ -126,7 +127,7 @@ export function Storyboard() {
   };
 
   return (
-    <section class="storyboard" data-tour="storyboard">
+    <section class="storyboard" data-tour="storyboard" onContextMenu={noBrowserMenu}>
       <div class="sb-head">
         <button class="sb-play" title={t('timeline.playSpace')} onClick={() => { S.playing.value = !S.playing.value; }}><Icon name={S.playing.value ? 'pause' : 'play'} /></button>
         <Where />

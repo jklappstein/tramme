@@ -138,8 +138,7 @@
   },
   "attachments": {
     "nameImageSoundVideo": "{name}: image, sound, video, PDF or JSON expected",
-    "attachmentName": "Attachment: {name}",
-    "couldNotTranscribeName": "Could not transcribe {name}: {error}"
+    "attachmentName": "Attachment: {name}"
   },
   "figures": {
     "pointer": "Pointer",
@@ -224,13 +223,13 @@
     "languageDetected": "language detected"
   },
   "start": {
-    "yourVideoIsOn": "Your video is on the timeline and its speech is being transcribed. Tell me what you want:",
+    "yourVideoIsOn": "Your video is on the timeline. To have me work on what is said, transcribe it first (Transcribe, on the video below). Tell me what you want:",
     "theFinalFormatLandscape": "- the **final format** (landscape, vertical 9:16, square) and the target **length**;",
     "whatToCutSilences": "- what to **cut**: silences, hesitations, specific passages;",
     "theStyleOfCaptions": "- the **style** of captions and titles, the **words to highlight**;",
     "theOverallToneUnderstated": "- the overall **tone**: understated, lively, colorful.",
     "iWillShowYou": "I will show you each change as a preview before applying it.",
-    "sourcesAreIn": "Your {n} sources are in the project, and what is said in the videos and sounds is being transcribed. Here is how I will work:",
+    "sourcesAreIn": "Your {n} sources are in the project. For me to read what is said in the videos and sounds, transcribe them first (Transcribe, on each one in the material). Here is how I will work:",
     "sourcesReadAll": "- I read **everything**: the documents page by page, the pictures, the videos and sounds with what is said;",
     "sourcesBrief": "- what I learn goes into the project's **brief**: subject, audience, key messages, figures, brand colours;",
     "sourcesDirections": "- then I propose **two or three directions** for the video (format, length, scene by scene), and make the one you choose.",
@@ -868,7 +867,21 @@
     "curveToTheNext": "Curve to the next keyframe",
     "nLayers": "{n} layers",
     "animatedProperties": "Animated properties",
-    "deleteNKeyframes": "Delete {n} keyframes"
+    "deleteNKeyframes": "Delete {n} keyframes",
+    "atPlayhead": "At the playhead, {time}",
+    "split": "Split at the playhead",
+    "trimStartToPlayhead": "Trim the start to the playhead",
+    "trimEndToPlayhead": "Trim the end from the playhead",
+    "moveToPlayhead": "Move to the playhead",
+    "setTimeHere": "Put the playhead here",
+    "addMarkerHere": "Add a marker here",
+    "endHere": "End the composition here",
+    "selectAll": "Select all the layers",
+    "zoomToFit": "Show the whole timeline",
+    "goToMarker": "Go to the marker",
+    "deleteMarker": "Delete the marker",
+    "markerN": "Marker {n}",
+    "goToKey": "Go to the keyframe"
   },
   "topbar": {
     "couldNotSaveTo": "Could not save to the project: {error}",
@@ -1134,5 +1147,17 @@
     "oneStep": "1 step",
     "more": "Read more",
     "less": "Show less"
+  },
+  "transcribe": {
+    "action": "Transcribe",
+    "hint": "Turn what is said into timed words, for the captions and the assistant",
+    "running": "Transcribing",
+    "done": "Transcribed",
+    "doneHint": "What is said is ready for the captions and the assistant",
+    "section": "Speech",
+    "notYet": "Not transcribed. Transcribe it to place captions on the words and let the assistant read what is said.",
+    "readyHint": "Transcribed: the captions and the assistant can use the words.",
+    "askTitle": "Transcribe the speech?",
+    "askText": "The assistant needs what is said in {name}. Transcribe it now?"
   }
 }

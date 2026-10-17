@@ -15,7 +15,7 @@ import { api, type AiEvent } from '../api.ts';
 import { describeOp, freshId } from '../model.ts';
 import { analyses, jpegOf, loadImage } from '../perception.ts';
 import { safeName } from '../files.ts';
-import { transcribeAsset, transcriptIdOf } from '../speech.ts';
+import { transcriptFor, transcriptIdOf } from '../speech.ts';
 import { TEMPLATES } from '../templates.ts';
 import { S } from '../state.ts';
 import { t } from '../i18n/index.ts';
@@ -66,15 +66,13 @@ export class ToolRunner {
   private videos = new Map<string, Promise<VideoFrames>>();
   private urlOf(src: string) { return new URL(src, new URL(S.docUrl.peek(), location.href)).href; }
 
-  /** a transcript: of the asset itself (json), or of a sound or video (made now if missing) */
-  private async readTranscript(assetId: string): Promise<{ t: Transcript; id: string }> {
+  /** a transcript: of the asset itself (json), or of a sound or video (when missing, the user is asked to make it, if `ask`) */
+  private async readTranscript(assetId: string, ask = true): Promise<{ t: Transcript; id: string }> {
     const doc = this.liveDoc(), a = doc.assets[assetId];
     if (!a) throw new Error(`unknown asset: ${assetId}`);
     let id = assetId;
-    if (a.type === 'audio' || a.type === 'video') {
-      id = transcriptIdOf(assetId);
-      if (!S.doc.peek().assets[id]) id = await transcribeAsset(assetId);
-    } else if (a.type !== 'json') throw new Error(`${assetId}: a sound, a video or a transcript is expected`);
+    if (a.type === 'audio' || a.type === 'video') id = await transcriptFor(assetId, ask);
+    else if (a.type !== 'json') throw new Error(`${assetId}: a sound, a video or a transcript is expected`);
     const entry = S.doc.peek().assets[id] ?? doc.assets[id];
     const r = await fetch(this.urlOf(entry.src), { cache: 'no-store' });
     const t = await r.json();
@@ -160,7 +158,7 @@ export class ToolRunner {
     // the transcript of the edit, the captions on it
     let note = '';
     try {
-      const { t, id: srcId } = await this.readTranscript(assetId);
+      const { t, id: srcId } = await this.readTranscript(assetId, false);
       const remapped = remapTranscript(t, keeps, at);
       const editId = `${transcriptIdOf(assetId)}-edit`.slice(0, 64);
       const path = `assets/transcripts/${safeName(`${assetId}-edit.json`)}`;
@@ -272,7 +270,7 @@ ${r.content[0].type === 'text' ? r.content[0].text : ''}`);
         return path;
       },
       renderStill: (t, id) => this.stillUrl(t, id),
-      transcript: async (id) => (await this.readTranscript(id)).t,
+      transcript: async (id, opts) => (await this.readTranscript(id, opts?.ask ?? true)).t,
       signal: this.signal,
       // a plugin's figures are not trusted: what is not a number is shown as a step without a share
       progress: (done, total, step) => this.onProgress?.(Number.isFinite(done) ? done : 0, Number.isFinite(total) ? total : 0, typeof step === 'string' ? step : undefined),

@@ -2,7 +2,9 @@
 // the whole file at once), cut into chunks of 28 s overlapping by 2 s, each
 // chunk turned to words by the server (Whisper on Workers AI, or with the
 // OpenAI key: api.reach) or, when it has none, by the local companion. The
-// transcript becomes a JSON asset of the project, beside the media.
+// transcript becomes a JSON asset of the project, beside the media. Nothing
+// is transcribed on its own: the user starts it (ui/Transcribe.tsx), or says
+// yes when the assistant asks.
 
 import { signal } from '@preact/signals';
 import { ALL_FORMATS, AudioBufferSink, Input, UrlSource } from 'mediabunny';
@@ -10,6 +12,7 @@ import { mergeChunks, pointer, transcriptIdOf, type Transcript, type TranscriptW
 import { aiStatus, companionLink, refreshStatus } from './ai/index.ts';
 import { reach } from './api.ts';
 import { safeName, takenPaths, upload } from './files.ts';
+import { askUser } from './confirm.ts';
 import { commit, S, toast } from './state.ts';
 import { m, t } from './i18n/index.ts';
 
@@ -122,6 +125,24 @@ export function transcribeAsset(assetId: string, language?: string): Promise<str
     running.set(assetId, job);
   }
   return job;
+}
+
+/** a transcription of this asset under way */
+export const transcribing = (assetId: string) => transcriptions.value.some((j) => j.id === assetId);
+
+/**
+ * The transcript of a media asset for the assistant: there already, or under
+ * way (waited for). The user is the one who starts a transcription: with
+ * `ask`, the assistant asks them (never in a turn left alone); otherwise, or
+ * when they say no, it is told to do without.
+ */
+export async function transcriptFor(assetId: string, ask: boolean): Promise<string> {
+  const id = transcriptIdOf(assetId), a = S.doc.peek().assets[assetId];
+  if (S.doc.peek().assets[id]) return id;
+  const job = running.get(assetId);
+  if (job) return job;
+  if (ask && await askUser(t('transcribe.askTitle'), t('transcribe.askText', { name: a?.name || assetId }), t('transcribe.action'))) return transcribeAsset(assetId);
+  throw new Error(`"${assetId}" is not transcribed and the user starts transcriptions themselves (the Transcribe button on the media): ${ask ? 'they declined for now' : 'ask them to'}, or work without what is said`);
 }
 
 async function transcribe(assetId: string, language?: string): Promise<string> {

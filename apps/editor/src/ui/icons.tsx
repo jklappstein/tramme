@@ -88,6 +88,9 @@ const P: Record<string, string> = {
   compare: 'M2.5 3.5h11v9h-11zM8 2v12',
   arrow: 'M3 8h10M9 4l4 4-4 4',
   clap: 'M2.5 6.5h11v7h-11zM2.5 6.5 3.3 3l10 .1-.5 3.4M6.3 3.1 5.4 6.5M10 3.1l-.9 3.4',
+  split: 'M8 1.5v13M2.5 5h3.5v6H2.5M13.5 5H10v6h3.5',
+  cutHead: 'M6 2v12M8.5 5h5v6h-5zM2.5 8h1.5',
+  cutTail: 'M10 2v12M2.5 5h5v6h-5zM12 8h1.5',
 };
 
 export type IconName = keyof typeof P | string;

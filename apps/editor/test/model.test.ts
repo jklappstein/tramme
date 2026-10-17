@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Composition, TrammeDoc } from '@tramme/core';
-import { contentEnd, describeOp } from '../src/model.ts';
+import { applyOps as apply } from '@tramme/core';
+import { carriedStart, contentEnd, describeOp, splitLayerOps, trimInOps } from '../src/model.ts';
 import { passes } from '../src/ai/server.ts';
 
 const comp = (layers: Composition['layers']): Composition => ({ name: 'Main', width: 1920, height: 1080, fps: 30, duration: 60, layers, order: Object.keys(layers) });
@@ -35,5 +36,44 @@ describe('a failure worth a new attempt', () => {
   });
   it('is never a quota, a plan or a key', () => {
     for (const m of ['You exceeded your current quota, please check your plan and billing details', 'Claude AI usage limit reached|1760000000', 'invalid x-api-key', 'HTTP 401', 'Please run /login', 'a property is missing']) expect(passes(m), m).toBe(false);
+  });
+});
+
+const applyOps = (doc: TrammeDoc, ops: Parameters<typeof apply>[1]) => apply(doc, ops).doc;
+
+describe('a clip cut at the playhead', () => {
+  const doc = (layers: Composition['layers'], children?: Record<string, string[]>) => {
+    const c = comp(layers);
+    if (children) { for (const [g, ch] of Object.entries(children)) c.layers[g].children = ch; c.order = c.order.filter((id) => !Object.values(children).flat().includes(id)); }
+    return { version: 1, root: 'main', compositions: { main: c }, assets: {}, tokens: {} } as unknown as TrammeDoc;
+  };
+  it('keeps what a video, a sound or a composition plays in place', () => {
+    expect(carriedStart({ type: 'video', props: { start: 2 } }, 3)).toBe(5);
+    expect(carriedStart({ type: 'audio', props: { rate: 2 } }, 3)).toBe(6);
+    expect(carriedStart({ type: 'comp', props: { start: 1, speed: 0.5 } }, 4)).toBe(3);
+    expect(carriedStart({ type: 'comp', props: { remap: 2 } }, 4)).toBeNull();
+    expect(carriedStart({ type: 'video', props: { start: { $k: [{ t: 0, v: 0 }] } } }, 1)).toBeNull();
+    expect(carriedStart({ type: 'text', props: {} }, 1)).toBeNull();
+  });
+  it('trims the head of a video in its file', () => {
+    const d = applyOps(doc({ v: { type: 'video', in: 2, out: 10, props: { video: 'a', start: 1 } } }), trimInOps(doc({ v: { type: 'video', in: 2, out: 10, props: { video: 'a', start: 1 } } }), 'main', 'v', 5));
+    expect(d.compositions.main.layers.v).toMatchObject({ in: 5, out: 10, props: { start: 4 } });
+  });
+  it('splits a clip in two that play on as one', () => {
+    const d0 = doc({ v: { type: 'video', in: 2, out: 10, props: { video: 'a', start: 1 } }, t: { type: 'text' } });
+    const r = splitLayerOps(d0, 'main', 'v', 6)!;
+    const d = applyOps(d0, r.ops), c = d.compositions.main;
+    expect(r.id).toBe('v-2');
+    expect(c.layers.v).toMatchObject({ in: 2, out: 6, props: { start: 1 } });
+    expect(c.layers['v-2']).toMatchObject({ in: 6, out: 10, props: { video: 'a', start: 5 } });
+    expect(c.order).toEqual(['v', 'v-2', 't']);
+  });
+  it('places the second part inside the same group, and refuses outside the clip or on a group', () => {
+    const d0 = doc({ g: { type: 'group' }, a: { type: 'text', in: 0, out: 4 }, b: { type: 'text' } }, { g: ['a', 'b'] });
+    const d = applyOps(d0, splitLayerOps(d0, 'main', 'a', 1)!.ops);
+    expect(d.compositions.main.layers.g.children).toEqual(['a', 'a-2', 'b']);
+    expect(d.compositions.main.order).toEqual(['g']);
+    expect(splitLayerOps(d0, 'main', 'a', 4)).toBeNull();
+    expect(splitLayerOps(d0, 'main', 'g', 1)).toBeNull();
   });
 });

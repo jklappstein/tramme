@@ -11,10 +11,11 @@ import { engineOf, modelLabel, providerOf } from '@tramme/assistant';
 import { aiSettings, aiStatus, CLI_SETUP, cliUnavailable, providerLabel, refreshStatus, setAiSettings } from '../ai/index.ts';
 import { lightbox, running, turnStart } from '../ai/conversation.ts';
 import { openSettings } from '../settings.ts';
-import { toast } from '../state.ts';
+import { S, toast } from '../state.ts';
 import { answer, chatShown, question } from '../confirm.ts';
 import { attachmentUrl, type Attachment } from '../attachments.ts';
 import { Icon } from './icons.tsx';
+import { TranscribeButton } from './Transcribe.tsx';
 import { locale, t } from '../i18n/index.ts';
 
 // ── light markdown: paragraphs, lists, code, bold, inline code ──
@@ -131,7 +132,7 @@ export function ToolLine({ tool }: { tool: NonNullable<ChatItem['tool']> }) {
 }
 
 /** a file joined to a message: a thumbnail for an image, its kind and name otherwise */
-export function FileChip({ a, onRemove }: { a: { path: string; name: string; kind: string }; onRemove?: () => void }) {
+export function FileChip({ a, onRemove }: { a: { path: string; name: string; kind: string; asset?: string }; onRemove?: () => void }) {
   const url = attachmentUrl(a as Attachment);
   return (
     <span class={`file-chip ${a.kind}`} title={a.path}>
@@ -139,6 +140,7 @@ export function FileChip({ a, onRemove }: { a: { path: string; name: string; kin
         ? <img src={url} alt="" onClick={() => { lightbox.value = url; }} />
         : <Icon name={a.kind === 'video' ? 'film' : a.kind === 'audio' ? 'audio' : a.kind === 'document' ? 'doc' : 'code'} />}
       <span class="file-name">{a.name}</span>
+      {(a.kind === 'audio' || a.kind === 'video') && a.asset && S.doc.value.assets[a.asset] && <TranscribeButton asset={a.asset} small />}
       {onRemove && <button class="icon-btn xs" title={t('common.remove')} onClick={onRemove}><Icon name="x" /></button>}
     </span>
   );

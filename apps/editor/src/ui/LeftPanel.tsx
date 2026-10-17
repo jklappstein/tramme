@@ -10,7 +10,7 @@ import { ColorField, longPress, openMenu, Seg, Swatch, TextInput, resolveColor, 
 import { Icon, kindColor, kindIcon } from './icons.tsx';
 import { preview } from '../preview.ts';
 import { fromLottie } from '@tramme/interop';
-import { transcribeAsset, transcriptIdOf } from '../speech.ts';
+import { mediaOf, TranscribeButton, transcribeItem } from './Transcribe.tsx';
 import { safeName, takenPaths, upload } from '../files.ts';
 import { m, t, tr } from '../i18n/index.ts';
 
@@ -261,6 +261,36 @@ function CompTrail() {
   );
 }
 
+/**
+ * The menu of a layer, the same in the layer list and on its clip in the
+ * timeline: `before` first (what only that place offers), rename when the
+ * place can rename in line.
+ */
+export function openLayerMenu(e: MouseEvent | { clientX: number; clientY: number }, id: string, opts: { rename?: () => void; before?: MenuItem[] } = {}) {
+  if ('preventDefault' in e) e.preventDefault();
+  const c = comp.peek(), l = c.layers[id];
+  if (!l) return;
+  if (!S.selection.peek().includes(id)) select([id]);
+  const lp = pointer('compositions', S.compId.peek(), 'layers', id);
+  const media = mediaOf(l);
+  openMenu(e, [
+    ...(opts.before?.length ? [...opts.before, 'sep' as const] : []),
+    ...(opts.rename ? [{ label: t('common.rename'), icon: 'text' as const, onClick: opts.rename }] : []),
+    { label: t('common.duplicate'), icon: 'copy', hint: 'Ctrl+D', onClick: duplicateSelection },
+    { label: l.visible === false ? t('common.show') : t('common.hide'), icon: l.visible === false ? 'eye' : 'eyeOff', onClick: () => commit(t('panel.visibility'), l.visible === false ? [{ op: 'remove', path: `${lp}/visible` }] : [{ op: 'add', path: `${lp}/visible`, value: false }]) },
+    { label: t('panel.goToInPoint'), icon: 'start', onClick: () => { S.time.value = l.in ?? 0; } },
+    { label: t('panel.precompose'), icon: 'comp', onClick: precompose },
+    ...(l.type === 'comp' && typeof l.props?.comp === 'string' ? [
+      { label: t('panel.openComposition'), icon: 'comp' as const, onClick: () => { S.compId.value = l.props!.comp as string; select([]); } },
+      { label: t('panel.decompose'), icon: 'group' as const, onClick: decompose },
+    ] : []),
+    ...(l.type === 'audio' && c.order.includes(id) ? [{ label: t('panel.groupSounds'), icon: 'audio' as const, onClick: groupSounds }] : []),
+    ...(media ? [transcribeItem(media)] : []),
+    'sep',
+    { label: t('common.delete'), icon: 'trash', hint: t('common.del'), onClick: deleteSelection },
+  ]);
+}
+
 // ── layer tree ───────────────────────────────────────────────
 /** the words the layer tree is narrowed to: every layer whose name holds them, folded groups opened */
 const filter = signal('');
@@ -315,25 +345,7 @@ function LayerTree() {
     addEventListener('pointermove', move); addEventListener('pointerup', up);
   };
 
-  const rowMenu = (e: MouseEvent | { clientX: number; clientY: number }, id: string) => {
-    if ('preventDefault' in e) e.preventDefault();
-    if (!sel.includes(id)) select([id]);
-    const l = c.layers[id];
-    openMenu(e, [
-      { label: t('common.rename'), icon: 'text', onClick: () => setRenaming(id) },
-      { label: t('common.duplicate'), icon: 'copy', hint: 'Ctrl+D', onClick: duplicateSelection },
-      { label: l.visible === false ? t('common.show') : t('common.hide'), icon: l.visible === false ? 'eye' : 'eyeOff', onClick: () => commit(t('panel.visibility'), l.visible === false ? [{ op: 'remove', path: `${lp(id)}/visible` }] : [{ op: 'add', path: `${lp(id)}/visible`, value: false }]) },
-      { label: t('panel.goToInPoint'), icon: 'start', onClick: () => { S.time.value = l.in ?? 0; } },
-      { label: t('panel.precompose'), icon: 'comp', onClick: precompose },
-      ...(l.type === 'comp' && typeof l.props?.comp === 'string' ? [
-        { label: t('panel.openComposition'), icon: 'comp' as const, onClick: () => { S.compId.value = l.props!.comp as string; select([]); } },
-        { label: t('panel.decompose'), icon: 'group' as const, onClick: decompose },
-      ] : []),
-      ...(l.type === 'audio' && c.order.includes(id) ? [{ label: t('panel.groupSounds'), icon: 'audio' as const, onClick: groupSounds }] : []),
-      'sep',
-      { label: t('common.delete'), icon: 'trash', hint: t('common.del'), onClick: deleteSelection },
-    ]);
-  };
+  const rowMenu = (e: MouseEvent | { clientX: number; clientY: number }, id: string) => openLayerMenu(e, id, { rename: () => setRenaming(id) });
 
   if (!Object.keys(c.layers).length) {
     return <div class="empty"><Icon name="layers" />{t('panel.noLayers')}<button class="btn sm" onClick={(e) => addLayerMenu(e)}><Icon name="plus" />{t('panel.addALayer')}</button></div>;
@@ -517,7 +529,7 @@ function Assets() {
     if ('preventDefault' in e) e.preventDefault();
     openMenu(e, [
       ...(a.type === 'image' || a.type === 'audio' || a.type === 'video' ? [{ label: t('panel.createALayer'), icon: 'plus' as const, onClick: () => use(id, a) }] : []),
-      ...(a.type === 'audio' || a.type === 'video' ? [{ label: doc.assets[transcriptIdOf(id)] ? t('panel.transcribeAgain') : t('panel.transcribeSpeech'), icon: 'text' as const, onClick: () => { transcribeAsset(id).catch((x) => toast(t('common.couldNotTranscribeError', { error: (x as Error).message }), 'error', 9000)); } }] : []),
+      ...(a.type === 'audio' || a.type === 'video' ? [transcribeItem(id)] : []),
       ...(a.type === 'image' ? [{ label: t('panel.animateTheFolderN', { n: imagesIn(doc, folderOf(a.src)).length }), icon: 'film' as const, onClick: () => animateFolder(folderOf(a.src)) }] : []),
       { label: t('panel.removeFromProject'), icon: 'trash', onClick: () => commit(t('common.removeName', { name: a.name || id }), [{ op: 'remove', path: pointer('assets', id) }]) },
     ]);
@@ -549,7 +561,7 @@ function Assets() {
                 {a.type !== 'image' && (a.type === 'font' ? <span style={{ fontFamily: `"${a.family}"`, color: 'var(--text)', fontSize: 13 }}>Aa</span> : <Icon name={ASSET_ICON[a.type]} />)}
               </span>
               <span class="name">{a.name || id}</span>
-              <span class="meta mono">{id}</span>
+              {a.type === 'audio' || a.type === 'video' ? <TranscribeButton asset={id} small /> : <span class="meta mono">{id}</span>}
             </div>
           ))}
         </div>

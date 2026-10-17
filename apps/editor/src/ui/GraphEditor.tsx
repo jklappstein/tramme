@@ -9,7 +9,7 @@ import { Evaluator, getAt, modsOf, resolveTokens, sampleKeyframes, type Bezier, 
 import { comp, commit, draft, cancelDraft, S, setTime, viewDoc, uiTime } from '../state.ts';
 import { assetData } from '../preview.ts';
 import { animatedProps, keysOf, layerName, propPath, rulerLabel, snap, timecode } from '../model.ts';
-import { bandOf } from './controls.tsx';
+import { bandOf, noBrowserMenu } from './controls.tsx';
 import { Icon } from './icons.tsx';
 import { propLabel } from './Timeline.tsx';
 import { t } from '../i18n/index.ts';
@@ -234,7 +234,7 @@ export function GraphEditor() {
   const sel1 = S.keys.value.length > 0;
 
   return (
-    <div class="graph" ref={host}>
+    <div class="graph" ref={host} onContextMenu={noBrowserMenu}>
       {channels.length === 0 ? (
         <div class="empty" style={{ height: '100%' }}><Icon name="curve" />{t('curves.selectAnAnimatedLayer')}</div>
       ) : (

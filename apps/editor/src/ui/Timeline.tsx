@@ -5,13 +5,13 @@
 import { signal } from '@preact/signals';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { layerActive, pointer, staticValue, type Composition, type Keyframe, type Layer, type Op } from '@tramme/core';
-import { clickSelect, comp, commit, draft, cancelDraft, S, select, setTime, frameStep, toggleFold, uiTime, viewDoc } from '../state.ts';
-import { animatedProps, flatTree, keysOf, layerName, parentOf, parseTime, propPath, rawProp, rulerLabel, shiftLayerOps, snap, subtree, timecode, topLayers, type TreeItem } from '../model.ts';
-import { bandOf, longPress, openMenu, Seg, useSize } from './controls.tsx';
+import { clickSelect, comp, commit, draft, cancelDraft, S, select, selectAll, setTime, frameStep, toggleFold, uiTime, viewDoc } from '../state.ts';
+import { animatedProps, contentEnd, flatTree, freshId, keysOf, layerName, parentOf, parseTime, propPath, rawProp, rulerLabel, shiftLayerOps, snap, splitLayerOps, subtree, timecode, topLayers, trimInOps, type TreeItem } from '../model.ts';
+import { bandOf, longPress, noBrowserMenu, openMenu, Seg, useSize } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
 import { preview } from '../preview.ts';
 import { GraphEditor } from './GraphEditor.tsx';
-import { FoldButtons } from './LeftPanel.tsx';
+import { addLayerMenu, FoldButtons, openLayerMenu } from './LeftPanel.tsx';
 import { peaksOf, wavePath, wavesReady } from '../waveforms.ts';
 import { m, t, tr } from '../i18n/index.ts';
 
@@ -43,7 +43,7 @@ export function Transport() {
   const frames = Math.round(c.duration * c.fps);
   const tab = S.bottomTab.value;
   return (
-    <div class="transport" data-tour="transport">
+    <div class="transport" data-tour="transport" onContextMenu={noBrowserMenu}>
       <div class="controls">
         <button class="icon-btn" title={t('timeline.startHome')} onClick={() => setTime(0)}><Icon name="start" /></button>
         <button class="icon-btn" title={t('timeline.previousFrame')} onClick={() => frameStep(-1)}><Icon name="prev" /></button>
@@ -131,6 +131,8 @@ export function Timeline() {
 
   // ── interactions ───────────────────────────────────────────
   const scrubFrom = (e: PointerEvent) => {
+    // the right button opens the ruler's menu, it does not move the playhead
+    if (e.button !== 0) return;
     const r = tracks.current!.getBoundingClientRect();
     const at = (ev: PointerEvent) => setTime(snap(T(ev.clientX - r.left + tracks.current!.scrollLeft), fps));
     at(e);
@@ -198,12 +200,9 @@ export function Timeline() {
       } else {
         const lp = pointer('compositions', compId, 'layers', id);
         if (mode === 'in') {
-          const din = Math.min(tout - 1 / fps, Math.max(0, tin + dt)) - tin;
-          ops = [{ op: 'add', path: `${lp}/in`, value: +(tin + din).toFixed(4) }];
-          // a video trims in its file: the edge carries the start with it, so the
-          // head cut off stops playing (held at 0: the file begins there)
-          const start0 = Number(staticValue(l.props?.start) ?? 0) || 0;
-          if (l.type === 'video' && l.props && din) ops.push({ op: 'add', path: `${lp}/props/start`, value: +Math.max(0, start0 + din).toFixed(4) });
+          // a video, a sound or a composition trims in its source: the edge carries
+          // the start with it, so the head cut off stops playing
+          ops = trimInOps(d0, compId, id, Math.min(tout - 1 / fps, Math.max(0, tin + dt)));
         } else {
           ops = [{ op: 'add', path: `${lp}/out`, value: +Math.max(tin + 1 / fps, tout + dt).toFixed(4) }];
         }
@@ -215,7 +214,7 @@ export function Timeline() {
       setSnapAt(null);
       if (!ops.length) { cancelDraft(); return; }
       const label = mode === 'in'
-        ? (ops.length > 1 ? t('timeline.trimVideoInFile') : t('common.inPoint'))
+        ? (ops.length > 1 && l.type === 'video' ? t('timeline.trimVideoInFile') : t('common.inPoint'))
         : mode === 'out' ? t('common.outPoint') : moving.length > 1 ? t('timeline.moveNClips', { n: moving.length }) : t('timeline.moveInTime');
       commit(label, ops);
     };
@@ -261,12 +260,79 @@ export function Timeline() {
     S.keys.value = chosen;
     const eases: [string, unknown][] = [[t('common.linear'), 'linear'], [t('common.hold'), 'hold'],
       ...Object.entries(doc.tokens).filter(([, tk]) => tk.type === 'ease').map(([n]) => [n, `@${n}`] as [string, unknown])];
+    const at = keysOf(rawProp(doc, compId, id, name))?.[i]?.t;
     openMenu(e, [
+      ...(at !== undefined ? [{ label: t('timeline.goToKey'), icon: 'target' as const, onClick: () => setTime(at) }, 'sep' as const] : []),
       { section: t('timeline.curveToTheNext') },
       ...eases.map(([label, v]) => ({ label: String(label), onClick: () => commit(t('common.curve'), easeOps(S.doc.peek(), compId, chosen, v)) })),
       'sep',
       { label: t('common.delete'), icon: 'trash', hint: t('common.del'), onClick: () => deleteKeys() },
     ]);
+  };
+
+  // ── the right click: the timeline's own menus, never the browser's ──
+  const timeAt = (x: number) => snap(Math.max(0, Math.min(c.duration, T(x - tracks.current!.getBoundingClientRect().left + tracks.current!.scrollLeft))), fps);
+  const setDuration = (label: string, d: number) => commit(label, [{ op: 'replace', path: pointer('compositions', compId, 'duration'), value: d }]);
+
+  const splitAt = (id: string, at: number) => { const r = splitLayerOps(S.doc.peek(), compId, id, at); if (r && commit(t('timeline.split'), r.ops)) select([r.id]); };
+
+  /** a clip or its name: what the playhead can do to it, then the layer's own menu (the same as in the layer list) */
+  const clipMenu = (e: MouseEvent, id: string) => {
+    const l = S.doc.peek().compositions[compId]?.layers[id];
+    if (!l) return;
+    const at = snap(S.time.peek(), fps), tin = l.in ?? 0, tout = l.out ?? c.duration, inside = at > tin && at < tout;
+    const lp = pointer('compositions', compId, 'layers', id);
+    openLayerMenu(e, id, {
+      before: [
+        { section: t('timeline.atPlayhead', { time: timecode(at, fps) }) },
+        { label: t('timeline.split'), icon: 'split', disabled: !inside || !!l.children, onClick: () => splitAt(id, at) },
+        { label: t('timeline.trimStartToPlayhead'), icon: 'cutHead', disabled: !inside, onClick: () => commit(t('timeline.trimStartToPlayhead'), trimInOps(S.doc.peek(), compId, id, at)) },
+        { label: t('timeline.trimEndToPlayhead'), icon: 'cutTail', disabled: !inside, onClick: () => commit(t('timeline.trimEndToPlayhead'), [{ op: 'add', path: `${lp}/out`, value: at }]) },
+        { label: t('timeline.moveToPlayhead'), icon: 'arrow', disabled: at === tin, onClick: () => commit(t('timeline.moveToPlayhead'), shiftLayerOps(S.doc.peek(), compId, id, at - tin)) },
+      ],
+    });
+  };
+
+  /** a marker of the ruler: go there, or take it away */
+  const markerMenu = (e: MouseEvent, mid: string) => {
+    const list = c.markers ?? [], m = list.find((x) => x.id === mid);
+    if (!m) return;
+    openMenu(e, [
+      { label: t('timeline.goToMarker'), icon: 'target', onClick: () => setTime(m.t) },
+      'sep',
+      { label: t('timeline.deleteMarker'), icon: 'trash', danger: true, onClick: () => commit(t('timeline.deleteMarker'), [{ op: 'replace', path: pointer('compositions', compId, 'markers'), value: list.filter((x) => x.id !== mid) }]) },
+    ]);
+  };
+
+  /** an empty place of the tracks or the ruler: the time there, the composition, the view */
+  const timeMenu = (e: MouseEvent, at: number) => {
+    const list = c.markers ?? [];
+    const mid = freshId(Object.fromEntries(list.map((x) => [x.id, 1])), `m${list.length + 1}`);
+    const end = snap(contentEnd(c), fps);
+    openMenu(e, [
+      { section: timecode(at, fps) },
+      { label: t('timeline.setTimeHere'), icon: 'target', onClick: () => { S.playing.value = false; setTime(at); } },
+      { label: t('timeline.addMarkerHere'), icon: 'marker', onClick: () => commit(t('timeline.addMarkerHere'), [{ op: 'add', path: pointer('compositions', compId, 'markers'), value: [...list, { id: mid, t: at, label: t('timeline.markerN', { n: list.length + 1 }) }].sort((a, b) => a.t - b.t) }]) },
+      { label: t('timeline.endHere'), icon: 'end', disabled: at <= 0 || at === c.duration, onClick: () => setDuration(t('timeline.endHere'), at) },
+      { label: t('topbar.trimToContent'), icon: 'collapse', disabled: !(end > 0 && end < c.duration - 0.5 / fps), onClick: () => setDuration(t('topbar.trimToContent'), end) },
+      'sep',
+      { label: t('panel.addALayer'), icon: 'plus', onClick: () => addLayerMenu(e) },
+      { label: t('timeline.selectAll'), icon: 'layers', hint: 'Ctrl+A', disabled: !order.length, onClick: selectAll },
+      { label: t('timeline.zoomToFit'), icon: 'expand', disabled: !pps.value, onClick: () => { pps.value = 0; } },
+    ]);
+  };
+
+  const onMenu = (e: MouseEvent) => {
+    noBrowserMenu(e);
+    if (!e.defaultPrevented) return;
+    const el = e.target as HTMLElement;
+    const key = el.closest<HTMLElement>('[data-key]')?.dataset.key;
+    if (key) { const [id, name, i] = key.split('|'); keyMenu(e, id, name, Number(i)); return; }
+    const marker = el.closest<HTMLElement>('[data-marker]')?.dataset.marker;
+    if (marker) { markerMenu(e, marker); return; }
+    const layer = el.closest<HTMLElement>('.clip[data-layer], [data-row]');
+    if (layer) { clipMenu(e, layer.dataset.layer ?? layer.dataset.row!); return; }
+    timeMenu(e, el.closest('.tl-tracks, .tl-ruler') ? timeAt(e.clientX) : snap(S.time.peek(), fps));
   };
 
   const onWheel = (e: WheelEvent) => {
@@ -290,7 +356,7 @@ export function Timeline() {
   }
 
   return (
-    <div class="timeline" data-tour="timeline" style={{ '--names': `${namesW}px` }} onWheel={onWheel}>
+    <div class="timeline" data-tour="timeline" style={{ '--names': `${namesW}px` }} onWheel={onWheel} onContextMenu={onMenu}>
       <div class="tl-corner"><Icon name="layers" size={13} />{t('timeline.nLayers', { n: Object.keys(c.layers).length })}<span class="grow" /><FoldButtons /></div>
       <div class="tl-ruler" onPointerDown={scrubFrom}>
         <div style={{ position: 'absolute', inset: 0, transform: `translateX(${-scroll}px)` }}>
@@ -298,7 +364,7 @@ export function Timeline() {
             <div key={tk.t} class={`tick${tk.major ? '' : ' minor'}`} style={{ left: X(tk.t) }}>{tk.major && <span>{rulerLabel(tk.t, fps)}</span>}</div>
           ))}
           {(c.markers || []).map((m) => (
-            <div key={m.id} class={`tl-marker${m.kind === 'scene' ? ' scene' : ''}`} style={{ left: X(m.t) }} title={`${m.label ?? m.id} · ${timecode(m.t, fps)}`}
+            <div key={m.id} data-marker={m.id} class={`tl-marker${m.kind === 'scene' ? ' scene' : ''}`} style={{ left: X(m.t) }} title={`${m.label ?? m.id} · ${timecode(m.t, fps)}`}
               onDblClick={(e) => { e.stopPropagation(); setTime(m.t); }}>
               {k * 0.4 > 30 && <span>{m.label ?? m.id}</span>}
             </div>
@@ -308,7 +374,7 @@ export function Timeline() {
       </div>
       <div class="tl-names" ref={names} style={{ position: 'relative' }}>
         {rows.map((r) => r.kind === 'layer' ? (
-          <div key={r.item.id} class={`tl-name${sel.includes(r.item.id) ? ' selected' : ''}`} style={{ paddingLeft: 6 + r.item.depth * 12 }} onClick={(e) => clickSelect(e, r.item.id, order)}>
+          <div key={r.item.id} data-row={r.item.id} class={`tl-name${sel.includes(r.item.id) ? ' selected' : ''}`} style={{ paddingLeft: 6 + r.item.depth * 12 }} onClick={(e) => clickSelect(e, r.item.id, order)}>
             {r.item.layer.children
               ? <button class={`twist${S.collapsed.value.has(r.item.id) ? '' : ' open'}`} title={t('panel.foldHint')} onClick={(e) => { e.stopPropagation(); toggleFold(r.item.id, e.altKey); }}><Icon name="chevron" /></button>
               : animatedProps(r.item.layer).length
@@ -359,7 +425,7 @@ export function Timeline() {
                   const kid = keyId(item.id, name, i);
                   return <span key={i} data-key={kid} class={`kf${kf.ease === 'hold' ? ' hold' : ''}${keySel.includes(kid) ? ' selected' : ''}`} style={{ left: X(kf.t) }}
                     title={`${timecode(kf.t, fps)} · ${JSON.stringify(kf.v)}${kf.ease ? ` · ${JSON.stringify(kf.ease)}` : ''}`}
-                    onPointerDown={(e) => dragKey(e, item.id, name, i)} onDblClick={() => setTime(kf.t)} onContextMenu={(e) => keyMenu(e, item.id, name, i)} />;
+                    onPointerDown={(e) => dragKey(e, item.id, name, i)} onDblClick={() => setTime(kf.t)} />;
                 })}
               </div>
             );

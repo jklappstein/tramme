@@ -1,8 +1,9 @@
 // Files joined to a message for the assistant. Each becomes a file of the
 // project (assets/chat/), images, sounds and videos also an asset of the
 // document so the assistant can place them. Images are shown to Claude;
-// sounds and videos are transcribed (Claude reads what is said, with its
-// timing, through its tools); documents (PDF) are read with the sources tool.
+// what sounds and videos say is read through its tools once the user has
+// transcribed them (the Transcribe button on the file, or a yes when the
+// assistant asks); documents (PDF) are read with the sources tool.
 
 import { signal } from '@preact/signals';
 import { pointer, type TrammeDoc } from '@tramme/core';
@@ -11,7 +12,7 @@ import { safeName, takenPaths, upload } from './files.ts';
 import { loadImage } from './perception.ts';
 import { kindOf, shrunk, type FileKind } from './sources.ts';
 import { freshId } from './model.ts';
-import { transcribeAsset, transcriptIdOf, transcriptions } from './speech.ts';
+import { transcriptIdOf, transcriptions } from './speech.ts';
 import { commit, S, toast } from './state.ts';
 import { t } from './i18n/index.ts';
 
@@ -44,11 +45,6 @@ export async function attachFiles(files: File[]) {
         const doc = S.doc.peek();
         asset = freshId(doc.assets, safeName(f.name).replace(/\.[^.]+$/, '').slice(0, 40) || kind);
         commit(t('attachments.attachmentName', { name: f.name }), [{ op: 'add', path: pointer('assets', asset), value: { type: kind, src: path, name: f.name.replace(/\.[^.]+$/, '') } }]);
-        // what is said, ready for the assistant
-        if (kind === 'audio' || kind === 'video') {
-          const id = asset;
-          transcribeAsset(id).catch((e) => toast(t('attachments.couldNotTranscribeName', { name: f.name, error: (e as Error).message }), 'error', 9000));
-        }
       }
       pending.value = [...pending.peek(), { path, name: f.name, kind, size: f.size, asset }];
     } catch (e) {
@@ -87,7 +83,7 @@ export function describe(atts: Attachment[], doc: TrammeDoc): string[] {
     if (a.kind === 'image') lines.push(`- image ${a.name} (${where}): attached above, you can see it.`);
     else if (a.kind === 'audio' || a.kind === 'video') {
       const t = a.asset ? transcriptIdOf(a.asset) : '';
-      const state = t && doc.assets[t] ? `transcript ready (asset "${t}")` : transcriptions.peek().some((j) => j.id === a.asset) ? 'transcription in progress' : 'not transcribed yet';
+      const state = t && doc.assets[t] ? `transcript ready (asset "${t}")` : transcriptions.peek().some((j) => j.id === a.asset) ? 'transcription in progress' : 'not transcribed (the user starts it; get_transcript asks them)';
       lines.push(`- ${a.kind === 'video' ? 'video' : 'sound'} ${a.name} (${where}, ${mb(a.size)}): ${state}. Read what is said with get_transcript, see the video with media_frame.`);
     } else if (a.kind === 'document') {
       const md = /\.(md|markdown)$/i.test(a.name);

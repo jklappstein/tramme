@@ -149,6 +149,8 @@
 .file-chip img { width: 24px; height: 24px; object-fit: cover; border-radius: var(--r-xs); cursor: zoom-in; background: var(--stage); }
 .file-chip svg.i { width: 14px; height: 14px; color: var(--accent-text); flex: none; margin-left: 4px; }
 .file-chip .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-chip:has(.tag) { max-width: 320px; }
+.file-chip .tag svg.i { width: 11px; height: 11px; margin: 0; color: inherit; }
 .msg.user .file-chip.image { height: auto; padding: 4px; }
 .msg.user .file-chip.image img { width: 120px; height: auto; max-height: 120px; object-fit: contain; }
 .msg.user .file-chip.image .file-name { display: none; }

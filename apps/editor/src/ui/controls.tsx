@@ -34,6 +34,12 @@ export function openMenu(e: { clientX: number; clientY: number } | DOMRect, item
   menuState.value = { x, y, items };
 }
 
+/** the browser's menu kept out of a work area (the timeline, the curves), except where one types (copy, paste) */
+export function noBrowserMenu(e: MouseEvent) {
+  const el = e.target as HTMLElement;
+  if (!(el instanceof HTMLInputElement && el.type !== 'range') && !(el instanceof HTMLTextAreaElement)) e.preventDefault();
+}
+
 /**
  * A menu that also opens on a finger's long press, the same one as the right
  * click: Safari iOS never sends contextmenu. Touch only (mouse and pen have
