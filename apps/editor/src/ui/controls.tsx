@@ -10,10 +10,21 @@ import { Icon, type IconName } from './icons.tsx';
 import { t } from '../i18n/index.ts';
 
 // ── context menu ─────────────────────────────────────────────
-export type MenuItem =
-  | { label: string; icon?: IconName; hint?: string; disabled?: boolean; onClick: () => void }
-  | { section: string }
-  | 'sep';
+export interface MenuEntry {
+  label: string;
+  icon?: IconName;
+  /** a line of detail under the label */
+  detail?: string;
+  /** the shortcut, shown at the right in mono */
+  hint?: string;
+  /** a check on the chosen entry */
+  check?: boolean;
+  /** the entry removes something: it reads in the danger colour */
+  danger?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}
+export type MenuItem = MenuEntry | { section: string } | 'sep';
 
 const menuState = signal<{ x: number; y: number; items: MenuItem[] } | null>(null);
 
@@ -48,6 +59,69 @@ export function longPress(e: { pointerType: string; clientX: number; clientY: nu
   return stop;
 }
 
+/** one entry of a menu, whatever menu shows it (the context menu, a list of choices) */
+export function MenuButton({ it, onPick, active, iconed }: { it: MenuEntry; onPick: () => void; active?: boolean; iconed?: boolean }) {
+  const check = it.icon === 'check' || it.check;
+  return (
+    <button class={`menu-item${active ? ' active' : ''}${it.danger ? ' danger' : ''}`} disabled={it.disabled} role="menuitem" onClick={onPick}>
+      {it.icon && it.icon !== 'check' ? <Icon name={it.icon} /> : iconed && <span class="menu-icon-space" />}
+      <span class="menu-text"><span>{it.label}</span>{it.detail && <span class="menu-detail">{it.detail}</span>}</span>
+      {it.hint && <span class="menu-hint">{it.hint}</span>}
+      {check && <Icon name="check" class="check" />}
+    </button>
+  );
+}
+
+/** the keys a menu answers: the arrows walk it, Escape closes; focus starts on the first entry */
+function menuKeys(items: MenuItem[]) {
+  const walk = (from: number, step: number) => {
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('.menu .menu-item:not([disabled])')];
+    // only the menu(s) holding these items
+    const mine = buttons.filter((b) => items.some((it) => it !== 'sep' && !('section' in it) && it.label === b.querySelector('.menu-text > span')?.textContent));
+    const i = mine.findIndex((b) => b === document.activeElement);
+    const next = mine[(mine.length + (i === -1 ? 0 : i + step)) % mine.length];
+    next?.focus();
+    next?.scrollIntoView({ block: 'nearest' });
+  };
+  return (e: KeyboardEvent) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); walk(0, 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); walk(0, -1); }
+  };
+}
+
+export function MenuHost() {
+  const m = menuState.value;
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  useLayoutEffect(() => {
+    if (!m || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    setPos({ x: Math.max(8, Math.min(m.x, innerWidth - r.width - 8)), y: Math.max(8, Math.min(m.y, innerHeight - r.height - 8)) });
+    // the keyboard starts on the first entry
+    setTimeout(() => ref.current?.querySelector<HTMLButtonElement>('.menu-item:not([disabled])')?.focus());
+  }, [m]);
+  useEffect(() => {
+    if (!m) return;
+    const close = (e: Event) => { if (!ref.current?.contains(e.target as Node)) menuState.value = null; };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { menuState.value = null; }
+      else menuKeys(m.items)(e);
+    };
+    setTimeout(() => { addEventListener('pointerdown', close); addEventListener('keydown', key); });
+    return () => { removeEventListener('pointerdown', close); removeEventListener('keydown', key); };
+  }, [m]);
+  if (!m) return null;
+  // when some items have an icon, the others keep its place: labels stay aligned
+  const iconed = m.items.some((it) => it !== 'sep' && !('section' in it) && it.icon && it.icon !== 'check');
+  return (
+    <div class="menu" ref={ref} style={{ left: pos.x, top: pos.y }} role="menu">
+      {m.items.map((it, i) => it === 'sep' ? <hr key={i} /> : 'section' in it ? <div class="menu-label" key={i}>{it.section}</div> : (
+        <MenuButton key={i} it={it} iconed={iconed} onPick={() => { menuState.value = null; it.onClick(); }} />
+      ))}
+    </div>
+  );
+}
+
 // ── lasso selection ──────────────────────────────────────────
 export interface Band { l: number; r: number; t: number; b: number }
 
@@ -63,36 +137,6 @@ export function bandOf(el: Element, from: { clientX: number; clientY: number }, 
     return b.right >= band.l && b.left <= band.r && b.bottom >= band.t && b.top <= band.b;
   }).map((n) => n.getAttribute(attr)!);
   return { band, ids };
-}
-
-export function MenuHost() {
-  const m = menuState.value;
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  useLayoutEffect(() => {
-    if (!m || !ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    setPos({ x: Math.max(8, Math.min(m.x, innerWidth - r.width - 8)), y: Math.max(8, Math.min(m.y, innerHeight - r.height - 8)) });
-  }, [m]);
-  useEffect(() => {
-    if (!m) return;
-    const close = (e: Event) => { if (!ref.current?.contains(e.target as Node)) menuState.value = null; };
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') menuState.value = null; };
-    setTimeout(() => { addEventListener('pointerdown', close); addEventListener('keydown', key); });
-    return () => { removeEventListener('pointerdown', close); removeEventListener('keydown', key); };
-  }, [m]);
-  if (!m) return null;
-  // when some items have an icon, the others keep its place: labels stay aligned
-  const iconed = m.items.some((it) => it !== 'sep' && !('section' in it) && it.icon);
-  return (
-    <div class="menu" ref={ref} style={{ left: pos.x, top: pos.y }} role="menu">
-      {m.items.map((it, i) => it === 'sep' ? <hr key={i} /> : 'section' in it ? <div class="menu-label" key={i}>{it.section}</div> : (
-        <button key={i} disabled={it.disabled} role="menuitem" onClick={() => { menuState.value = null; it.onClick(); }}>
-          {it.icon ? <Icon name={it.icon} /> : iconed && <span class="menu-icon-space" />}{it.label}{it.hint && <span class="hint">{it.hint}</span>}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 // ── popover ──────────────────────────────────────────────────
@@ -238,20 +282,104 @@ export function TextInput({ value, onCommit, placeholder, mono, area, code }: { 
   );
 }
 
-export function Select({ value, options, onChange }: { value: string; options: (string | [string, string])[]; onChange: (v: string) => void }) {
+type SelectOption = string | [string, string] | SegOpt;
+const optValue = (o: SelectOption): string => Array.isArray(o) ? o[0] : typeof o === 'string' ? o : o.value;
+const optLabel = (o: SelectOption): string => Array.isArray(o) ? o[1] : typeof o === 'string' ? o : typeof o.label === 'string' ? o.label : optValue(o);
+
+/**
+ * A list of choices: a field and its chevron, which opens a menu — the same
+ * one everywhere. The keyboard works (arrows, Enter, Escape, first letter) and
+ * a check sits on the chosen option. On a touchscreen the native select stays:
+ * its list is the platform's, and it feels right there.
+ */
+export function Select({ value, options, onChange, title }: { value: string; options: SelectOption[]; onChange: (v: string) => void; title?: string }) {
+  const [open, setOpen] = useState<HTMLElement | null>(null);
+  const [active, setActive] = useState(-1);
+  const listRef = useRef<HTMLDivElement>(null);
+  const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+  const entries = options.map((o) => ({ value: optValue(o), label: optLabel(o) }));
+  const current = entries.find((o) => o.value === value);
+  useEffect(() => {
+    if (!open) return;
+    listRef.current?.querySelectorAll<HTMLButtonElement>('.menu-item')[Math.max(0, active)]?.focus();
+  }, [open, active]);
+  if (coarse) {
+    return (
+      <div class="field">
+        <select value={value} title={title} onChange={(e) => onChange((e.target as HTMLSelectElement).value)}>
+          {entries.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
+    );
+  }
+  const close = (focus = true) => { setOpen(null); setActive(-1); if (focus) open?.focus(); };
+  const pick = (v: string) => { close(); onChange(v); };
+  const walk = (step: number) => setActive((a) => {
+    const n = entries.length;
+    return (n + Math.max(0, a) + step) % n;
+  });
   return (
-    <div class="field">
-      <select value={value} onChange={(e) => onChange((e.target as HTMLSelectElement).value)}>
-        {options.map((o) => { const [v, l] = Array.isArray(o) ? o : [o, o]; return <option key={v} value={v}>{l}</option>; })}
-      </select>
-    </div>
+    <>
+      <button class="field select" type="button" title={title ?? current?.label} role="combobox" aria-haspopup="listbox" aria-expanded={!!open}
+        onClick={(e) => { const el = e.currentTarget as HTMLElement; setOpen(open === el ? null : el); setActive(entries.findIndex((o) => o.value === value)); }}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const el = e.currentTarget as HTMLElement;
+            setActive(entries.findIndex((o) => o.value === value));
+            setOpen(el);
+          }
+        }}>
+        <span class="sel-text">{current?.label ?? ''}</span>
+        <Icon name="chevronDown" />
+      </button>
+      {open && (
+        <Popover anchor={open} onClose={() => close(false)} class="as-menu">
+          <div role="listbox" ref={listRef}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') { e.preventDefault(); walk(1); }
+              else if (e.key === 'ArrowUp') { e.preventDefault(); walk(-1); }
+              else if (e.key === 'Enter') { e.preventDefault(); if (active >= 0) pick(entries[active].value); }
+              else if (e.key === 'Escape') { e.stopPropagation(); close(); }
+              else if (e.key.length === 1 && /\S/.test(e.key)) {
+                const i = entries.findIndex((o) => o.label.toLowerCase().startsWith(e.key.toLowerCase()));
+                if (i >= 0) setActive(i);
+              }
+            }}>
+            {entries.map((o, i) => (
+              <button key={o.value} class={`menu-item${i === active ? ' active' : ''}`} role="option" aria-selected={o.value === value} tabindex={i === active ? 0 : -1}
+                onMouseEnter={() => setActive(i)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(o.value)}>
+                <span class="menu-text"><span>{o.label}</span></span>
+                {o.value === value && <Icon name="check" class="check" />}
+              </button>
+            ))}
+          </div>
+        </Popover>
+      )}
+    </>
   );
 }
 
-export function Seg({ value, options, onChange }: { value: string; options: [string, string][]; onChange: (v: string) => void }) {
+/** one option of a segmented control */
+export interface SegOpt { value: string; label?: ComponentChildren; icon?: IconName; tour?: string; count?: number }
+
+export function Seg({ value, options, onChange, size, role, ariaLabel }: { value: string; options: (SegOpt | [string, string])[]; onChange: (v: string) => void; size?: 'sm' | 'md' | 'lg'; role?: 'tablist' | 'radiogroup'; ariaLabel?: string }) {
   return (
-    <div class="seg">
-      {options.map(([v, l]) => <button key={v} class={v === value ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}
+    <div class={`seg${size && size !== 'md' ? ` ${size}` : ''}`} role={role ?? 'radiogroup'} aria-label={ariaLabel}>
+      {options.map((o, i) => {
+        const opt: SegOpt = Array.isArray(o) ? { value: o[0], label: o[1] } : o;
+        const on = opt.value === value;
+        return (
+          <button key={opt.value} type="button" class={on ? 'on' : ''} data-tour={opt.tour}
+            role={role === 'tablist' ? 'tab' : 'radio'} aria-selected={role === 'tablist' ? on : undefined} aria-checked={role === 'tablist' ? undefined : on}
+            title={typeof opt.label === 'string' ? opt.label : undefined}
+            onClick={() => onChange(opt.value)}>
+            {opt.icon && <Icon name={opt.icon} />}{opt.label}{opt.count !== undefined && opt.count > 0 && <span class="count">{opt.count}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }

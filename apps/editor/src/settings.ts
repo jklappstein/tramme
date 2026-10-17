@@ -53,18 +53,18 @@ export type View = 'studio' | 'atelier';
 const THEME_IDS: ThemeId[] = ['system', 'studio', 'obsidian', 'carbon', 'dusk', 'paper'];
 const DARK_LEGACY: string[] = ['studio', 'obsidian', 'carbon', 'dusk'], LIGHT_LEGACY: string[] = ['paper'];
 
-/** a theme as the picker shows it: its id and the three colours that tell it apart (its name's key lives beside the picker) */
-export interface ThemeInfo { id: ThemeId; bg: string; panel: string; accent: string }
+/** a theme as the picker shows it: its id and the colours that draw its preview (its name's key lives beside the picker) */
+export interface ThemeInfo { id: ThemeId; bg: string; surface: string; text: string; accent: string }
 export const THEMES: ThemeInfo[] = [
-  { id: 'studio', bg: '#0b0f12', panel: '#12181c', accent: '#2ec4b6' },
-  { id: 'obsidian', bg: '#040607', panel: '#0a0d0f', accent: '#2ec4b6' },
-  { id: 'carbon', bg: '#0f1011', panel: '#151617', accent: '#2ec4b6' },
-  { id: 'dusk', bg: '#14110c', panel: '#1a1712', accent: '#2ec4b6' },
-  { id: 'paper', bg: '#d8dde0', panel: '#e6eaec', accent: '#12968a' },
-  { id: 'system', bg: '#0b0f12', panel: '#8a939b', accent: '#2ec4b6' },
+  { id: 'studio', bg: '#090f13', surface: '#12181c', text: '#e8eef1', accent: '#2ec4b6' },
+  { id: 'obsidian', bg: '#050708', surface: '#0c0f10', text: '#e9eef0', accent: '#2ec4b6' },
+  { id: 'carbon', bg: '#101010', surface: '#191919', text: '#ededed', accent: '#2ec4b6' },
+  { id: 'dusk', bg: '#150f0a', surface: '#1e1812', text: '#f4ebe2', accent: '#2ec4b6' },
+  { id: 'paper', bg: '#f0f4f7', surface: '#ffffff', text: '#181f24', accent: '#0b8075' },
+  { id: 'system', bg: '#090f13', surface: '#12181c', text: '#e8eef1', accent: '#2ec4b6' },
 ];
 /** the window bar's colour, per theme (system resolves to one of the two) */
-const BAR: Record<string, string> = { studio: '#0b0f12', obsidian: '#040607', carbon: '#0f1011', dusk: '#14110c', paper: '#d8dde0' };
+const BAR: Record<string, string> = { studio: '#090f13', obsidian: '#050708', carbon: '#101010', dusk: '#150f0a', paper: '#f0f4f7' };
 /** the views, in the order they are offered */
 export const VIEWS: View[] = ['studio', 'atelier'];
 const VOICE_PROVIDERS = ['auto', 'elevenlabs', 'openai', 'gemini'] as const;

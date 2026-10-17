@@ -1,5 +1,7 @@
 // Line icons on a 16 px grid, 1.6 stroke: one family for the whole editor.
 
+import { LOGO_PATHS } from './Logo.tsx';
+
 const P: Record<string, string> = {
   play: 'M5 3.5v9l7.5-4.5z',
   attach: 'M10.6 4.6 5.9 9.3a1.4 1.4 0 0 0 2 2l5-5a2.9 2.9 0 0 0-4.1-4.1l-5 5a4.4 4.4 0 0 0 6.2 6.2l4.1-4.1',
@@ -80,18 +82,23 @@ const P: Record<string, string> = {
   shader: 'M2.5 2.5h11v11h-11zM2.5 13.5 13.5 2.5M2.5 8 8 2.5M8 13.5 13.5 8',
   effects: 'M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4M8 10.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   comp: 'M2.5 2.5h7v7h-7zM6.5 6.5h7v7h-7z',
-  spark: 'M7 1.5c.45 3.4 1.85 4.8 5.25 5.25C8.85 7.2 7.45 8.6 7 12c-.45-3.4-1.85-4.8-5.25-5.25C5.15 6.3 6.55 4.9 7 1.5zM12.5 10c.2 1.3.7 1.8 2 2-1.3.2-1.8.7-2 2-.2-1.3-.7-1.8-2-2 1.3-.2 1.8-.7 2-2z',
   pin: 'M8 14.5s4.5-4.2 4.5-7.7a4.5 4.5 0 0 0-9 0c0 3.5 4.5 7.7 4.5 7.7zM8 8.5a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z',
   compass: 'M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM10.6 5.4 9.1 9.1l-3.7 1.5 1.5-3.7z',
   shuffle: 'M2.5 4.5H5c3.2 0 3.3 7 6.5 7h2M11.5 9.5l2 2-2 2M2.5 11.5H5c1.1 0 1.8-.8 2.4-1.9M8.6 6.4c.6-1.1 1.3-1.9 2.4-1.9h2.5M11.5 2.5l2 2-2 2',
   compare: 'M2.5 3.5h11v9h-11zM8 2v12',
+  arrow: 'M3 8h10M9 4l4 4-4 4',
+  clap: 'M2.5 6.5h11v7h-11zM2.5 6.5 3.3 3l10 .1-.5 3.4M6.3 3.1 5.4 6.5M10 3.1l-.9 3.4',
 };
 
 export type IconName = keyof typeof P | string;
 
 export function Icon({ name, class: cls = '', size }: { name: IconName; class?: string; size?: number }) {
+  // the tramme mark, where a line icon would not do (the view switch, the assistant)
+  if (name === 'mark') {
+    return <svg class={`i ${cls}`} viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" style={{ fill: 'currentColor', stroke: 'none' }} dangerouslySetInnerHTML={{ __html: LOGO_PATHS }} />;
+  }
   const d = P[name] ?? P.box;
-  const filled = name === 'play' || name === 'diamond' || name === 'stop' || name === 'keyframe' || name === 'spark';
+  const filled = name === 'play' || name === 'diamond' || name === 'stop' || name === 'keyframe';
   return (
     <svg class={`i ${cls}`} viewBox="0 0 16 16" aria-hidden="true" style={size ? { width: size, height: size } : undefined}>
       <path d={d} style={filled ? { fill: 'currentColor' } : undefined} />

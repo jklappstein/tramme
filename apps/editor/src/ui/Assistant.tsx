@@ -5,63 +5,23 @@
 // themselves (ai/conversation.ts) and the pieces of the conversation
 // (chat.tsx, composer.tsx) are the studio's too.
 
-import { useLayoutEffect, useRef, useState } from 'preact/hooks';
-import type { ChatItem } from '../api.ts';
+import { useState } from 'preact/hooks';
 import { ENGINE_MODELS, ENGINES, providerOf } from '@tramme/assistant';
 import { ModelPicker } from './ModelPicker.tsx';
 import { aiRoute, aiSettings, aiStatus, routeLabel, chat, chatId, chats, deleteChat, newChat, openChat, refreshStatus, remoteProviders, serverName, setAiSettings, statusLabels, type ChatMeta } from '../ai/index.ts';
-import { active, contextLine, decide, lightbox, running, send } from '../ai/conversation.ts';
+import { contextLine, running, send } from '../ai/conversation.ts';
 import { openSettings } from '../settings.ts';
 import { S, toast } from '../state.ts';
 import { ago } from '../model.ts';
-import { question } from '../confirm.ts';
 import { Icon } from './icons.tsx';
-import { Access, CompanionCommand, FileChip, Lightbox, Markdown, OpLines, QuestionCard, Thinking, ToolLine, UsageLine, useStatusWatch, Working } from './chat.tsx';
+import { Access, CompanionCommand, Lightbox, useStatusWatch } from './chat.tsx';
 import { Composer, join } from './composer.tsx';
 import { Popover, Seg } from './controls.tsx';
+import { LogoMark } from './Logo.tsx';
+import { Thread } from './thread.tsx';
 import { m, t } from '../i18n/index.ts';
 
 export { chat };
-
-export function ProposalCard({ p }: { p: NonNullable<ChatItem['proposal']> }) {
-  const live = S.proposal.value?.id === p.id ? S.proposal.value.status : p.status;
-  return (
-    <div class={`proposal${live !== 'pending' ? ' done' : ''}`}>
-      <div class="proposal-head">
-        <Icon name="wand" />
-        <span class="ptitle">{p.label}</span>
-        <span class={`ptag${live === 'accepted' ? ' ok' : live === 'rejected' ? ' no' : ''}`}>
-          {live === 'pending' ? (p.count > 1 ? t('assistant.nChanges', { n: p.count }) : t('assistant.n1Change')) : live === 'accepted' ? t('assistant.applied') : t('assistant.declined')}
-        </span>
-      </div>
-      <OpLines p={p} />
-      {live === 'pending' && S.proposal.value?.id === p.id && (
-        <div class="proposal-actions">
-          <button class="btn sm ghost" onClick={() => { S.showProposal.value = !S.showProposal.value; }}><Icon name={S.showProposal.value ? 'eye' : 'eyeOff'} />{S.showProposal.value ? t('common.preview') : t('assistant.original')}</button>
-          <span class="grow" />
-          <button class="btn sm" onClick={() => decide(false)}>{t('common.decline')}</button>
-          <button class="btn sm primary" onClick={() => decide(true)}><Icon name="check" />{t('common.apply')}</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Item({ it }: { it: ChatItem }) {
-  if (it.thinking) return <Thinking th={it.thinking} />;
-  if (it.role === 'user') return (
-    <div class="msg user">
-      {it.attachments?.length ? <div class="msg-files">{it.attachments.map((a) => <FileChip key={a.path} a={a} />)}</div> : null}
-      <div class="bubble">{it.text}</div>
-      {it.context && <div class="ctx">{it.context}</div>}
-    </div>
-  );
-  if (it.tool) return <ToolLine tool={it.tool} />;
-  if (it.image) return <div class="msg assistant"><div class="shot" onClick={() => { lightbox.value = it.image!.url; }}><img src={it.image.url} alt={it.image.caption} loading="lazy" /></div><div class="shot-cap">{it.image.caption}</div></div>;
-  if (it.proposal) return <ProposalCard p={it.proposal} />;
-  if (it.usage) return <UsageLine u={it.usage} />;
-  return <div class="msg assistant"><Markdown text={it.text ?? ''} /></div>;
-}
 
 const SUGGESTIONS = [
   t('assistant.describeTheSceneAt'),
@@ -93,7 +53,7 @@ export function History({ anchor, onClose }: { anchor: HTMLElement; onClose: () 
               <span class="faint">{ago(c.modified)} · {c.count} message{c.count > 1 ? 's' : ''}</span>
             </div>
             {confirm === c.id
-              ? <button class="btn sm danger-solid" onClick={(e) => { e.stopPropagation(); deleteChat(c.id).catch((x) => toast((x as Error).message, 'error')); setConfirm(null); }}>{t('common.delete')}</button>
+              ? <button class="btn sm danger solid" onClick={(e) => { e.stopPropagation(); deleteChat(c.id).catch((x) => toast((x as Error).message, 'error')); setConfirm(null); }}>{t('common.delete')}</button>
               : <button class="icon-btn sm" title={t('common.delete')} onClick={(e) => { e.stopPropagation(); setConfirm(c.id); }}><Icon name="trash" /></button>}
           </div>
         ))}
@@ -168,51 +128,41 @@ export function ConversationTools() {
 }
 
 export function Assistant({ style }: { style?: Record<string, string | number> }) {
-  const scroller = useRef<HTMLDivElement>(null);
-  const items = chat.value, busy = running.value, full = S.assistantFull.value;
+  const busy = running.value, full = S.assistantFull.value;
   const available = aiRoute.value !== null;
   useStatusWatch(available);
-  useLayoutEffect(() => { const el = scroller.current; if (el) el.scrollTop = el.scrollHeight; }, [items.length, items.at(-1)?.text]);
   const ctx = contextLine(true);
   const [dropping, setDropping] = useState(false);
+  const empty = (
+    <div class="notes-empty">
+      <div class="notes-empty-mark"><LogoMark /></div>
+      <b>{t('common.assistant')}</b>
+      {available && <div class="suggest">{SUGGESTIONS.map((s) => <button key={s} class="chip" onClick={() => send(s)}>{s}</button>)}</div>}
+      <div class="faint">{t('assistant.slashHint')}</div>
+      {chats.value.length > 0 && (
+        <div class="recent-chats">
+          <span class="faint">{t('assistant.resumeAConversation')}</span>
+          {chats.value.slice(0, 3).map((c) => <button key={c.id} onClick={() => openChat(c.id)}><Icon name="clock" /><span>{c.title}</span><span class="faint">{ago(c.modified)}</span></button>)}
+        </div>
+      )}
+      {!available && <Access />}
+    </div>
+  );
   return (
     <div class={`assistant${full ? ' full' : ''}${dropping ? ' dropping' : ''}`} data-tour="assistant" style={full ? undefined : style}
       onDragOver={(e) => { if (available && e.dataTransfer?.types.includes('Files')) { e.preventDefault(); setDropping(true); } }}
       onDragLeave={(e) => { if (e.target === e.currentTarget) setDropping(false); }}
       onDrop={(e) => { if (!e.dataTransfer?.files.length) return; e.preventDefault(); e.stopPropagation(); setDropping(false); join(e.dataTransfer.files); }}>
       <div class="panel-head">
-        <span style={{ color: 'var(--accent)', display: 'grid', paddingLeft: 2 }}><Icon name="chat" /></span>
+        <span class="mark"><LogoMark /></span>
         <span class="title">{t('common.assistant')}</span>
         <span class="grow" />
         <ConversationTools />
         <button class="icon-btn sm" title={full ? t('assistant.collapse') : t('assistant.fullScreen')} onClick={() => { S.assistantFull.value = !full; }}><Icon name={full ? 'collapse' : 'expand'} /></button>
       </div>
-      <div class="chat-scroll" ref={scroller}>
-        <div class="chat">
-          {!items.length && (
-            <div class="empty" style={{ gap: 12 }}>
-              {/* unavailable: how to reach Claude comes first */}
-              {available && <Icon name="chat" />}
-              {available && <div>{t('assistant.askForAChange')}</div>}
-              {available && <div class="suggest">{SUGGESTIONS.map((s) => <button key={s} onClick={() => send(s)}>{s}</button>)}</div>}
-              <div class="faint">{t('assistant.slashHint')}</div>
-              {chats.value.length > 0 && (
-                <div class="recent-chats">
-                  <span class="faint">{t('assistant.resumeAConversation')}</span>
-                  {chats.value.slice(0, 3).map((c) => <button key={c.id} onClick={() => openChat(c.id)}><Icon name="clock" /><span>{c.title}</span><span class="faint">{ago(c.modified)}</span></button>)}
-                </div>
-              )}
-              {!available && <Access />}
-            </div>
-          )}
-          {items.map((it) => <Item key={it.id} it={it} />)}
-          {items.length > 0 && !available && !busy && <Access />}
-          <QuestionCard />
-          {busy && !active(items.at(-1)) && !question.value && <Working />}
-        </div>
-      </div>
+      <Thread empty={empty} />
       <Composer placeholder={t('assistant.askForAChange2')} tour="assistant-composer"
-        context={<span class="chip" title={t('assistant.contextSentWithThe')}><Icon name="target" />{ctx.text}</span>} />
+        context={<span class="chip label" title={t('assistant.contextSentWithThe')}><Icon name="target" />{ctx.text}</span>} />
       <Lightbox />
     </div>
   );

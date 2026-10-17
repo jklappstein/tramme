@@ -17,6 +17,7 @@ import { studio } from '../studio.ts';
 import { ATTACHABLE } from './composer.tsx';
 import { resolveColor } from './controls.tsx';
 import { Icon } from './icons.tsx';
+import { LogoMark } from './Logo.tsx';
 import { t } from '../i18n/index.ts';
 
 interface FilmIdea { title?: string; concept?: string; scenes?: unknown[]; style?: { preset?: string } }
@@ -73,13 +74,13 @@ export function Direction() {
     <div class="direction">
       {film && (film.concept || film.title) && (
         <section class="dir-film">
-          <div class="dir-kicker"><Icon name="spark" />{t('studio.direction.theIdea')}</div>
+          <div class="dir-kicker"><LogoMark size={12} />{t('studio.direction.theIdea')}</div>
           {film.title && <h3>{film.title}</h3>}
           {film.concept && <p>{film.concept}</p>}
           <div class="dir-tags">
-            {Array.isArray(film.scenes) && <span>{t('studio.direction.nScenes', { n: film.scenes.length })}</span>}
-            {film.style?.preset && <span>{film.style.preset}</span>}
-            {c && <span>{c.width}×{c.height}</span>}
+            {Array.isArray(film.scenes) && <span class="tag">{t('studio.direction.nScenes', { n: film.scenes.length })}</span>}
+            {film.style?.preset && <span class="tag">{film.style.preset}</span>}
+            {c && <span class="tag">{c.width}×{c.height}</span>}
           </div>
           <div class="dir-actions">
             <button class="btn sm" onClick={() => prefill(t('studio.direction.otherIdeaPrompt'))}><Icon name="shuffle" />{t('studio.direction.otherIdea')}</button>

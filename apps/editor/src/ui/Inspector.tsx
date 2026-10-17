@@ -361,7 +361,7 @@ function PaintField({ value, ctx, onCommit, onDraft }: { value: Paint; ctx: Ctx;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        <div style={{ flex: 1, height: 18, borderRadius: 4, background: css, boxShadow: 'inset 0 0 0 1px var(--edge)' }} />
+        <div style={{ flex: 1, height: 18, borderRadius: 4, background: css, boxShadow: 'inset 0 0 0 1px var(--line-strong)' }} />
         <button class="icon-btn sm" title={t('inspector.fillType')} onClick={menu}><Icon name="chevronDown" /></button>
       </div>
       {g.stops.map(([o, c], i) => (

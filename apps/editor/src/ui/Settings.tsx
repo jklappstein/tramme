@@ -50,7 +50,7 @@ const size = (k: number) => {
   return c ? `${Math.round(c.width * k)}×${Math.round(c.height * k)}` : `${Math.round(k * 100)} %`;
 };
 
-/** the theme picker: a chip per theme, its three colours beside its name; system's first dot splits dark and light */
+/** the theme picker: a preview per theme, drawn with its own colours; system's is cut in two, dark and light */
 const THEME_NAME: Record<string, string> = {
   system: m('settings.themes.system'),
   studio: m('settings.themes.studio'),
@@ -60,15 +60,17 @@ const THEME_NAME: Record<string, string> = {
   paper: m('settings.themes.paper'),
 };
 
-function ThemeChips({ value, onPick }: { value: Preferences['theme']; onPick: (id: Preferences['theme']) => void }) {
+function ThemeCards({ value, onPick }: { value: Preferences['theme']; onPick: (id: Preferences['theme']) => void }) {
+  const byId = Object.fromEntries(THEMES.map((th) => [th.id, th]));
+  const paper = byId.paper;
   return (
-    <div class="theme-chips">
+    <div class="theme-cards">
       {THEMES.map((th: ThemeInfo) => (
-        <button key={th.id} class={`theme-chip${value === th.id ? ' on' : ''}`} onClick={() => onPick(th.id)}>
-          <span class="sw">
-            <i style={th.id === 'system' ? { background: 'linear-gradient(90deg, #0b0f12 50%, #d8dde0 50%)' } : { background: th.bg }} />
-            <i style={{ background: th.panel }} />
-            <i style={{ background: th.accent }} />
+        <button key={th.id} class={`theme-card${value === th.id ? ' on' : ''}`} onClick={() => onPick(th.id)}>
+          <span class="prev" style={th.id === 'system' ? { background: `linear-gradient(90deg, ${th.bg} 50%, ${paper.bg} 50%)` } : { background: th.bg }}>
+            <span class="s" style={{ background: th.surface }} />
+            <span class="l" style={{ background: th.text }} />
+            <span class="a" style={{ background: th.accent }} />
           </span>
           {t(THEME_NAME[th.id] ?? th.id)}
         </button>
@@ -85,7 +87,7 @@ function Appearance() {
         <Seg value={p.language} options={[['auto', t('common.automatic')], ...LOCALES]} onChange={(v) => setLanguage(v as Preferences['language'])} />
       </Row>
       <Row label={t('settings.theme')} hint={t('settings.themeHint')} stack>
-        <ThemeChips value={p.theme} onPick={(id) => setPrefs({ theme: id })} />
+        <ThemeCards value={p.theme} onPick={(id) => setPrefs({ theme: id })} />
       </Row>
       <Row label={t('settings.view')} hint={t('settings.viewHint')}>
         <ViewSwitch />
@@ -171,7 +173,7 @@ function SoundLibrary() {
               <span class="set-list-name">{e.title ?? name}</span>
               <span class="faint">{[e.kind, typeof e.duration === 'number' ? `${e.duration.toFixed(2)} s` : null].filter(Boolean).join(' · ')}</span>
               {doomed === name
-                ? <><button class="btn sm" onClick={() => setDoomed(null)}>{t('common.cancel')}</button><button class="btn sm danger-solid" onClick={() => remove(name)}>{t('common.delete')}</button></>
+                ? <><button class="btn sm" onClick={() => setDoomed(null)}>{t('common.cancel')}</button><button class="btn sm danger solid" onClick={() => remove(name)}>{t('common.delete')}</button></>
                 : <button class="icon-btn sm" title={t('common.delete')} onClick={() => setDoomed(name)}><Icon name="trash" /></button>}
             </li>
           ))}
@@ -208,7 +210,7 @@ function VoicePicker() {
               <span class="set-list-name" title={v.description}>{v.name}</span>
               <span class="faint">{[v.language, v.accent, v.gender, v.source === 'library' ? t('settings.voiceLibrary') : null].filter(Boolean).join(' · ')}</span>
               {p.voice === v.id
-                ? <span class="set-badge">{t('settings.voiceChosen')}</span>
+                ? <span class="tag ok"><Icon name="check" />{t('settings.voiceChosen')}</span>
                 : <button class="btn sm" onClick={() => setPrefs({ voice: v.id, voiceProvider: v.provider as Preferences['voiceProvider'] })}>{t('settings.voiceUse')}</button>}
             </li>
           ))}

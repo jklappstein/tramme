@@ -13,13 +13,18 @@
 
 import './params.ts';
 import { render } from 'preact';
+import '@fontsource-variable/geist';
+import '@fontsource-variable/geist-mono';
 import { useEffect, useState } from 'preact/hooks';
 import { bucketKeyStore, failure, keysRoute, loadKeys, providersAnswer, recordBucket, relayed, type KeyStatus } from '@tramme/api';
 import { idbRecords } from '../local/idb.ts';
 import { Providers, type ProviderActions } from '../ui/Providers.tsx';
 import { t } from '../i18n/index.ts';
 import '../settings.ts';
-import '../styles.css';
+import '../theme/tokens.css';
+import '../theme/base.css';
+import '../theme/components.css';
+import '../screens/settings.css';
 import { answerOver, type Asked } from './channel.ts';
 import type { VaultMessage } from './link.ts';
 import { upstream } from './upstream.ts';

@@ -1,0 +1,98 @@
+/* The settings: a wide dialog, the navigation on the left (rounded lines,
+   quiet group titles), the rows grouped in cards on the right. The theme is
+   chosen on previews drawn with each theme's own colours. */
+
+/* a menu of sections on the left, the one chosen on the right; the same height whatever the section */
+.modal-body.settings { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 0; padding: 0; height: min(640px, calc(100dvh - 80px)); }
+.set-nav { display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; border-right: 1px solid var(--line); overflow: auto; }
+.set-search { height: var(--h-md); gap: 6px; padding-left: 8px; margin-bottom: 4px; }
+.set-search svg.i { width: 14px; height: 14px; color: var(--text-3); flex: none; }
+.set-group { display: flex; flex-direction: column; gap: 2px; }
+.set-group-title { padding: 14px 10px 6px; color: var(--text-3); font: 500 var(--fs-xs)/1 var(--ui); }
+.set-nav-item { display: flex; align-items: center; gap: 9px; width: 100%; height: 34px; margin: 0; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text-2); font-size: var(--fs-md); text-align: left; cursor: pointer; }
+.set-nav-item svg.i { width: 15px; height: 15px; flex: none; }
+.set-nav-item:hover { background: var(--hover); color: var(--text); }
+.set-nav-item.on { background: var(--hover); color: var(--text); font-weight: 600; }
+.set-nav-item.on svg.i { color: var(--accent-text); }
+.set-nav .grow { flex: 1; }
+.set-nav > .btn { justify-content: flex-start; }
+.set-pane { display: flex; flex-direction: column; gap: 22px; padding: 22px 26px; overflow: auto; user-select: text; }
+.set-results:not(:has(.set-row))::after { content: attr(data-empty); color: var(--text-3); font-size: var(--fs-md); }
+.set-results .set-section:not(:has(.set-row)) { display: none; }
+.set-section { display: flex; flex-direction: column; gap: 12px; }
+.set-section h3 { margin: 0; font: 600 var(--fs-xl)/1.2 var(--ui); letter-spacing: -0.02em; }
+.set-section > p { margin: -4px 0 0; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-3); }
+
+/* the rows of one section, grouped in a card */
+.set-group-card { border-radius: var(--r-lg); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.set-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 20px; align-items: center; padding: 14px 16px; }
+.set-row + .set-row { box-shadow: 0 -1px 0 var(--line); }
+.set-label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.set-label > span:first-child { font: 500 var(--fs-md)/1.3 var(--ui); color: var(--text); }
+.set-label .faint { font-size: var(--fs-sm); line-height: 1.45; color: var(--text-3); }
+.set-control { display: flex; justify-content: flex-end; }
+/* a choice to confirm, under its row */
+.set-confirm { display: flex; flex-direction: column; gap: 8px; margin: 0 16px 14px; padding: 10px 12px; border-radius: var(--r-md); background: var(--field); font-size: var(--fs-sm); line-height: 1.5; }
+.set-confirm-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.set-actions { display: flex; gap: 2px; }
+.set-form { gap: 10px; }
+.set-form-field { display: flex; flex-direction: column; gap: 4px; color: var(--text-2); }
+.set-form-field .field { height: var(--h-md); }
+.set-form-error { color: var(--danger); }
+.set-form-link { margin-right: auto; }
+.set-number { width: 112px; }
+.set-pair { display: flex; gap: 6px; }
+.set-pair > .field { width: 150px; }
+.set-pair > .btn { flex: none; }
+.set-control .seg button { flex: none; padding: 0 10px; white-space: nowrap; }
+.set-info { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: var(--r-sm); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-sm); line-height: 1.45; }
+.set-info svg.i { width: 13px; height: 13px; flex: none; margin-top: 2px; color: var(--text-3); }
+/* a list under its setting (the sound library) */
+.set-list { display: flex; flex-direction: column; gap: 2px; margin: 0 16px 14px; padding: 4px; list-style: none; border-radius: var(--r-sm); background: var(--surface); max-height: 220px; overflow: auto; }
+.set-list li { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 4px; font-size: var(--fs-md); }
+.set-list li:hover { background: var(--hover); border-radius: var(--r-sm); }
+.set-list-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-list .faint { font-size: var(--fs-sm); white-space: nowrap; }
+.set-list li.on { background: var(--accent-soft); border-radius: var(--r-sm); }
+/* a row whose control is wide (the theme previews): the label and the hint above, the control below */
+.set-row.stack { grid-template-columns: 1fr; }
+.set-row.stack .set-control { justify-content: flex-start; }
+
+/* the theme previews: each drawn with its own colours, read from THEMES */
+.theme-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+.theme-card { display: flex; flex-direction: column; gap: 7px; padding: 0; border: 0; background: none; color: var(--text-2); font-size: var(--fs-sm); text-align: left; cursor: pointer; }
+.theme-card .prev { position: relative; aspect-ratio: 16 / 10; border-radius: var(--r-md); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.theme-card .prev .s { position: absolute; left: 12%; top: 18%; right: 12%; bottom: 0; border-radius: 6px 6px 0 0; }
+.theme-card .prev .l { position: absolute; left: 22%; top: 34%; width: 40%; height: 7%; border-radius: 2px; }
+.theme-card .prev .a { position: absolute; left: 22%; top: 54%; width: 22%; height: 12%; border-radius: 9px; }
+.theme-card.on { color: var(--text); font-weight: 600; }
+.theme-card.on .prev { box-shadow: 0 0 0 2px var(--accent); }
+
+/* the key vault's page (personal mode), framed in the providers pane: as tall as its content, on the pane's background */
+.vault-frame { display: block; width: 100%; border: 0; background: transparent; }
+html.vault, html.vault body { height: auto; overflow: visible; background: var(--bg); }
+/* the frame is narrower than the window: the rows follow the editor's layout (compact on a phone), told in the frame's address */
+html.vault:not(.compact) .set-row:not(.stack) { grid-template-columns: minmax(0, 1fr) auto; }
+html.vault:not(.compact) .set-row:not(.stack) .set-control { justify-content: flex-end; overflow-x: visible; }
+.vault-page { display: flex; flex-direction: column; gap: 22px; padding: 1px 2px 2px; user-select: text; }
+
+.modal.wide:has(.settings) { width: min(920px, 100%); }
+
+/* the providers, in their own cards */
+.provider-row .set-actions { flex: none; }
+
+@media (max-width: 760px) {
+  .set-row { grid-template-columns: 1fr; }
+  .set-control { justify-content: flex-start; overflow-x: auto; }
+  /* on a phone: full screen, the navigation a row of chips that scrolls above the pane */
+  .modal-body.settings { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); height: calc(100dvh - 90px); }
+  .set-nav { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px; padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+  /* the search and the reset on the first line, the sections under them */
+  .set-search { flex: 0 0 calc(100% - 40px); }
+  .set-nav > .btn { order: 1; flex: none; }
+  .set-group { order: 2; flex-direction: row; gap: 4px; flex-wrap: wrap; }
+  .set-group-title, .set-nav .grow { display: none; }
+  .set-nav-item { height: 28px; padding: 0 9px; margin: 0; white-space: nowrap; border-radius: var(--r-pill); }
+  .set-pane { padding: 12px; }
+  .theme-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

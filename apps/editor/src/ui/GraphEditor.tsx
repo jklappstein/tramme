@@ -275,7 +275,7 @@ export function GraphEditor() {
                 </rect>
               </g>;
             }))}
-            <line class="playhead" x1={X(now)} y1={0} x2={X(now)} y2={H} stroke="var(--danger)" stroke-width={1} />
+            <line class="playhead" x1={X(now)} y1={0} x2={X(now)} y2={H} stroke="var(--text)" stroke-width={1.5} />
           </svg>
           <div class="graph-side">
             {channels.map((ch) => (

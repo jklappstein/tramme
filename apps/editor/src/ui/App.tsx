@@ -30,20 +30,20 @@ function Atelier() {
   return (
     <div class="app" data-tab={S.mobileTab.value}>
       <TopBar />
-      <div class="workspace" style={{ gridTemplateColumns: `${leftW}px 1px minmax(0, 1fr) 1px ${rightW}px` }}>
-        <aside class="col left" data-tour="left-panel"><LeftPanel /></aside>
+      <div class="workspace" style={{ gridTemplateColumns: `${leftW}px var(--gutter) minmax(0, 1fr) var(--gutter) ${rightW}px` }}>
+        <aside class="col left panel" data-tour="left-panel"><LeftPanel /></aside>
         <div class="resizer v" {...leftHandle('x', 1)} />
         <main class="center">
           <Viewport />
           <div class="resizer h" {...bottomHandle('y', -1)} />
-          <section class="bottom" style={{ height: bottomH }}>
+          <section class="bottom panel" style={{ height: bottomH }}>
             <Transport />
             <div class="timeline-wrap" style={{ display: 'flex', flex: 1, minHeight: 0, flexDirection: 'column' }}><Bottom /></div>
           </section>
         </main>
         <div class="resizer v" {...rightHandle('x', -1)} />
         <aside class="col right">
-          <div class="inspector-wrap panel-body" data-tour="inspector" style={{ flex: 1 }}><Inspector /></div>
+          <div class="inspector-wrap panel panel-body" data-tour="inspector" style={{ flex: 1 }}><Inspector /></div>
           <div class="resizer h" {...aiHandle('y', -1)} />
           <Assistant style={{ height: aiH, flex: 'none' }} />
         </aside>

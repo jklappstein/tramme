@@ -1,0 +1,211 @@
+/* The studio: the film in front, directed in words. Same matter as the
+   atelier: three panels set on the background (the stage, the storyboard, the
+   notes), the theme's accent for what the assistant does — its mark breathing
+   while it works, a ring around the image, the claquette of a take. No other
+   colour, no gradient, no halo. */
+
+/* ── frame ─────────────────────────────────────────────────── */
+.studio { display: grid; grid-template-rows: 52px minmax(0, 1fr); height: 100vh; height: 100dvh; background: var(--bg); }
+.studio-body { display: grid; grid-template-columns: minmax(0, 1fr) 384px; gap: 0 var(--gutter); padding: 0 var(--gutter) var(--gutter); min-height: 0; }
+.studio-main { display: flex; flex-direction: column; gap: var(--gutter); min-width: 0; min-height: 0; }
+.studio .toasts { bottom: auto; top: 64px; }
+
+/* ── the stage: the film, and what floats over it ──────────── */
+.studio-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--stage); border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
+.studio-stage .viewport { position: absolute; inset: 0; background: transparent; }
+.studio-stage .viewport .stage { cursor: crosshair; }
+/* tramme at work: a ring of accent breathes around the picture (the picture itself does not move) */
+.studio-stage.working .viewport canvas.picture { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; animation: ring 1.6s var(--ease) infinite; }
+@keyframes ring { 50% { outline-color: var(--accent-soft); } }
+/* a take on screen: the picture framed by a steady accent line */
+.studio-stage.has-take .viewport canvas.picture { outline: 2px solid var(--accent-line); outline-offset: 4px; border-radius: 6px; }
+
+/* the floating pill above the film: the work, or the take */
+.stage-top { position: absolute; top: 14px; left: 0; right: 0; z-index: 6; display: flex; justify-content: center; padding: 0 16px; pointer-events: none; }
+.stage-top > * { pointer-events: auto; }
+.pill {
+  display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; height: 40px; padding: 0 6px 0 8px; border-radius: var(--r-pill);
+  background: var(--float); backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: var(--shadow-2); white-space: nowrap; animation: pop var(--t-fast) var(--ease);
+}
+.pill .stage-name { font: 600 var(--fs-md)/1 var(--ui); }
+.pill-detail { min-width: 0; max-width: 300px; overflow: hidden; text-overflow: ellipsis; color: var(--text-3); font-size: var(--fs-sm); }
+.pill .progress { width: 64px; flex: none; }
+.pill .mono { font-size: var(--fs-xs); }
+.pill-stop { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 0; flex: none; background: var(--field-active); color: var(--text); }
+.pill-stop:hover { background: var(--danger); color: var(--on-danger); }
+.pill-stop svg.i { width: 11px; height: 11px; fill: currentColor; stroke: none; }
+.take-pill { padding-left: 14px; }
+.take-pill .take-label { max-width: 260px; }
+
+/* the take's controls: before and after, set aside, keep, another */
+.take-actions { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.take-actions .grow { flex: 1; }
+.take-actions .btn { border-radius: var(--r-pill); }
+
+/* an empty film: what to do, or what the assistant is doing */
+.invite { position: absolute; left: 32px; right: 32px; top: 60px; bottom: 150px; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; pointer-events: none; }
+.invite-mark { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 6px; border-radius: var(--r-md); background: var(--accent-soft); color: var(--accent-text); }
+.invite-mark svg { width: 28px; height: 28px; fill: currentColor; }
+.invite.making .invite-mark svg { animation: work 1.4s var(--ease) infinite; }
+.invite h2 { margin: 0; font-size: clamp(22px, 3vw, 32px); font-weight: 650; letter-spacing: -0.02em; }
+.invite p { margin: 0; max-width: 400px; color: var(--text-2); font-size: var(--fs-md); line-height: var(--lh-text); }
+
+/* the notes pinned on the picture: the accent, ringed by the picture's light */
+.pins { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.pin { position: absolute; padding: 0; border: 0; background: none; transform: translate(-3px, -100%); pointer-events: auto; cursor: pointer; }
+.pin span {
+  display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 7px; border-radius: 12px 12px 12px 3px;
+  background: var(--accent); color: var(--on-accent); font: 700 11px var(--mono); box-shadow: 0 0 0 2px var(--on-media), 0 6px 16px var(--media-scrim);
+}
+.pin:hover span { transform: scale(1.08); }
+.pin.new { pointer-events: none; }
+.pin.new span { animation: drop .32s var(--ease); }
+@keyframes drop { from { transform: translateY(-14px) scale(.6); opacity: 0; } }
+
+/* the direction bar and its suggestions, floating over the bottom of the film */
+.stage-foot { position: absolute; left: 50%; bottom: 14px; z-index: 6; width: min(780px, calc(100% - 40px)); transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.chip.fill { border-style: dashed; }
+.direct { position: relative; }
+.direct .composer-wrap { padding: 0; }
+.direct .command-menu { left: 0; right: 0; }
+.direct .composer {
+  position: relative; border-radius: var(--r-xl); background: var(--float);
+  backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow: var(--shadow-2);
+}
+.direct .composer:focus-within { box-shadow: var(--shadow-2), 0 0 0 2px var(--accent-line); }
+.direct .composer textarea { min-height: 50px; padding: 14px 16px 6px; font-size: var(--fs-md); line-height: 1.5; }
+.direct .composer .bar { padding: 4px 8px 8px 10px; }
+.direct-context { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; }
+/* what the note will be about: the film, the scene in focus, the pinned point */
+.ctx-chip {
+  display: inline-flex; align-items: center; gap: 5px; flex: none; max-width: 220px; height: 22px; padding: 0 8px; border: 0; border-radius: var(--r-pill);
+  background: var(--field); color: var(--text-3); font-size: var(--fs-xs); white-space: nowrap;
+}
+.ctx-chip > span { overflow: hidden; text-overflow: ellipsis; }
+.ctx-chip.mono { font-family: var(--mono); font-size: 10.5px; }
+.ctx-chip svg.i { width: 11px; height: 11px; flex: none; }
+.ctx-chip.on { background: var(--accent-soft); color: var(--text); flex-shrink: 1; min-width: 0; }
+button.ctx-chip:hover { background: var(--field-hover); color: var(--text); }
+.direct-hint {
+  position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%); display: inline-flex; align-items: center; gap: 7px;
+  height: 30px; padding: 0 14px; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap;
+  box-shadow: var(--shadow-2); animation: pop var(--t-fast) var(--ease);
+}
+.direct-hint svg.i { width: 13px; height: 13px; }
+
+/* ── the storyboard: a panel of scenes, and its sounds ─────── */
+.storyboard { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 8px 14px 10px; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); contain: layout paint; }
+.sb-head { display: flex; align-items: center; gap: 10px; height: 30px; min-width: 0; }
+.sb-play { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border: 0; border-radius: 50%; background: var(--text); color: var(--bg); }
+.sb-play svg.i { width: 14px; height: 14px; fill: currentColor; stroke: none; }
+.sb-where { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-size: var(--fs-sm); white-space: nowrap; }
+.sb-time { font: 600 var(--fs-md) var(--mono); font-variant-numeric: tabular-nums; }
+.sb-where .faint { font-size: var(--fs-xs); }
+.sb-now { min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: 8px; color: var(--text-2); font-size: var(--fs-md); }
+.sb-head .grow { flex: 1; }
+.sb-track { position: relative; touch-action: none; user-select: none; }
+.sb-scenes { position: relative; }
+.sb-scene {
+  position: absolute; top: 0; bottom: 0; overflow: hidden; border-radius: var(--r-sm); cursor: pointer; background: var(--stage);
+  transition: box-shadow var(--t-fast) var(--ease);
+}
+/* the scene aimed at: a 2 px ring of accent */
+.sb-scene.on { box-shadow: 0 0 0 2px var(--accent); z-index: 1; }
+.sb-frames { display: flex; height: 100%; }
+.sb-frames img, .sb-frames i { display: block; flex: 1 1 0; min-width: 0; height: 100%; object-fit: cover; }
+.sb-frames i { background: linear-gradient(90deg, var(--field) 0%, var(--field-hover) 50%, var(--field) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.sb-label {
+  position: absolute; left: 5px; bottom: 5px; display: flex; align-items: center; gap: 6px; max-width: calc(100% - 10px); height: 20px; padding: 0 7px 0 5px;
+  border-radius: 6px; background: var(--media-scrim); color: var(--on-media); font-size: var(--fs-xs);
+}
+.sb-label b { font: 600 10px var(--mono); color: var(--on-media); opacity: .65; }
+.sb-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-scene.live .sb-label b { opacity: 1; }
+.sb-dur { position: absolute; top: 5px; right: 5px; padding: 1px 6px; border-radius: 5px; background: var(--media-scrim); color: var(--on-media); font: 10px var(--mono); }
+/* the sounds under the scenes: the beds as soft bands, the effects as ticks */
+.sb-sound { position: relative; height: 24px; margin-top: 6px; border-radius: var(--r-sm); background: var(--surface-2); }
+.sb-clip { position: absolute; top: 3px; bottom: 3px; overflow: hidden; border-radius: 5px; --c: var(--text-3);
+  background: color-mix(in srgb, var(--c) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 26%, transparent); }
+.sb-clip.voice { --c: var(--accent); }
+.sb-clip.ambience { --c: var(--t-shape); }
+.sb-clip svg { display: block; width: 100%; height: 100%; }
+.sb-clip path { fill: var(--c); opacity: .5; }
+/* the effects, over the beds: a tick each, the heroes taller and warm */
+.sb-tick { position: absolute; z-index: 1; top: 8px; bottom: 8px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--text-4); opacity: .7; }
+.sb-tick.hero { top: 4px; bottom: 4px; background: var(--key); opacity: 1; }
+.sb-notes { position: relative; height: 22px; margin-top: 3px; }
+.sb-note {
+  position: absolute; top: 2px; min-width: 18px; height: 18px; padding: 0 5px; transform: translateX(-3px); border: 0; border-radius: 9px 9px 9px 2px;
+  background: var(--accent); color: var(--on-accent); font: 700 10px var(--mono); cursor: pointer;
+}
+.sb-note:not(.pinned) { background: var(--field-active); color: var(--text); }
+.sb-playhead { position: absolute; top: -3px; bottom: 0; left: 0; width: 2px; margin-left: -1px; background: var(--text); border-radius: 1px; pointer-events: none; z-index: 4; will-change: transform; }
+.sb-playhead::before { content: ''; position: absolute; top: 2px; left: -5px; width: 12px; height: 12px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--surface); }
+
+/* ── the side panel: notes and direction ───────────────────── */
+.studio-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: hidden; }
+.side-head { display: flex; align-items: center; gap: 4px; height: 44px; flex: none; padding: 0 8px 0 10px; }
+.side-head .grow { flex: 1; }
+.side-body { flex: 1; min-height: 0; overflow: auto; }
+.studio .thread { padding: 4px 10px 24px; }
+
+/* ── the direction ─────────────────────────────────────────── */
+.direction { display: flex; flex-direction: column; gap: 24px; padding: 16px 16px 28px; }
+.dir-film { padding: 16px; border-radius: var(--r-lg); background: var(--surface-2); }
+.dir-kicker { display: flex; align-items: center; gap: 6px; color: var(--accent-text); font: 600 var(--fs-xs)/1 var(--ui); letter-spacing: 0.02em; }
+.dir-kicker svg.i { width: 12px; height: 12px; }
+.dir-film h3 { margin: 8px 0 6px; font-size: var(--fs-xl); letter-spacing: -0.01em; }
+.dir-film p { margin: 0; color: var(--text-2); font-size: var(--fs-md); line-height: var(--lh-text); user-select: text; }
+.dir-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.dir-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.dir-film .dir-actions { margin-top: 14px; }
+.dir-section { display: flex; flex-direction: column; gap: 10px; }
+.dir-head { display: flex; align-items: baseline; gap: 8px; }
+.dir-head h4 { margin: 0; font-size: var(--fs-md); }
+.dir-hint { margin: -4px 0 0; color: var(--text-3); font-size: var(--fs-sm); line-height: 1.5; }
+.dir-saved { display: inline-flex; align-items: center; gap: 4px; color: var(--ok); font-size: var(--fs-sm); }
+.dir-saved svg.i { width: 12px; height: 12px; }
+.dir-field { display: flex; flex-direction: column; gap: 5px; }
+.dir-label { color: var(--text-2); font: 500 var(--fs-sm)/1 var(--ui); }
+.dir-field textarea {
+  width: 100%; padding: 8px 10px; resize: vertical; border: 0; border-radius: var(--r-sm); outline: none;
+  background: var(--field); color: var(--text); font: 400 var(--fs-md)/1.5 var(--ui); user-select: text;
+}
+.dir-field textarea:focus { box-shadow: 0 0 0 2px var(--accent-line); }
+/* the nuancier and the fonts sit in wells */
+.dir-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.dir-swatch { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 5px; border-radius: var(--r-sm); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-sm); }
+.dir-swatch i { flex: none; width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.dir-swatch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir-fonts { display: flex; flex-wrap: wrap; gap: 8px; }
+.dir-fonts span { padding: 6px 10px; border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-lg); }
+.dir-sources { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.dir-source { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 4px; border-radius: var(--r-sm); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-xs); }
+.dir-source img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 5px; }
+.dir-source svg.i { width: 100%; height: 44px; padding: 12px 0; color: var(--text-3); }
+.dir-source span { padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── narrow screens: the film, the storyboard, the notes; the bar at the thumb ── */
+@media (max-width: 1180px) { .studio-body { grid-template-columns: minmax(0, 1fr) 330px; } }
+@media (max-width: 1020px) { .topbar .seg button span { display: none; } .topbar .seg button { padding: 0 9px; } }
+/* the format moves to the bar's menu */
+@media (max-width: 900px) { .topbar .format-pill { display: none; } }
+@media (max-width: 760px) {
+  .studio { grid-template-rows: 52px minmax(0, 1fr); }
+  .studio-body { display: flex; flex-direction: column; overflow: auto; gap: var(--gutter); padding: var(--gutter); }
+  .studio-main { flex: none; }
+  .studio-stage { flex: none; height: 44vh; height: 44dvh; min-height: 220px; }
+  .stage-foot { position: fixed; left: 0; right: 0; bottom: 0; width: auto; transform: none; padding: 18px 8px calc(8px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--bg) 22px); }
+  .chips { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .storyboard { padding: 6px 10px 8px; }
+  .sb-now { display: none; }
+  .studio-side { flex: none; min-height: 60vh; padding-bottom: 150px; }
+  .thread { overflow: visible; }
+  .invite { bottom: 20px; }
+  .invite p { display: none; }
+}

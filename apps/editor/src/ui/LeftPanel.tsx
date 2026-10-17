@@ -6,7 +6,7 @@ import { useRef, useState } from 'preact/hooks';
 import { addLayer, applyOps, layerActive, moveLayer, pointer, propKind, removeLayer, staticValue, type Asset, type KeyframedProp, type Prop, type StaticProp, type Vec2, type TrammeDoc, type Layer, type NodeType, type Op, type PresetType, type TokenType } from '@tramme/core';
 import { clickSelect, comp, commit, foldAll, S, select, toggleFold, viewDoc, toast, uiTime } from '../state.ts';
 import { flatTree, freshId, layerName, shiftProp, parentOf, SOUND_GROUP, soundGroupOf, subtree, topLayers, commonStem, folderOf, imagesIn } from '../model.ts';
-import { ColorField, longPress, openMenu, Swatch, TextInput, resolveColor, type MenuItem } from './controls.tsx';
+import { ColorField, longPress, openMenu, Seg, Swatch, TextInput, resolveColor, type MenuItem } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
 import { preview } from '../preview.ts';
 import { fromLottie } from '@tramme/interop';
@@ -670,11 +670,13 @@ export function LeftPanel() {
   return (
     <>
       <div class="panel-head">
-        <div class="tabs" role="tablist">
-          <button data-tour="left-tab-layers" class={`tab${current === 'layers' ? ' on' : ''}`} onClick={() => { tab.value = 'layers'; }}>{t('common.layers')}</button>
-          <button data-tour="left-tab-assets" class={`tab${current === 'assets' ? ' on' : ''}`} onClick={() => { tab.value = 'assets'; }}>{t('panel.assets')}</button>
-          <button data-tour="left-tab-tokens" class={`tab${current === 'tokens' ? ' on' : ''}`} onClick={() => { tab.value = 'tokens'; }}>{t('panel.tokens')}</button>
-        </div>
+        <Seg value={current} role="tablist"
+          options={[
+            { value: 'layers', label: t('common.layers'), tour: 'left-tab-layers' },
+            { value: 'assets', label: t('panel.assets'), tour: 'left-tab-assets' },
+            { value: 'tokens', label: t('panel.tokens'), tour: 'left-tab-tokens' },
+          ]}
+          onChange={(v) => { tab.value = v as 'layers' | 'assets' | 'tokens'; }} />
         <span class="grow" />
         {current === 'layers' && <button class="icon-btn sm" title={t('panel.addALayer')} onClick={(e) => addLayerMenu(e)}><Icon name="plus" /></button>}
       </div>

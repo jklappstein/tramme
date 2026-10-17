@@ -20,7 +20,9 @@ import { anchor, direct, focused, focusScene, liveStage, noteSent, notes, pinAt,
 import { Composer, join } from './composer.tsx';
 import { Lightbox, progressOf, useElapsed } from './chat.tsx';
 import { Icon } from './icons.tsx';
-import { SidePanel, TakeActions } from './Notes.tsx';
+import { LogoMark } from './Logo.tsx';
+import { SidePanel } from './Notes.tsx';
+import { TakeActions } from './thread.tsx';
 import { Overlays, useShortcuts } from './shell.tsx';
 import { Storyboard } from './Storyboard.tsx';
 import { TopBar } from './TopBar.tsx';
@@ -59,9 +61,9 @@ function Chips({ empty }: { empty: boolean }) {
   return (
     <div class="chips">
       {list.map((c) => (
-        <button key={c.label} class={`chip-btn${c.fill ? ' fill' : ''}`} title={c.fill ? t('studio.chipFillHint') : t(c.words)}
+        <button key={c.label} class={`chip${c.fill ? ' fill' : ''}`} title={c.fill ? t('studio.chipFillHint') : t(c.words)}
           onClick={() => { if (c.fill) draft.value = t(c.words); else direct(t(c.words)); }}>
-          {!c.fill && <Icon name="spark" />}{t(c.label)}
+          {t(c.label)}
         </button>
       ))}
     </div>
@@ -76,8 +78,8 @@ function WorkPill() {
   const pct = tool ? progressOf(tool) : null;
   return (
     <div class="pill work-pill" role="status">
-      <span class="pill-spark"><Icon name="spark" /></span>
-      <span class="pill-label">{stage ? t(STAGE_LABEL[stage]) : t('studio.working')}</span>
+      <span class="mark working"><LogoMark /></span>
+      <span class="stage-name">{stage ? t(STAGE_LABEL[stage]) : t('studio.working')}</span>
       {tool && <span class="pill-detail">{tool.summary}</span>}
       {pct !== null && <span class="progress"><i style={{ width: `${pct}%` }} /></span>}
       <span class="mono faint">{secs} s</span>
@@ -91,7 +93,7 @@ function TakePill() {
   const p = S.proposal.value!;
   return (
     <div class="pill take-pill">
-      <span class="take-n"><Icon name="spark" />{t('studio.takeN', { n: takes.value.get(p.id) ?? 1 })}</span>
+      <span class="take-n"><Icon name="clap" />{t('studio.takeN', { n: takes.value.get(p.id) ?? 1 })}</span>
       <span class="take-label" title={p.label}>{p.label}</span>
       <TakeActions another />
     </div>
@@ -146,7 +148,7 @@ function Invitation() {
   const stage = busy ? liveStage(turns.value.at(-1)?.work ?? []) : null;
   return (
     <div class={`invite${busy ? ' making' : ''}`}>
-      <div class="invite-mark"><Icon name="spark" /></div>
+      <div class="invite-mark"><LogoMark size={28} /></div>
       {busy
         ? <><h2>{stage ? t(STAGE_LABEL[stage]) : t('studio.working')}…</h2><p>{t('studio.makingText')}</p></>
         : <><h2>{t('studio.inviteTitle')}</h2><p>{t('studio.inviteText')}</p></>}

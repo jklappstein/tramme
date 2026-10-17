@@ -5,6 +5,8 @@
 // started first.
 
 import { render } from 'preact';
+import '@fontsource-variable/geist';
+import '@fontsource-variable/geist-mono';
 import { DOCUMENT } from '@tramme/project';
 import { upgradeDoc, type TrammeDoc } from '@tramme/core';
 import { api } from './api.ts';
@@ -13,8 +15,14 @@ import { commit, hooks, load, S, select, setTime, undo } from './state.ts';
 import { loadChats, runTool } from './ai/index.ts';
 import { App } from './ui/App.tsx';
 import { Home } from './ui/Home.tsx';
-import './styles.css';
-import './studio.css';
+import './theme/tokens.css';
+import './theme/base.css';
+import './theme/components.css';
+import './screens/home.css';
+import './screens/settings.css';
+import './screens/conversation.css';
+import './screens/studio.css';
+import './screens/atelier.css';
 import { offerTours } from './tours/index.ts';
 import { startProject } from './start.ts';
 import { t } from './i18n/index.ts';

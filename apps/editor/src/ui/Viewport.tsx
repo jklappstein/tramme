@@ -85,7 +85,7 @@ function QualityButton() {
     ]);
   };
   return (
-    <button data-tour="quality" class={`quality${reduced ? ' reduced' : ''}`} onClick={menu}
+    <button data-tour="quality" class={`btn ghost sm quality${reduced ? ' reduced' : ''}`} onClick={menu}
       title={t('viewport.previewQualityExportsStay', { mode: t(MOTION_LABEL[p.motion]), n: Math.round(info.scale * 100) })}>
       <Icon name="frame" /><span>{reduced ? `${Math.round(info.scale * 100)} %` : t('viewport.sharp')}</span>
     </button>
@@ -458,9 +458,9 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
       {!bare && <div class="toolbar" onPointerDown={(e) => e.stopPropagation()}>
         <button class="zoom" onClick={zoomMenu} title={t('viewport.zoomCtrlWheel')}>{Math.round(scale * 100)} %</button>
         <span class="sep" />
-        <button class={`icon-btn sm${safe ? ' on' : ''}`} title={t('viewport.safeZones')} onClick={() => { S.safe.value = !safe; }}><Icon name="safe" /></button>
-        <button class={`icon-btn sm${grid ? ' on' : ''}`} title={t('viewport.grid')} onClick={() => { S.grid.value = !grid; }}><Icon name="grid" /></button>
-        <button class={`icon-btn sm${onion ? ' on' : ''}`} title={t('viewport.onionSkin')} onClick={() => { S.onion.value = !onion; }}><Icon name="onion" /></button>
+        <button class={`icon-btn sm round${safe ? ' on' : ''}`} title={t('viewport.safeZones')} onClick={() => { S.safe.value = !safe; }}><Icon name="safe" /></button>
+        <button class={`icon-btn sm round${grid ? ' on' : ''}`} title={t('viewport.grid')} onClick={() => { S.grid.value = !grid; }}><Icon name="grid" /></button>
+        <button class={`icon-btn sm round${onion ? ' on' : ''}`} title={t('viewport.onionSkin')} onClick={() => { S.onion.value = !onion; }}><Icon name="onion" /></button>
         <span class="sep" />
         <QualityButton />
       </div>}

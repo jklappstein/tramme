@@ -209,25 +209,21 @@ export function TopBar() {
       </div>
       {!studio && comps.length > 1 && <div style={{ width: 170 }} class="hide-sm"><Select value={S.compId.value} options={comps.map(([id, x]) => [id, x.name])} onChange={(v) => { S.compId.value = v; S.selection.value = []; }} /></div>}
       <span class="grow" />
-      <ViewSwitch />
+      <ViewSwitch size="lg" />
       <span class="grow" />
       <div class="group" data-tour="history">
         <button class="icon-btn" title={undoLabel.value ? t('topbar.undoActionCtrlZ', { action: undoLabel.value }) : t('topbar.undoCtrlZ')} disabled={!canUndo.value} onClick={undo}><Icon name="undo" /></button>
         <button class="icon-btn" title={redoLabel.value ? t('topbar.redoActionCtrlShift', { action: redoLabel.value }) : t('topbar.redoCtrlShiftZ')} disabled={!canRedo.value} onClick={redo}><Icon name="redo" /></button>
       </div>
       <span class="sep" />
-      {studio
-        ? <button class="format-pill hide-sm" data-tour="format" title={t('studio.formatHint')} onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); openMenu({ clientX: r.left, clientY: r.bottom + 4 }, formatItems(choice)); }}>
-          <span>{FORMATS.find((f) => f[0] === fmt)?.[1].split(' · ')[0] ?? `${c.width}×${c.height}`}</span><i /><span>{t('common.nFps', { n: c.fps })}</span><i /><span>{fmtSeconds(c.duration)}</span><Icon name="chevronDown" />
-        </button>
-        : <div class="settings" data-tour="format">
-          <div style={{ width: 168 }} class="hide-sm">
-            <Select value={fmt} options={[...FORMATS.map(([id, label]) => [id, label] as [string, string]), ...(fmt === 'custom' ? [['custom', `${c.width}×${c.height}`] as [string, string]] : [])]} onChange={setFormat} />
-          </div>
-          <div style={{ width: 84 }}>
-            <Select value={String(c.fps)} options={['24', '25', '30', '50', '60'].map((f) => [f, t('common.nFps', { n: f })])} onChange={(v) => choice.setFps(Number(v))} />
-          </div>
-        </div>}
+      <div class="settings" data-tour="format">
+        <div style={{ width: 168 }} class="hide-sm">
+          <Select value={fmt} options={[...FORMATS.map(([id, label]) => [id, label] as [string, string]), ...(fmt === 'custom' ? [['custom', `${c.width}×${c.height}`] as [string, string]] : [])]} onChange={setFormat} />
+        </div>
+        <div style={{ width: 84 }}>
+          <Select value={String(c.fps)} options={['24', '25', '30', '50', '60'].map((f) => [f, t('common.nFps', { n: f })])} onChange={(v) => choice.setFps(Number(v))} />
+        </div>
+      </div>
       <HelpButton page="editor" />
       <button class="icon-btn" data-tour="settings" title={t('common.settingsCtrl')} onClick={() => { settingsOpen.value = true; }}><Icon name="gear" /></button>
       <button class="btn primary" data-tour="export" onClick={(e) => setExp(exp ? null : (e.currentTarget as HTMLElement))}><Icon name="download" /><span class="label">{t('common.export')}</span></button>

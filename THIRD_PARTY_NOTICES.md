@@ -15,6 +15,7 @@ These packages end up in the editor's build (`apps/editor/dist`). The build also
 | [gifenc](https://github.com/mattdesl/gifenc) | MIT | GIF export |
 | [fflate](https://github.com/101arrowz/fflate) | MIT | `.tramme` archives, PNG sequences |
 | [pdf.js](https://github.com/mozilla/pdf.js) (`pdfjs-dist`) | Apache-2.0 | Reading PDF documents (the sources of a project); its worker is copied beside the editor (`pdf.worker.mjs`) |
+| [@fontsource-variable/geist](https://github.com/fontsource/font-files) (`@fontsource-variable/geist-mono`) | OFL-1.1 | Geist and Geist Mono, the interface fonts (bundled as `.woff2`) |
 
 **About mediabunny (MPL-2.0).** The MPL is a file-level copyleft: if you modify mediabunny's own files and distribute the result, those files must stay under the MPL and their source must be available. Using it unmodified, as Tramme does, places no requirement on Tramme's own code.
 
@@ -39,7 +40,7 @@ esbuild (MIT), TypeScript (Apache-2.0), Vitest (MIT), Wrangler (MIT OR Apache-2.
 
 ## Fonts and media
 
-The editor uses the system's fonts and bundles none. The example projects in `examples/` (drawings, thumbnails) are part of Tramme and under the same Apache 2.0 license.
+The editor bundles Geist and Geist Mono ([@fontsource-variable](https://fontsource.org), SIL Open Font License 1.1); it works offline. The example projects in `examples/` (drawings, thumbnails) are part of Tramme and under the same Apache 2.0 license.
 
 The sound library in `sounds/` (copied into the editor's build) holds recordings by [Kenney](https://www.kenney.nl) from the packs Impact Sounds, Interface Sounds, Digital Audio, UI Audio, Music Jingles and Sci-fi Sounds, released under [Creative Commons Zero (CC0 1.0)](http://creativecommons.org/publicdomain/zero/1.0/): public domain, free for any use, crediting welcome but not required (`sounds/LICENSE.txt`). The sounds written as code (`apps/editor/src/sound-presets.ts`) are part of Tramme.
 

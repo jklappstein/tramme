@@ -132,7 +132,7 @@ export function Storyboard() {
         <Where />
         <span class="grow" />
         {focused.value && (
-          <button class="sb-focus" title={t('studio.clearFocus')} onClick={() => focusScene(null)}>
+          <button class="chip on" title={t('studio.clearFocus')} onClick={() => focusScene(null)}>
             <Icon name="target" />{focused.value.name}<Icon name="x" />
           </button>
         )}

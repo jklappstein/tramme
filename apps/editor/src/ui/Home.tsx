@@ -16,7 +16,7 @@ import { ago } from '../model.ts';
 import { createFromWords, droppedOf, importArchive, ImportError, importFile, importSources, importVideo, isSourceFile, isVideoFile, pickedOf, type Picked, type Progress } from '../importer.ts';
 import { kindOf } from '../sources.ts';
 import { toast } from '../state.ts';
-import { Modal, longPress, openMenu } from './controls.tsx';
+import { Modal, longPress, openMenu, Seg } from './controls.tsx';
 import { Icon } from './icons.tsx';
 import { LogoMark } from './Logo.tsx';
 import { Overlays } from './shell.tsx';
@@ -92,7 +92,7 @@ function NewProject({ onClose }: { onClose: () => void }) {
         )}
         {/* no duration asked: the assistant sets it to the content it builds, the inspector changes it */}
         <label class="lbl">{t('common.frameRate')}</label>
-        <div class="seg">{[24, 25, 30, 50, 60].map((f) => <button type="button" key={f} class={fps === f ? 'on' : ''} onClick={() => setFps(f)}>{f}</button>)}</div>
+        <Seg value={String(fps)} options={[24, 25, 30, 50, 60].map((f) => [String(f), String(f)] as [string, string])} onChange={(v) => setFps(Number(v))} />
         <div class="modal-foot">
           <button type="button" class="btn ghost" onClick={onClose}>{t('common.cancel')}</button>
           <button type="submit" class="btn primary" disabled={!valid || busy}><Icon name={busy ? 'spinner' : 'plus'} />{t('home.createProject')}</button>
@@ -136,7 +136,7 @@ function Remove({ project, onClose, onDone }: { project: Manifest; onClose: () =
         <p>{t('home.nameAndAllIts', { name: project.name })}</p>
         <div class="modal-foot">
           <button class="btn ghost" onClick={onClose}>{t('common.cancel')}</button>
-          <button class="btn danger-solid" disabled={busy} onClick={remove}><Icon name="trash" />{t('common.delete')}</button>
+          <button class="btn danger solid" disabled={busy} onClick={remove}><Icon name="trash" />{t('common.delete')}</button>
         </div>
       </div>
     </Modal>
@@ -160,9 +160,9 @@ function Failure({ error, onClose }: { error: ImportError | Error; onClose: () =
 function Card({ m, onMenu }: { m: Manifest; onMenu: (e: MouseEvent | { clientX: number; clientY: number }) => void }) {
   const [broken, setBroken] = useState(false);
   return (
-    <div class="card" role="button" tabIndex={0} onClick={() => open(m.id)} onKeyDown={(e) => e.key === 'Enter' && open(m.id)}
+    <div class="card interactive" role="button" tabIndex={0} onClick={() => open(m.id)} onKeyDown={(e) => e.key === 'Enter' && open(m.id)}
       onPointerDown={(e) => longPress(e, onMenu)} onContextMenu={(e) => { e.preventDefault(); onMenu(e); }}>
-      <div class="card-thumb">
+      <div class="card-thumb" style={{ aspectRatio: `${m.width ?? 16} / ${m.height ?? 9}` }}>
         {m.thumbnail && !broken
           ? <img src={`${api.fileUrl(m.id, m.thumbnail)}?v=${encodeURIComponent(m.modified)}`} alt="" loading="lazy" onError={() => setBroken(true)} />
           : <span class="frame" style={{ aspectRatio: `${m.width ?? 16} / ${m.height ?? 9}` }}><Icon name="film" /></span>}
@@ -216,18 +216,14 @@ function DirectionBox({ busy, onStart }: { busy: boolean; onStart: (words: strin
           <input ref={files} type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,application/pdf,.md,.markdown,.json,.ttf,.otf,.woff,.woff2" onChange={chosen} />
           <input ref={folder} type="file" multiple hidden {...{ webkitdirectory: true }} onChange={chosen} />
           <span class="grow" />
-          <div class="brief-formats" role="radiogroup" aria-label={t('common.format')}>
-            {FILM_FORMATS.map(([id, label, w, h]) => (
-              <button type="button" key={id} role="radio" aria-checked={format === id} class={format === id ? 'on' : ''} title={`${label} · ${w}×${h}`} onClick={() => setFormat(id)}>
-                <i style={{ aspectRatio: `${w} / ${h}`, [w >= h ? 'width' : 'height']: '14px' }} />{id.replace('x', ':')}
-              </button>
-            ))}
-          </div>
-          <button type="submit" class="btn primary go" disabled={!ready}><Icon name={busy ? 'spinner' : 'spark'} />{t('home.start')}</button>
+          <Seg value={format} role="radiogroup" ariaLabel={t('common.format')}
+            options={FILM_FORMATS.map(([id, , w, h]) => ({ value: id, label: <><i class="fmt" style={{ aspectRatio: `${w} / ${h}`, [w >= h ? 'width' : 'height']: '13px' }} />{id.replace('x', ':')}</> }))}
+            onChange={setFormat} />
+          <button type="submit" class="btn primary" disabled={!ready}><Icon name={busy ? 'spinner' : 'arrow'} />{t('home.start')}</button>
         </div>
       </form>
       <div class="hero-ideas">
-        {IDEAS.map(({ label, words: w }) => <button key={label} onClick={() => { setWords(t(w)); requestAnimationFrame(() => { const el = area.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }); }}>{t(label)}</button>)}
+        {IDEAS.map(({ label, words: w }) => <button key={label} class="chip" onClick={() => { setWords(t(w)); requestAnimationFrame(() => { const el = area.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }); }}>{t(label)}</button>)}
       </div>
     </div>
   );
@@ -304,7 +300,7 @@ export function Home() {
       } catch (x) { toast(t('home.couldNotExportError', { error: (x as Error).message }), 'error'); }
     } },
     'sep',
-    { label: t('common.delete'), icon: 'trash', onClick: () => setDialog({ kind: 'remove', m }) },
+    { label: t('common.delete'), icon: 'trash', danger: true, onClick: () => setDialog({ kind: 'remove', m }) },
   ]);
 
   return (
@@ -318,11 +314,11 @@ export function Home() {
         <HelpButton page="home" />
         <button class="icon-btn" data-tour="settings" title={t('common.settingsCtrl')} onClick={() => { settingsOpen.value = true; }}><Icon name="gear" /></button>
         {/* the other ways in: a blank project, a video to dress, a file to open */}
-        <button class="btn" data-tour="home-more" onClick={(e) => openMenu((e.currentTarget as HTMLElement).getBoundingClientRect(), [
-          { label: t('home.blankProject'), icon: 'plus', onClick: () => setDialog({ kind: 'new' }) },
-          { label: t('home.fromAVideo'), icon: 'film', onClick: () => video.current?.click() },
+        <button class="btn outline sm" data-tour="home-more" onClick={(e) => openMenu((e.currentTarget as HTMLElement).getBoundingClientRect(), [
+          { label: t('home.blankProject'), icon: 'plus', detail: t('home.blankProjectDetail'), onClick: () => setDialog({ kind: 'new' }) },
+          { label: t('home.fromAVideo'), icon: 'film', detail: t('home.fromAVideoDetail'), onClick: () => video.current?.click() },
           'sep',
-          { label: t('common.openAFile'), icon: 'upload', onClick: () => input.current?.click() },
+          { label: t('common.openAFile'), icon: 'upload', detail: t('home.openAFileDetail'), onClick: () => input.current?.click() },
         ])}><Icon name="plus" /><span class="label">{t('home.otherWays')}</span></button>
         <input ref={input} type="file" accept=".tramme,.trame,.emotion,.zip,.json,application/json" hidden onChange={(e) => openFiles(chosen(e))} />
         <input ref={video} type="file" accept="video/*,.mp4,.mov,.webm,.mkv" hidden onChange={(e) => openFiles(chosen(e))} />
@@ -344,8 +340,8 @@ export function Home() {
             <div class="home-h"><h2>{t('home.examples')}</h2><span class="faint">{t('home.aCopyBecomesYour')}</span></div>
             <div class="examples">
               {examples.map((x) => (
-                <button key={x.file} class="example" onClick={() => useExample(x)}>
-                  <span class="example-thumb">{x.thumbnail ? <img src={`/examples/${x.thumbnail}`} alt="" loading="lazy" /> : <span class="frame" style={{ aspectRatio: `${x.width} / ${x.height}` }}><Icon name="film" /></span>}</span>
+                <button key={x.file} class="example card interactive" onClick={() => useExample(x)}>
+                  <span class="example-thumb" style={{ aspectRatio: `${x.width} / ${x.height}` }}>{x.thumbnail ? <img src={`/examples/${x.thumbnail}`} alt="" loading="lazy" /> : <span class="frame" style={{ aspectRatio: `${x.width} / ${x.height}` }}><Icon name="film" /></span>}</span>
                   <span class="example-text" title={t(x.description)}><b>{t(x.name)}</b><span class="faint example-about">{t(x.description)}</span><span class="faint mono">{dims(x)}</span></span>
                 </button>
               ))}

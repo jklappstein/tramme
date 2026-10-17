@@ -1,0 +1,128 @@
+/* The home screen: a film starts from words. A quiet top bar, a hero title,
+   the direction box (a 20 px card that takes the accent ring when focused),
+   the films as cards that rise on hover. */
+
+a.brand { text-decoration: none; border-radius: var(--r-sm); padding: 2px 4px; margin: -2px -4px; }
+a.brand:hover { background: var(--hover); }
+.home { position: relative; height: 100vh; height: 100dvh; overflow: auto; background: var(--bg); }
+.home-top {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px;
+  height: 56px; padding: 0 24px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.home-top .brand { font-size: var(--fs-lg); }
+.home-top .grow { flex: 1; }
+
+.home-main { max-width: 1280px; margin: 0 auto; padding: 28px 24px 64px; display: flex; flex-direction: column; gap: 36px; }
+.home-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+.home-h h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; letter-spacing: -0.01em; }
+.home-h .faint { font-size: var(--fs-sm); }
+.home-note { display: flex; gap: 8px; align-items: center; padding: 10px 12px; margin-bottom: 14px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); color: var(--text-2); }
+.home-note.err { color: var(--error-text); background: var(--error-bg); }
+.home-note svg.i { flex: none; }
+
+/* the hero: the question, the direction box, the ideas */
+.hero { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 44px 24px 8px; text-align: center; }
+.hero h1 { margin: 0; font: 650 var(--fs-hero)/1.04 var(--ui); letter-spacing: -0.035em; }
+.hero-sub { margin: 0 0 10px; color: var(--text-2); font-size: 15.5px; }
+.brief-box { width: min(760px, 100%); border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-2); text-align: left; transition: box-shadow var(--t-fast) var(--ease); }
+.brief-box:focus-within { box-shadow: var(--shadow-2), 0 0 0 2px var(--accent-line); }
+.brief-box textarea { display: block; width: 100%; min-height: 92px; padding: 18px 20px 26px; border: 0; outline: none; resize: none; background: transparent; color: var(--text); font: 400 15.5px/1.55 var(--ui); user-select: text; }
+.brief-box textarea::placeholder { color: var(--text-3); }
+.brief-files { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 16px 6px; }
+.brief-bar { display: flex; align-items: center; gap: 6px; padding: 8px 10px 10px 12px; }
+.brief-bar .grow { flex: 1; }
+/* the small rectangle of each format, in the segmented control */
+.brief-formats button i { display: block; border: 1.5px solid currentColor; border-radius: 2px; }
+.hero-ideas { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 760px; }
+
+/* the films: cards with a thumbnail, a name, its details */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.card {
+  position: relative; display: flex; flex-direction: column; overflow: hidden; cursor: pointer; outline: none;
+}
+/* the thumb takes the film's own aspect (set inline from its manifest), so the preview fills its
+   box: no empty band beside a vertical film. When a neighbour in the row stands taller, the card
+   grows and the space stays between thumb and meta, on the card's surface */
+.card-thumb {
+  flex: none; aspect-ratio: 16 / 10; display: grid; place-items: center; overflow: hidden;
+  background: var(--stage);
+}
+.card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.frame {
+  display: grid; place-items: center; max-width: 62%; max-height: 62%; width: 62%;
+  border-radius: var(--r-xs); background: var(--raised); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text-4);
+}
+.frame svg.i { width: 20px; height: 20px; }
+.card-meta { display: flex; flex-direction: column; gap: 3px; margin-top: auto; padding: 12px 40px 12px 14px; min-width: 0; }
+.card-name { font: 600 var(--fs-md)/1.3 var(--ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-sub { color: var(--text-3); font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-more { position: absolute; right: 8px; bottom: 12px; opacity: 0; transition: opacity var(--t-fast) var(--ease); }
+.card:hover .card-more, .card-more.on { opacity: 1; }
+@media (pointer: coarse) { .card-more { opacity: 1; } }
+.ghost-card { pointer-events: none; }
+.ghost-card .card-meta i { display: block; height: 9px; border-radius: var(--r-xs); background: var(--raised); width: 70%; }
+.ghost-card .card-meta i + i { width: 45%; }
+.ghost-card .card-thumb { animation: pulse 1.4s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: .55; } to { opacity: 1; } }
+.home-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+  padding: 48px 20px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); color: var(--text-2);
+}
+.home-empty > svg.i { width: 26px; height: 26px; color: var(--text-4); }
+.home-empty .faint { max-width: 420px; line-height: 1.5; }
+.home-empty .btn { margin-top: 6px; }
+
+/* the examples: the same language, in a horizontal card */
+.examples { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.example {
+  display: flex; align-items: center; gap: 14px; padding: 12px; text-align: left; border: 0; cursor: pointer;
+}
+.example-thumb {
+  flex: none; width: 112px; aspect-ratio: 16 / 10; display: grid; place-items: center; overflow: hidden; border-radius: var(--r-sm);
+  background: var(--stage);
+}
+.example-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.example .frame { width: 58%; max-width: 58%; max-height: 70%; color: var(--text-3); }
+.example-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: var(--fs-sm); }
+.example-text b { font-size: var(--fs-md); font-weight: 600; }
+/* three lines at most, whatever the example says: the cards keep one height (the whole text on hover) */
+.example-about { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+
+/* the drop zone: a dashed ring of accent */
+.drop-hint {
+  position: fixed; inset: 12px; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  border-radius: var(--r-xl); border: 2px dashed var(--accent-line); background: var(--scrim); color: var(--text); font-size: var(--fs-md);
+  pointer-events: none;
+}
+.drop-hint svg.i { width: 24px; height: 24px; color: var(--accent); }
+
+/* ── the home's dialogs ────────────────────────────────────── */
+/* the formats of a blank project: selectable cards */
+.presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.presets button {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px 8px; border: 0; border-radius: var(--r-md);
+  background: var(--surface-2); color: var(--text); font-size: var(--fs-sm);
+}
+.presets button:hover { background: var(--field-hover); }
+.presets button.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.presets .shape { width: 40px; height: 40px; display: grid; place-items: center; color: var(--text-3); }
+.presets .shape i { display: block; max-width: 100%; max-height: 100%; border-radius: 3px; border: 1.5px solid currentColor; }
+.presets button.on .shape { color: var(--accent-text); }
+.presets .mono { font-size: 10px; }
+.inline-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+.inline-fields > div { display: flex; flex-direction: column; gap: 8px; }
+.issues { margin: 0; padding: 8px 10px 8px 26px; max-height: 260px; overflow: auto; border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-sm); line-height: 1.6; color: var(--text-2); }
+.issues b { color: var(--text); font-weight: 500; margin-right: 6px; }
+
+@media (max-width: 760px) {
+  .home-top { padding: 0 16px; }
+  .home-top .btn .label { display: none; }
+  .home-top .btn { width: 34px; padding: 0; justify-content: center; }
+  .home-main { padding: 20px 16px 48px; gap: 28px; }
+  .cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .examples { grid-template-columns: 1fr; }
+  .presets { grid-template-columns: repeat(2, 1fr); }
+  .hero { padding-top: 18px; }
+  .brief-bar { flex-wrap: wrap; }
+  .brief-bar .seg { order: 3; }
+}

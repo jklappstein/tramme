@@ -14,7 +14,7 @@ export function Section({ title, children }: { title: string; children: Componen
   const { query } = useContext(Search);
   return (
     <Search.Provider value={{ query, whole: !query || norm(title).includes(query) }}>
-      <section class="set-section"><h3>{title}</h3>{children}</section>
+      <section class="set-section"><h3>{title}</h3><div class="set-group-card">{children}</div></section>
     </Search.Provider>
   );
 }
@@ -26,7 +26,7 @@ export function Row({ label, badge, hint, children, below, stack }: { label: str
   return (
     <>
       <div class={`set-row${stack ? ' stack' : ''}`}>
-        <div class="set-label"><span>{label}{badge && <span class="set-badge">{badge}</span>}</span>{hint && <span class="faint">{hint}</span>}</div>
+        <div class="set-label"><span>{label}{badge && <span class="tag" style={{ marginLeft: 6 }}>{badge}</span>}</span>{hint && <span class="faint">{hint}</span>}</div>
         <div class="set-control">{children}</div>
       </div>
       {below}
@@ -40,8 +40,8 @@ export function Confirm({ label, question, action, danger, onCancel, onConfirm }
     <div class="set-confirm" role="alertdialog" aria-label={label}>
       <span>{question}</span>
       <div class="set-confirm-actions">
-        <button class="btn sm" onClick={onCancel}>{t('common.cancel')}</button>
-        <button class={`btn sm ${danger ? 'danger-solid' : 'primary'}`} onClick={onConfirm}>{action}</button>
+        <button class="btn ghost sm" onClick={onCancel}>{t('common.cancel')}</button>
+        <button class={`btn sm ${danger ? 'danger solid' : 'primary'}`} onClick={onConfirm}>{action}</button>
       </div>
     </div>
   );

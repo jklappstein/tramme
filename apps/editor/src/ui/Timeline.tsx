@@ -7,7 +7,7 @@ import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { layerActive, pointer, staticValue, type Composition, type Keyframe, type Layer, type Op } from '@tramme/core';
 import { clickSelect, comp, commit, draft, cancelDraft, S, select, setTime, frameStep, toggleFold, uiTime, viewDoc } from '../state.ts';
 import { animatedProps, flatTree, keysOf, layerName, parentOf, parseTime, propPath, rawProp, rulerLabel, shiftLayerOps, snap, subtree, timecode, topLayers, type TreeItem } from '../model.ts';
-import { bandOf, longPress, openMenu, useSize } from './controls.tsx';
+import { bandOf, longPress, openMenu, Seg, useSize } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
 import { preview } from '../preview.ts';
 import { GraphEditor } from './GraphEditor.tsx';
@@ -61,10 +61,12 @@ export function Transport() {
         <span class="total">{t('common.frameDoneTotal', { done: Math.min(frames, Math.round(now * c.fps) + 1), total: frames })}<span class="fps"> · {t('common.nFps', { n: c.fps })}</span></span>
       </div>
       <span class="grow" />
-      <div class="tabs">
-        <button data-tour="bottom-tab-timeline" class={`tab${tab === 'timeline' ? ' on' : ''}`} onClick={() => { S.bottomTab.value = 'timeline'; }}><Icon name="timeline" size={13} /> {t('common.timeline')}</button>
-        <button data-tour="bottom-tab-graph" class={`tab${tab === 'graph' ? ' on' : ''}`} onClick={() => { S.bottomTab.value = 'graph'; }}><Icon name="curve" size={13} /> {t('common.curves')}</button>
-      </div>
+      <Seg value={tab} role="tablist"
+        options={[
+          { value: 'timeline', label: t('common.timeline'), icon: 'timeline', tour: 'bottom-tab-timeline' },
+          { value: 'graph', label: t('common.curves'), icon: 'curve', tour: 'bottom-tab-graph' },
+        ]}
+        onChange={(v) => { S.bottomTab.value = v as 'timeline' | 'graph'; }} />
       <div class="tl-zoom" title={t('timeline.timelineZoomCtrlWheel')}>
         <Icon name="minus" size={12} />
         <input type="range" min={0} max={100} value={zoomToSlider(c)} onInput={(e) => { pps.value = sliderToZoom(c, Number((e.target as HTMLInputElement).value)); }} />
