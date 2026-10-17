@@ -104,7 +104,8 @@ export async function* companionTurn(
     } else if (ev.type === 'tool') {
       const result = yield* runCall(runner, ev.name, ev.input ?? {}, signal);
       await fetch(`${link.url}/tool-result`, { method: 'POST', headers: headers(link), body: JSON.stringify({ callId: ev.callId, result }), signal });
-    } else if (ev.type === 'error') yield { type: 'error', message: ev.message };
+    } else if (ev.type === 'usage') yield { type: 'usage', usage: ev.usage };
+    else if (ev.type === 'error') yield { type: 'error', message: ev.message };
     else if (ev.type === 'done') return;
   }
 }

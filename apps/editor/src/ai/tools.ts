@@ -40,6 +40,8 @@ export class ToolRunner {
   events: AiEvent[] = [];
   /** where a running tool reports how far it is (set by the call that runs it) */
   onProgress: ((done: number, total: number, step?: string) => void) | null = null;
+  /** the calls run so far (a turn's count is the difference) */
+  calls = 0;
 
   /** the document the tools see: the user's, plus the pending proposal */
   liveDoc(): TrammeDoc {
@@ -191,6 +193,7 @@ ${r.content[0].type === 'text' ? r.content[0].text : ''}`);
 
   async run(name: string, input: any, signal?: AbortSignal): Promise<ToolResult> {
     this.signal = signal ?? new AbortController().signal;
+    this.calls++;
     // the model reads the error and calls again rather than the tool guessing
     const issues = inputIssues(name, input);
     if (issues.length) return text(`input refused by ${name}:\n${issues.join('\n')}`, true);

@@ -5,7 +5,7 @@
 // layers involved. The assistant runs them before summing up its work, the
 // user from the / menu. Plugins add their own (`checks` export).
 
-import { Evaluator, type EvaluatedLayer } from './evaluate.ts';
+import { Evaluator, nestedTime, type EvaluatedLayer, type NestedTiming } from './evaluate.ts';
 import { asKeyframed, modsOf, propKind } from './props.ts';
 import { animatedSlots, motionFigures, motionStretches, pathDeviation, sampleAddress, spanOf } from './motion.ts';
 import { layerMatrix, matMul, type Mat2D } from './math.ts';
@@ -94,7 +94,14 @@ function estimateText(p: Record<string, unknown>): Rect {
   return { x, y, w, h };
 }
 
-function place(doc: TrammeDoc, comp: Composition, t: number, layers: EvaluatedLayer[], parent: Mat2D, alpha: number, out: PlacedLayer[]) {
+/**
+ * The layers of a frame placed on screen, the children of groups and the
+ * layers of nested compositions included (at their own time, where the layer
+ * draws their frame, named after it: `scene-01/headline`), so the checks and
+ * the cues see what is drawn.
+ */
+function place(ev: Evaluator, comp: Composition, t: number, layers: EvaluatedLayer[], parent: Mat2D, alpha: number, out: PlacedLayer[], prefix = '', depth = 0) {
+  const doc = ev.doc;
   for (const L of layers) {
     const m = matMul(parent, layerMatrix(L.transform)), opacity = alpha * L.transform.opacity;
     let r: Rect | null = null;
@@ -103,8 +110,14 @@ function place(doc: TrammeDoc, comp: Composition, t: number, layers: EvaluatedLa
     if (!r && L.node.type === 'text') r = estimateText(L.props);
     // the height of the type on screen: its size times the vertical scale of the layer
     const textSize = text ? Math.abs(Number(L.props.size) || 0) * Math.hypot(m[2], m[3]) : undefined;
-    out.push({ id: L.id, layer: L.layer, node: L.node, props: L.props, opacity, box: r ? boxOf(m, r) : null, ...(text ? { text: String(L.props.text ?? ''), textSize } : {}) });
-    place(doc, comp, t, L.children, m, opacity, out);
+    out.push({ id: prefix + L.id, layer: L.layer, node: L.node, props: L.props, opacity, box: r ? boxOf(m, r) : null, ...(text ? { text: String(L.props.text ?? ''), textSize } : {}) });
+    place(ev, comp, t, L.children, m, opacity, out, prefix, depth);
+    // a nested composition, its frame centred on the layer's origin
+    const inner = L.node.type === 'comp' && typeof L.props.comp === 'string' && depth < 8 ? doc.compositions[L.props.comp] : undefined;
+    if (inner) {
+      const lt = nestedTime(L.props as unknown as NestedTiming, t, L.layer.in ?? 0, inner.duration);
+      if (lt >= 0 && lt < inner.duration) place(ev, inner, lt, ev.frame(lt, L.props.comp as string).layers, matMul(m, [1, 0, 0, 1, -inner.width / 2, -inner.height / 2]), opacity, out, `${prefix}${L.id}/`, depth + 1);
+    }
   }
 }
 
@@ -114,7 +127,7 @@ export function sampleComposition(evaluator: Evaluator, compId: string, step = 0
   // times counted, not added up: a step of 1/30 lands on its frames
   for (let i = 0; i * step < comp.duration - 1e-6; i++) {
     const t = +(i * step).toFixed(6), f = evaluator.frame(t, compId), layers: PlacedLayer[] = [];
-    place(evaluator.doc, comp, t, f.layers, [1, 0, 0, 1, 0, 0], 1, layers);
+    place(evaluator, comp, t, f.layers, [1, 0, 0, 1, 0, 0], 1, layers);
     out.push({ t: +t.toFixed(4), layers });
   }
   return out;
@@ -221,6 +234,8 @@ const crossing: CheckType = {
         for (const q of s.layers) {
           if (q === p || !q.box || q.textSize !== undefined || q.opacity < 0.3 || q.box.w * q.box.h > frame * 0.5 || q.node.container) continue;
           const a = p.box, b = q.box, key = `${p.id}|${q.id}`;
+          // a shape the whole text sits on (its card, its button) is its ground, not an element it crosses
+          if (b.x <= a.x + 1 && b.y <= a.y + 1 && b.x + b.w >= a.x + a.w - 1 && b.y + b.h >= a.y + a.h - 1) continue;
           const ix = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), iy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
           if (ix <= 0 || iy <= 0 || out.has(key) || ix * iy < 0.1 * a.w * a.h) continue;
           out.set(key, {
@@ -348,8 +363,10 @@ const linearTravel: CheckType = {
       if (!layerId || (!address.endsWith('.transform.position') && !address.endsWith('.transform.scale'))) continue;
       const [from, to] = spanOf(ctx.comp, layerId);
       if (to - from < 0.3) continue;
-      // the keyframes on the grid, so each segment reads true (a half-step at the ends would dilute the evenness)
-      const keys = propKind(raw) === 'keyframes' ? asKeyframed(raw).$k.map((k) => k.t) : [];
+      // the keyframes on the grid, so each segment reads true (a half-step at the ends would dilute the evenness),
+      // and points inside each segment: a short move in a long-lived layer is sampled where it happens, not jumped over
+      const kt = propKind(raw) === 'keyframes' ? asKeyframed(raw).$k.map((k) => k.t) : [];
+      const keys = kt.flatMap((t, i) => (i === 0 ? [t] : Array.from({ length: 8 }, (_, j) => kt[i - 1] + ((t - kt[i - 1]) * (j + 1)) / 8)));
       const s = sampleAddress(ctx.evaluator, address, ctx.compId, from, to, 32, keys);
       if (!s) continue;
       // the move itself, holds left out: a layer that lives longer than its move is judged on the move

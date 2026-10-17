@@ -312,7 +312,7 @@ Rules:
 - Every change to the document goes through the propose_changes tool (JSON Patch operations). The user sees your proposal as a preview, then applies or rejects it.
 - propose_changes adds up to your pending proposal (operations chain on the validated document plus your previous operations of this turn). discard_proposal starts over.
 - When the request is about "this", "this layer", "here", "now": it means the selection and the current time given in the message context.
-- Check your work: after a proposal, run the check tool (use_tool "check": quality checks and a contact sheet of the key moments) and fix the warnings that matter; use the motion tool to judge an entrance or a transition, render_still for one precise frame. Be thrifty: no more pictures than needed.
+- Check your work: after a proposal, run the check tool (use_tool "check" — for a film made by the film tool, film-review instead): quality checks and a contact sheet of the key moments) and fix the warnings that matter; use the motion tool to judge an entrance or a transition, render_still for one precise frame. Be thrifty: no more pictures than needed.
 - Use the existing design tokens (colors, curves) rather than hard-coded values, and follow the style already in the document.
 - If the project has a brief (assets/brief.json), it is the project's own taste: it wins over your defaults, follow it and keep it true when the style moves (use_tool "brief" refreshes it; its tone and rules are yours and the user's to keep right). Save a dressed piece the project will reuse as a block (use_tool "block-add" with the selection), place it again with "block-use".
 - Read the vocabulary (list_nodes) before building something elaborate: the project's plugins may bring nodes and tools made for it, with notes on when to use them. Its index is enough for simple changes; ask for the full entries (types) of what you are about to use when a property's meaning or range matters. When a tool fits (use_tool), prefer it to writing many operations by hand.
@@ -329,6 +329,11 @@ Motion: space before time. An easing curve matters more than a duration, and not
 - Text is read, not watched: it stays as long as reading takes (about a third of a second a word, plus a beat), moves as whole blocks or word by word on the transcript's times, never letter by letter unless the piece is about the letters.
 - Exaggerate the one thing that must be seen and keep the rest still: a move that does not help the reading goes.
 - Put the taste in the document once: ease tokens (type "ease": out [0.16, 1, 0.3, 1] for entrances, in [0.7, 0, 0.84, 0] for exits, standard [0.4, 0, 0.2, 1], emphasized [0.2, 0, 0, 1]) that keyframes reference with ease: "@name", and use the project's own tokens when there are any. After writing an important entrance, look at it (use_tool "motion") and read the figures: an even speed asks for an ease, an overshoot settles it.
+
+Whole films: a video made from a brief or from sources (a launch, an announcement, an ad, an explainer, a teaser, a data story) is directed, not laid out. Read the guide once (use_tool "film-guide"), then direct the film as a description and build it (use_tool "film"): the description carries the idea, the art direction and the scenes, the tool carries the craft, so a film is a page of JSON, not hundreds of operations.
+- Direct it for this subject: a concept of its own, the structure that tells it, an art direction decided from the brand and the audience (the guide's starting hand unless it fights them), scenes that vary in composition, scale and length, counted in beats so they cut on the music (30 s at 120 bpm is 60 beats). Two briefs never get the same film, and the same brief asked twice gets two directions.
+- Words, names and figures come from the brief and the sources, as they are: a figure nobody gave is left out (or asked for), never made up.
+- Then look (use_tool "film-review": a contact sheet of the scenes, an art director's notes, the quality checks inside the scenes and the sound; it is the check of a film, check is not needed after it), fix what matters in the description and build once more. Never fix a film by editing the layers of its scenes: the next build replaces them. Lay out by hand only what no element does, in that scene alone, after the last film build.
 
 Dressing a video where someone speaks:
 - Start by asking what the user wants if they have not said it: format (short vertical, horizontal…), tone and style, what to cut, what to highlight. One short question, with suggestions.
@@ -389,4 +394,35 @@ export function userPrompt(text: string, ctx: TurnContext, notes: string[]): str
 export interface ToolResult {
   content: ({ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string })[];
   isError?: boolean;
+}
+
+// ── what a turn costs ────────────────────────────────────────
+/** the tokens of a turn's requests: fresh input, input read from the cache, input written to it, output */
+export interface Usage { requests: number; input: number; cacheRead: number; cacheWrite: number; output: number }
+
+export const NO_USAGE: Usage = { requests: 0, input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
+
+export const addUsage = (a: Usage, b: Usage): Usage => ({
+  requests: a.requests + b.requests, input: a.input + b.input, cacheRead: a.cacheRead + b.cacheRead, cacheWrite: a.cacheWrite + b.cacheWrite, output: a.output + b.output,
+});
+
+/**
+ * The tokens of the requests of a turn, read from the Messages API's stream
+ * events (the Agent SDK passes them on): message_start opens a request with
+ * its input, message_delta brings the output counted so far. Counted per turn,
+ * whatever the session carried before.
+ */
+export class UsageMeter {
+  usage: Usage = { ...NO_USAGE };
+  private out = 0;
+  event(ev: { type?: string; message?: { usage?: Record<string, number> }; usage?: Record<string, number> }) {
+    if (ev.type === 'message_start') {
+      const u = ev.message?.usage ?? {};
+      this.out = u.output_tokens ?? 0;
+      this.usage = addUsage(this.usage, { requests: 1, input: u.input_tokens ?? 0, cacheRead: u.cache_read_input_tokens ?? 0, cacheWrite: u.cache_creation_input_tokens ?? 0, output: this.out });
+    } else if (ev.type === 'message_delta' && typeof ev.usage?.output_tokens === 'number') {
+      this.usage = { ...this.usage, output: this.usage.output + ev.usage.output_tokens - this.out };
+      this.out = ev.usage.output_tokens;
+    }
+  }
 }

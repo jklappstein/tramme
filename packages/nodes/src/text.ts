@@ -27,9 +27,15 @@ export function setType(ctx: CanvasRenderingContext2D, p: Omit<TypeProps, 'align
 }
 
 let measurer: CanvasRenderingContext2D | null = null;
+/** thrown where there is no canvas (the command line, the tests): made once, the callers' estimate takes over at no cost */
+const NO_CANVAS = new Error('no canvas to measure text with');
 /** a 2D context for measuring text outside of a frame */
 export function measureCtx(): CanvasRenderingContext2D {
-  if (!measurer) measurer = (typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(8, 8) : document.createElement('canvas')).getContext('2d') as CanvasRenderingContext2D;
+  if (!measurer) {
+    const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(8, 8) : typeof document !== 'undefined' ? document.createElement('canvas') : null;
+    if (!canvas) throw NO_CANVAS;
+    measurer = canvas.getContext('2d') as CanvasRenderingContext2D;
+  }
   return measurer;
 }
 
@@ -113,11 +119,17 @@ interface CounterProps extends TypeProps { from: string; to: string; progress: n
  * a value that goes down; the last digit makes `turns` extra full turns.
  * `progress` (0..1) usually carries its own ease in keyframes.
  */
-/** the width of each character of a counter: digits in equal cells (the widest digit), other signs (separators, units) at their own width */
-export function cells(ctx: CanvasRenderingContext2D, s: string): number[] {
+/**
+ * The width of each character of a counter at `progress`: its digits in equal
+ * cells (the widest digit) while they roll, settling to their own widths over
+ * the last stretch of the roll, so the number lands set as type ("18", not
+ * "1 8"); other signs (separators, units) at their own width.
+ */
+export function cells(ctx: CanvasRenderingContext2D, s: string, progress = 0): number[] {
   let cw = 0;
   for (const d of '0123456789') cw = Math.max(cw, ctx.measureText(d).width);
-  return [...s].map((ch) => (/\d/.test(ch) ? cw : ctx.measureText(ch).width));
+  const x = Math.max(0, Math.min(1, (progress - 0.85) / 0.15)), settle = x * x * (3 - 2 * x);
+  return [...s].map((ch) => { const own = ctx.measureText(ch).width; return /\d/.test(ch) ? cw + (own - cw) * settle : own; });
 }
 
 export const counter: NodeType<CounterProps> = {
@@ -136,7 +148,8 @@ export const counter: NodeType<CounterProps> = {
   bounds(p, host) {
     const ctx = measureCtx();
     setType(ctx, p, host);
-    const w = cells(ctx, p.to).reduce((a, b) => a + b, 0);
+    // where it lands: the number set as type
+    const w = cells(ctx, p.to, 1).reduce((a, b) => a + b, 0);
     return { x: alignX(p.align, w), y: -p.size * p.ascent, w, h: p.size * p.lineHeight };
   },
   render: {
@@ -144,7 +157,7 @@ export const counter: NodeType<CounterProps> = {
       setType(ctx, p, host);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'alphabetic';
-      const widths = cells(ctx, p.to), cw = Math.max(...widths, 0);
+      const widths = cells(ctx, p.to, p.progress), cw = Math.max(...widths, 0);
       let x = alignX(p.align, widths.reduce((s, w) => s + w, 0));
       const top = -p.size * p.ascent, h = p.size * p.lineHeight, pr = p.progress;
       for (let i = 0; i < p.to.length; i++) {

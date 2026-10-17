@@ -10,7 +10,7 @@
 // results are cleared by the API itself (context editing), not here.
 
 import { z } from 'zod';
-import { ADAPTIVE, DEFAULT_EFFORT, modelName, providerOf, TOOLS, type Effort, type ToolResult } from '@tramme/assistant';
+import { ADAPTIVE, DEFAULT_EFFORT, modelName, providerOf, TOOLS, UsageMeter, type Effort, type ToolResult } from '@tramme/assistant';
 import { ChatReader, chatTools, toChat } from './compat.ts';
 import { reach, type AiEvent } from '../api.ts';
 import type { ToolRunner } from './tools.ts';
@@ -361,8 +361,10 @@ export class ServerSession {
     const json: string[] = [];
     const items: string[] = [];
     const invalid = new Set<string>();
+    const meter = new UsageMeter();
     let stop = 'end_turn', declined: string | undefined;
     for await (const ev of sse(res.body!)) {
+      meter.event(ev);
       if (ev.type === 'content_block_start') {
         blocks[ev.index] = { ...ev.content_block };
         if (ev.content_block.type === 'tool_use') { json[ev.index] = ''; blocks[ev.index].input = {}; }
@@ -392,6 +394,7 @@ export class ServerSession {
         throw new ApiFailure(STREAM_STATUS[ev.error?.type] ?? 400, ev.error?.message ?? t('ai.serviceError'));
       }
     }
+    if (meter.usage.requests) yield { type: 'usage', usage: meter.usage };
     return { content: afterFallback(blocks.filter(Boolean)), stop, invalid, declined };
   }
 

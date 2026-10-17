@@ -163,16 +163,24 @@ export function drawLayers(ctx: CanvasRenderingContext2D, layers: EvaluatedLayer
 function drawThroughCamera(ctx: CanvasRenderingContext2D, frame: EvaluatedFrame, env: DrawEnv) {
   const cam = frame.camera!, { width: W, height: H } = frame.comp;
   const k = env.scale ? (env.scale[0] + env.scale[1]) / 2 : 1;
-  for (const L of frame.layers) {
+  /** a root layer as the camera sees it; null at or behind the eye */
+  const place = (L: EvaluatedLayer): EvaluatedLayer | null => {
     const d = L.transform.depth ?? 0;
-    // a layer at or behind the eye is not drawn
-    if (cam.perspective + d <= 1) continue;
+    if (cam.perspective + d <= 1) return null;
     const s = (cam.zoom * cam.perspective) / (cam.perspective + d);
     const [x, y] = L.transform.position, [sx, sy] = L.transform.scale;
-    const placed = { ...L, transform: { ...L.transform, position: [W / 2 + (x - W / 2 - cam.pan[0]) * s, H / 2 + (y - H / 2 - cam.pan[1]) * s] as [number, number], scale: [sx * s, sy * s] as [number, number] } };
+    return { ...L, transform: { ...L.transform, position: [W / 2 + (x - W / 2 - cam.pan[0]) * s, H / 2 + (y - H / 2 - cam.pan[1]) * s] as [number, number], scale: [sx * s, sy * s] as [number, number] } };
+  };
+  // a root layer drawn alone for an effect (a matte, a displacement map) goes through the camera too, so it lines up with what it shapes
+  const roots = new Set(frame.comp.order);
+  const seen: DrawEnv = { ...env, layerAt: (id) => { const L = env.layerAt?.(id) ?? null; return L && roots.has(id) ? place(L) : L; } };
+  for (const L of frame.layers) {
+    const placed = place(L);
+    if (!placed) continue;
+    const d = L.transform.depth ?? 0;
     const blur = cam.blur > 0 ? (cam.blur * Math.abs(d - cam.focus)) / 1000 : 0;
     ctx.filter = blur > 0.25 ? `blur(${blur * k}px)` : 'none';
-    drawLayer(ctx, placed, env);
+    drawLayer(ctx, placed, seen);
   }
   ctx.filter = 'none';
 }

@@ -15,7 +15,7 @@ import spawn from 'cross-spawn';
 import { createSdkMcpServer, query, tool, type SDKMessage, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { ADAPTIVE, DEFAULT_EFFORT, EFFORTS, ENGINES, MODELS, TOOLS, type Effort, type Engine, type ToolResult } from '@tramme/assistant';
+import { ADAPTIVE, DEFAULT_EFFORT, EFFORTS, ENGINES, MODELS, TOOLS, UsageMeter, type Effort, type Engine, type ToolResult } from '@tramme/assistant';
 
 type Out = Record<string, unknown>;
 
@@ -181,12 +181,15 @@ async function runClaude(t: Turn, r: TurnRequest) {
   t.stop = () => { t.abort.abort(); q.interrupt().catch(() => {}); };
   let message = 0;
   const thinking = new Set<string>();
+  // the turn's tokens, from its own requests (the SDK's totals carry the whole session)
+  const meter = new UsageMeter();
   for await (const m of q as AsyncIterable<SDKMessage>) {
     const msg = m as any;
     if (msg.type === 'system' && msg.subtype === 'init') t.send({ type: 'session', id: msg.session_id, model });
     else if (msg.parent_tool_use_id) continue;
     else if (msg.type === 'stream_event') {
       const ev = msg.event;
+      meter.event(ev);
       if (ev.type === 'message_start') message++;
       const key = `${message}:${ev.index}`;
       if (ev.type === 'content_block_start' && ev.content_block?.type === 'text') t.send({ type: 'text-start', key, text: ev.content_block.text ?? '' });
@@ -198,6 +201,7 @@ async function runClaude(t: Turn, r: TurnRequest) {
       t.send({ type: 'error', message: (msg.errors ?? []).join('\n') || `Claude stopped (${msg.subtype})` });
     }
   }
+  if (meter.usage.requests) t.send({ type: 'usage', usage: meter.usage });
 }
 
 // ── the command lines: Codex and Antigravity ─────────────────
@@ -283,6 +287,10 @@ async function runCodex(t: Turn, r: TurnRequest) {
           if ((kind === 'agent_message' || kind === 'assistant_message') && text) t.send({ type: 'text-start', key, text });
           else if (kind === 'reasoning' && text) { t.send({ type: 'thinking-start', key }); t.send({ type: 'thinking', key, delta: text }); t.send({ type: 'thinking-stop', key }); }
           else if (kind === 'error' && ev.item.message) t.send({ type: 'error', message: String(ev.item.message) });
+        } else if (ev.type === 'turn.completed' && ev.usage) {
+          // its input counts the cached part
+          const u = ev.usage, cached = Number(u.cached_input_tokens) || 0;
+          t.send({ type: 'usage', usage: { requests: 0, input: Math.max(0, (Number(u.input_tokens) || 0) - cached), cacheRead: cached, cacheWrite: 0, output: Number(u.output_tokens) || 0 } });
         } else if (ev.type === 'turn.failed') t.send({ type: 'error', message: String(ev.error?.message ?? 'Codex stopped') });
         else if (ev.type === 'error' && ev.message) t.send({ type: 'error', message: String(ev.message) });
       },

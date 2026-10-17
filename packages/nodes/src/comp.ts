@@ -3,16 +3,12 @@
 // optionally looping; `remap` (often an expression) gives the local time
 // directly.
 
-import type { NodeType } from '@tramme/core';
+import { nestedTime, type NestedTiming, type NodeType } from '@tramme/core';
 
-interface CompProps { comp: string | null; start: number; speed: number; loop: boolean; remap: number | null; crop: boolean }
+interface CompProps extends NestedTiming { comp: string | null; crop: boolean }
 
-/** local time of the nested composition */
-export function localTime(p: CompProps, t: number, layerIn: number, duration: number): number {
-  let lt = p.remap ?? p.start + (t - layerIn) * p.speed;
-  if (p.loop && duration > 0) lt = ((lt % duration) + duration) % duration;
-  return lt;
-}
+/** local time of the nested composition (the checks read it the same way: core's nestedTime) */
+export const localTime = nestedTime;
 
 export const comp: NodeType<CompProps> = {
   type: 'comp', title: 'Composition', category: 'Structure',

@@ -27,7 +27,7 @@ export function sheetOf(cells: { image: CanvasImageSource; label: string }[], w:
 }
 
 /** the stills of the given times, loaded (the sheet and the flow read the same images) */
-async function stills(ctx: ToolContext, times: number[], compId: string) {
+export async function stills(ctx: ToolContext, times: number[], compId: string) {
   const out: HTMLImageElement[] = [];
   for (const at of times) {
     if (ctx.signal.aborted) throw new Error('stopped');

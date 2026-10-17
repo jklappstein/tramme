@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "about": "Prompts to measure the assistant on videos it has never seen: what a turn costs (the usage line at its end) and what it makes. The dev briefs are for working on tramme; the test briefs stay unseen while doing so and are only run to measure.",
+  "briefs": [
+    {
+      "id": "fintech-launch",
+      "split": "dev",
+      "format": "16:9",
+      "seconds": 30,
+      "prompt": "Make a 30 s launch video for Velo, a crypto trading app: orders filled in 10 ms, zero fees on stablecoin pairs, a live order book. Dark and electric, like the big exchange promos. End on velo.trade."
+    },
+    {
+      "id": "saas-feature",
+      "split": "dev",
+      "format": "16:9",
+      "seconds": 25,
+      "prompt": "Announce our new feature: Notion-like AI summaries in Ledgerly, our accounting SaaS. Show a dashboard with an invoice list, the AI summary appearing, and the time saved (4 h a week). Clean, light, trustworthy."
+    },
+    {
+      "id": "app-store-teaser",
+      "split": "dev",
+      "format": "9:16",
+      "seconds": 15,
+      "prompt": "Vertical teaser for Fernweh, a travel planning app, for TikTok and Reels: 3 cities, a shared itinerary, 'plan together'. Energetic, colourful, young."
+    },
+    {
+      "id": "event-promo",
+      "split": "dev",
+      "format": "1:1",
+      "seconds": 20,
+      "prompt": "Promo carrée pour le Sommet Data Afrique, 12-13 mars à Dakar : 40 intervenants, 3 scènes, 1500 participants. Inscriptions sur sommetdata.africa. Ton institutionnel mais moderne."
+    },
+    {
+      "id": "data-story",
+      "split": "dev",
+      "format": "16:9",
+      "seconds": 30,
+      "prompt": "A short data story: solar power in Europe went from 3% of electricity in 2015 to 12% in 2024, it now beats coal, and costs fell 80% in ten years. Calm, editorial, like a newspaper explainer."
+    },
+    {
+      "id": "devtool-launch",
+      "split": "dev",
+      "format": "16:9",
+      "seconds": 25,
+      "prompt": "Launch film for Quill, a CLI that turns your git history into release notes. Show a terminal, the command, the generated notes, '2 minutes instead of 2 hours'. Developer audience, sharp, monospace accents."
+    },
+    {
+      "id": "brand-manifesto",
+      "split": "dev",
+      "format": "16:9",
+      "seconds": 20,
+      "prompt": "Manifeste de marque pour Atelier Nuit, une marque de vêtements de sport éco-conçus : 'On court la nuit. On fabrique le jour.' Quatre phrases fortes, typographie massive, noir et blanc avec une touche de rouge."
+    },
+    {
+      "id": "explainer-steps",
+      "split": "dev",
+      "format": "16:9",
+      "seconds": 30,
+      "prompt": "Explain in 3 steps how Payd works: connect your bank, set a rule, get paid on time. Friendly explainer for small business owners, with simple icons."
+    },
+    {
+      "id": "testimonial",
+      "split": "dev",
+      "format": "4:5",
+      "seconds": 15,
+      "prompt": "Customer quote for social: 'Shipwise cut our delivery errors by 63%' — Amara Diallo, Head of Ops at Kora Foods. Make it look premium, with the number as the hero."
+    },
+    {
+      "id": "pricing-promo",
+      "split": "dev",
+      "format": "9:16",
+      "seconds": 12,
+      "prompt": "Story for Black Friday: Pixelforge Pro at -50% this week only, from 24€ to 12€ a month. Urgent, punchy, ends with a 'Get the deal' button."
+    },
+    {
+      "id": "ai-product",
+      "split": "test",
+      "format": "16:9",
+      "seconds": 30,
+      "prompt": "Launch video for Halo, an AI meeting assistant: it joins your calls, writes the notes, sends the action items. Show the app's interface, a transcript turning into a summary, and 'Your meetings, done.'"
+    },
+    {
+      "id": "fitness-app",
+      "split": "test",
+      "format": "9:16",
+      "seconds": 15,
+      "prompt": "Pub verticale pour Pulse, une app de running : ta course en direct, ton rythme, ton record battu. Dynamique, contrasté, vert fluo sur noir."
+    },
+    {
+      "id": "bank-annual",
+      "split": "test",
+      "format": "16:9",
+      "seconds": 25,
+      "prompt": "Annual results for Orabank Group: net income up 18%, 2.4 million customers, present in 12 countries. Corporate, reassuring, deep green and gold."
+    },
+    {
+      "id": "game-trailer-text",
+      "split": "test",
+      "format": "16:9",
+      "seconds": 20,
+      "prompt": "A text-only teaser for an indie game, Lanternfall, out on Steam on 4 November: mysterious, slow, glowing amber light in the dark, three short lines and the date."
+    },
+    {
+      "id": "marketplace",
+      "split": "test",
+      "format": "1:1",
+      "seconds": 15,
+      "prompt": "Square ad for Kibo, a second-hand furniture marketplace: browse, chat, pick up the same day. Warm, friendly, show a product card and a chat bubble."
+    },
+    {
+      "id": "security-saas",
+      "split": "test",
+      "format": "16:9",
+      "seconds": 25,
+      "prompt": "Product video for Sentinel, a cloud security platform: it scans 10,000 assets in minutes, ranks the real risks, and fixes them in one click. Serious, technical, dark blue with alert reds."
+    }
+  ]
+}

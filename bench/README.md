@@ -1,0 +1,48 @@
+# Bench: what the assistant costs and makes, on briefs it has never seen
+
+`briefs.json` holds prompts of the kind users write: launches, announcements,
+teasers, data stories, testimonials, in four formats and two languages. The
+**dev** briefs are for working on tramme; the **test** briefs stay unseen while
+doing so (no preset, element or prompt is tuned on them) and are only run to
+measure. A change that helps the dev briefs and not the test ones is fitted to
+those videos, not general.
+
+## Running a brief
+
+1. A new project in the brief's format.
+2. In the chat, `/film` followed by the brief's prompt, word for word (or the
+   prompt alone: the assistant should find the film tools by itself).
+3. Leave the assistant alone until the turn ends: apply the changes at the end
+   of the turn (settings), no answer to its questions.
+4. The turn ends with its cost: tool calls, pictures seen, tokens read (and the
+   share from the cache), tokens written, time. It is kept in the conversation
+   (`.tramme/chats/*.json`, the items with `usage`); `node bench/usage.ts
+   <project folder or .tramme>` adds them up.
+5. Export the film (MP4) and score it.
+6. Run the same brief a second time in a new project: the two films are scored
+   apart, then side by side for variety.
+
+## Scoring (1 to 5 each)
+
+| | 5 is |
+|---|---|
+| Story | a concept of its own, one idea per scene, an opening that hooks, an end that asks for something |
+| Faithful | the brief's words, names and figures as given; nothing made up |
+| Direction | an art direction that fits the brand and the audience (palette, type, motion), the brand's colours |
+| Rhythm | cuts on the beat, no dead frame, nothing static for long |
+| Legible | type large enough for the format, on screen long enough to read |
+| Sound | music and effects present, balanced, on the picture |
+| Finish | no text cut or overlapping, nothing off frame |
+| Variety | (two runs of one brief) two directions: another structure, palette, type or motion, not the same film reworded |
+
+## Reference
+
+Before films were written (`marketing.tramme`, 2026-10-13, a reference video to
+recreate, Opus, effort high): 6 hours, more than two 5-hour quotas, 305 tool
+calls, 76 pictures seen, 20 plugins written by the assistant, about 10 s of a
+40 s film.
+
+A film written as a description (`docs/film.md`) costs the model the guide
+(about 3,700 tokens), a page of JSON and one contact sheet; the build itself
+takes a few seconds and no tokens. `tramme film <film.json> --out <folder>` builds a description
+without a model, to look at what the compiler makes of it.

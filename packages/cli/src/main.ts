@@ -4,6 +4,7 @@
 //   tramme render   <doc> [--format mp4|mov|webm|gif|png] [--out file] [--samples n] [--from s] [--to s] [--crf 16] [--mute] [--comp id]
 //   tramme export   <doc> --format lottie|svg|wav [--t s] [--comp id] [--out file]
 //   tramme import   <animation.json> [--out folder]                     Lottie to a tramme project folder
+//   tramme film     <film.json> [--out folder] [--seed n]               a project folder built from a film description (docs/film.md)
 //   tramme pack     <folder> [--out project.tramme]                    a project folder as a .tramme archive (checked)
 //   tramme unpack   <project.tramme> [--out folder]                    a .tramme archive as a project folder (checked)
 //   tramme nodes    [<doc>]                                            the node and effect vocabulary (plugins included)
@@ -43,7 +44,7 @@ const asDoc = (p?: string) => {
   // a folder of a former name (document.trame.json, document.emotion.json) is read as well
   return [DOCUMENT, ...LEGACIES.map((l) => l.document)].map((d) => path.join(p, d)).find((f) => fs.existsSync(f)) ?? p;
 };
-if (!['compare', 'import', 'pack', 'unpack', 'bench', 'agent'].includes(cmd)) pos[0] = asDoc(pos[0])!;
+if (!['compare', 'import', 'pack', 'unpack', 'bench', 'agent', 'film'].includes(cmd)) pos[0] = asDoc(pos[0])!;
 const num = (k: string) => (flags[k] === undefined ? undefined : Number(flags[k]));
 const str = (k: string) => (typeof flags[k] === 'string' ? (flags[k] as string) : undefined);
 
@@ -266,6 +267,7 @@ const COMMANDS: Record<string, () => Promise<void> | void> = {
   schema: cmdSchema,
   export: () => cmdExport(pos[0]),
   import: () => cmdImport(pos[0]),
+  film: async () => { const { cmdFilm } = await import('./film.ts'); await cmdFilm(pos[0], str('out'), num('seed')); },
   pack: () => cmdPack(pos[0]),
   unpack: () => cmdUnpack(pos[0]),
   nodes: () => cmdNodes(pos[0]),
@@ -281,7 +283,7 @@ const COMMANDS: Record<string, () => Promise<void> | void> = {
 
 const run = COMMANDS[cmd];
 if (!run) {
-  console.log('usage: tramme <validate|still|render|export|import|pack|unpack|nodes|compare|schema|bench|agent> ... (see the header of packages/cli/src/main.ts)');
+  console.log('usage: tramme <validate|still|render|export|import|film|pack|unpack|nodes|compare|schema|bench|agent> ... (see the header of packages/cli/src/main.ts)');
   process.exit(cmd ? 1 : 0);
 }
 try {

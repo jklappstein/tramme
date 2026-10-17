@@ -8,6 +8,7 @@
 import type { TrammeDoc, Op } from '@tramme/core';
 import { isMedia, LIMITS, type Manifest } from '@tramme/project';
 import type { KeyedProvider, KeyStatus, Voice } from '@tramme/api';
+import type { Usage } from '@tramme/assistant';
 export type { Voice };
 import { vaultOrigin } from './mode.ts';
 import { desktopFetch, tauri } from './tauri.ts';
@@ -31,7 +32,12 @@ export interface ChatItem {
   thinking?: { text: string; done?: boolean; start?: number; ms?: number };
   /** a proposal of changes (its ops live in the state while pending) */
   proposal?: { id: string; label: string; count: number; status: 'pending' | 'accepted' | 'rejected'; lines: string[] };
+  /** what the turn cost, at its end */
+  usage?: TurnUsage;
 }
+
+/** a turn's cost: its tokens (when the path reports them), the tools it ran, the pictures it looked at, its length */
+export interface TurnUsage extends Usage { tools: number; images: number; ms: number; model: string }
 
 /** how far a running tool is */
 export interface ToolProgress { done: number; total: number; step?: string }
@@ -46,6 +52,7 @@ export type AiEvent =
   | { type: 'proposal'; id: string; label: string; ops: Op[] }
   | { type: 'proposal-clear'; id: string }
   | { type: 'reload'; assets: string[] }
+  | { type: 'usage'; usage: Usage }
   | { type: 'done' }
   | { type: 'error'; message: string };
 

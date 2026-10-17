@@ -85,6 +85,16 @@ export function layerActive(layer: Layer, comp: Composition, t: number): boolean
   return t >= (layer.in ?? 0) && t < (layer.out ?? comp.duration);
 }
 
+/** how a composition layer runs the composition it holds: from `start` at its in point, at `speed`, looping or not; `remap` gives the time directly */
+export interface NestedTiming { start: number; speed: number; loop: boolean; remap: number | null }
+
+/** the local time of a nested composition at time t of the one holding it */
+export function nestedTime(p: NestedTiming, t: number, layerIn: number, duration: number): number {
+  let lt = p.remap ?? p.start + (t - layerIn) * p.speed;
+  if (p.loop && duration > 0) lt = ((lt % duration) + duration) % duration;
+  return lt;
+}
+
 export interface EvaluatorOptions {
   /** the loaded content of a JSON asset (analyses), when the caller has it: the renderer does */
   data?(assetId: string): unknown;

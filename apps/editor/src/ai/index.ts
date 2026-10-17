@@ -7,7 +7,7 @@
 // shared by all of them.
 
 import { computed, signal } from '@preact/signals';
-import { CLI_DEFAULT, COMPANION_PORT, DEFAULT_MODEL, EFFORTS, effortFor, effortLevels, ENGINE_MODELS, ENGINES, engineOf, LOCAL_URL, modelLabel, modelName, MODELS, pickModel, PROVIDER_LABEL, providerOf, REMOTE, setTranslator, slotOf, systemPrompt, userPrompt, type Effort, type Engine, type TurnContext } from '@tramme/assistant';
+import { addUsage, CLI_DEFAULT, COMPANION_PORT, DEFAULT_MODEL, EFFORTS, effortFor, effortLevels, ENGINE_MODELS, ENGINES, engineOf, LOCAL_URL, modelLabel, modelName, MODELS, NO_USAGE, pickModel, PROVIDER_LABEL, providerOf, REMOTE, setTranslator, slotOf, systemPrompt, userPrompt, type Effort, type Engine, type TurnContext } from '@tramme/assistant';
 import { CHAT, CHAT_INDEX, chatPath } from '@tramme/project';
 import type { TrammeDoc } from '@tramme/core';
 import reference from '../../../../docs/document.md';
@@ -429,11 +429,16 @@ export async function* ask(p: AskPayload, signal: AbortSignal): AsyncGenerator<A
     }
     return session.server.turn(again ?? prompt, model, system, runner, signal, again === null ? { images, target, effort } : { target, effort });
   };
+  // what the turn costs, told at its end
+  const started = Date.now(), calls = runner.calls;
+  let usage = NO_USAGE, seen = 0;
   for (let n = 0, failure = ''; ; n++) {
     const again = n ? resumeNote(failure) : null;
     failure = '';
     try {
       for await (const ev of attempt(again)) {
+        if (ev.type === 'usage') { usage = addUsage(usage, ev.usage); continue; }
+        if (ev.type === 'item' && ev.item.image) seen++;
         // an error the turn will get over is held back, told below with the wait
         if (ev.type === 'error' && resumable(ev.message, n)) failure = ev.message;
         else yield ev;
@@ -447,6 +452,7 @@ export async function* ask(p: AskPayload, signal: AbortSignal): AsyncGenerator<A
     yield { type: 'item', item: { id: uid(), role: 'assistant', text: t('ai.resumeIn', { error: failure, s: wait, n: n + 1, max: RESUME_DELAYS.length }) } };
     await pause(wait * 1000, signal);
   }
+  yield { type: 'item', item: { id: uid(), role: 'assistant', usage: { ...usage, tools: runner.calls - calls, images: seen, ms: Date.now() - started, model } } };
   yield { type: 'done' };
 }
 

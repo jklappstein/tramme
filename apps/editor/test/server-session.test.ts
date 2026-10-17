@@ -61,7 +61,9 @@ describe('assistant, server path', () => {
     const events = await go(s, runner);
 
     expect(calls).toEqual([['evaluate', { address: 'title.opacity', t: 1 }]]);
-    expect(events.map((e) => e.type)).toEqual(['item', 'thinking', 'thinking-done', 'item', 'text', 'item', 'tool-done', 'item', 'text']);
+    // each request tells what it cost once it is over
+    expect(events.map((e) => e.type)).toEqual(['item', 'thinking', 'thinking-done', 'item', 'text', 'usage', 'item', 'tool-done', 'item', 'text', 'usage']);
+    expect(events.filter((e) => e.type === 'usage').map((e) => e.type === 'usage' && e.usage.requests)).toEqual([1, 1]);
     // the second request carries the signed thinking back, then the tool result, cached up to it
     const [, assistant, results] = sent[1].body.messages;
     expect(assistant.content[0]).toEqual({ type: 'thinking', thinking: 'Reading the document.', signature: 'sig' });
@@ -206,7 +208,7 @@ describe('assistant, server path', () => {
       const sent = serve(offline, second);
       const events = await go(new ServerSession(), fakeRunner().runner);
       expect(sent.length).toBe(2);
-      expect(events.at(-1)).toMatchObject({ type: 'text', delta: 'Opacity: 1.' });
+      expect(events.filter((e) => e.type !== 'usage').at(-1)).toMatchObject({ type: 'text', delta: 'Opacity: 1.' });
     });
 
     it('when the stream breaks before anything was shown', async () => {

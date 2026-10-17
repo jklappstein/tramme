@@ -6,8 +6,8 @@
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { AiEvent, ChatItem } from '../api.ts';
-import { ENGINE_MODELS, ENGINES, engineOf, providerOf } from '@tramme/assistant';
+import type { AiEvent, ChatItem, TurnUsage } from '../api.ts';
+import { ENGINE_MODELS, ENGINES, engineOf, modelLabel, providerOf } from '@tramme/assistant';
 import { ModelPicker } from './ModelPicker.tsx';
 import { aiRoute, aiSettings, aiStatus, ask, CLI_SETUP, cliUnavailable, routeLabel, chat, chatId, chats, decided, deleteChat, newChat, openChat, providerLabel, refreshStatus, remoteProviders, runTool, saveChat, serverName, setAiSettings, statusLabels, stop as stopAi, type ChatMeta } from '../ai/index.ts';
 import { openSettings } from '../settings.ts';
@@ -23,7 +23,7 @@ import { Icon } from './icons.tsx';
 import { attachFiles, attaching, attachmentUrl, draft, pending, removePending, type Attachment } from '../attachments.ts';
 import { Popover, Seg, Select, Toggle } from './controls.tsx';
 import { preview } from '../preview.ts';
-import { m, t, tr } from '../i18n/index.ts';
+import { locale, m, t, tr } from '../i18n/index.ts';
 
 export { chat };
 const running = signal(false);
@@ -320,7 +320,24 @@ function Item({ it }: { it: ChatItem }) {
   }
   if (it.image) return <div class="msg assistant"><div class="shot" onClick={() => { lightbox.value = it.image!.url; }}><img src={it.image.url} alt={it.image.caption} loading="lazy" /></div><div class="shot-cap">{it.image.caption}</div></div>;
   if (it.proposal) return <ProposalCard p={it.proposal} />;
+  if (it.usage) return <UsageLine u={it.usage} />;
   return <div class="msg assistant"><Markdown text={it.text ?? ''} /></div>;
+}
+
+/** a count of tokens, short: 950, 182 k, 1.4 M */
+const short = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} M` : n >= 1e3 ? `${Math.round(n / 1e3)} k` : String(n)).replace('.', locale === 'fr' ? ',' : '.');
+const minutes = (ms: number) => { const s = Math.round(ms / 1000); return s >= 60 ? `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s` : `${s} s`; };
+
+/** what a turn cost: its tool calls, the pictures the model looked at, its tokens when the path reports them, its length */
+function UsageLine({ u }: { u: TurnUsage }) {
+  const read = u.input + u.cacheRead + u.cacheWrite;
+  const parts = [
+    u.tools === 1 ? t('assistant.usageCall1') : t('assistant.usageCalls', { n: u.tools }),
+    ...(u.images ? [u.images === 1 ? t('assistant.usageImage1') : t('assistant.usageImages', { n: u.images })] : []),
+    ...(read || u.output ? [t('assistant.usageTokens', { read: short(read), cached: read ? Math.round((100 * u.cacheRead) / read) : 0, written: short(u.output) })] : []),
+    minutes(u.ms),
+  ];
+  return <div class="activity usage" title={`${t('assistant.usageTitle')} · ${modelLabel(u.model)}`}><Icon name="clock" />{parts.join(' · ')}</div>;
 }
 
 /** an item that already shows the assistant at work */
