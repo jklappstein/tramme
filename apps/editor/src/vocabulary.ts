@@ -17,6 +17,7 @@ import { LIBRARY_TOOLS } from './library.ts';
 import { LIPSYNC_TOOLS } from './lipsync.ts';
 import { MODEL_TOOLS } from './model3d.ts';
 import { REMOVEBG_TOOLS } from './removebg.ts';
+import { CUTS_TOOLS } from './cuts.ts';
 import { PERCEPTION_TOOLS } from './perception.ts';
 import { EDITOR_PRESETS } from './presets.ts';
 import { BUILTIN_KITS, RECIPE_TOOLS } from './recipes.ts';
@@ -81,9 +82,25 @@ export const EDITOR_PROMPTS: PromptType[] = [
     name: 'shorts', title: 'Cut shorts from a long video', description: 'the strongest moments as shorts of the asked format, captions and titles included',
     prompt: 'Cut shorts from the long video of this project, following your guide for shorts: ask how many and which format if I have not said them, read the candidates (use_tool "shorts" without plan) and say which you would pick and why, build them (shorts with a plan), then check each short (check, after switching to it) and fix what matters before summing up.',
   },
+  {
+    name: 'transcript', title: 'Transcribe and read', description: 'the words of a sound or a video, with the moments that matter',
+    prompt: 'Get the transcript of the sound or video I name, or of the only one in the project: the editor asks me to confirm the transcription the first time. Then read it and tell me in a few lines what is said and where — the topic changes, the strong sentences, the numbers — with their times. Propose what to do next with it: captions, a cut of the silences, keywords on the strong sentences, or a lip sync on a drawn character.',
+  },
+  {
+    name: 'cut-silences', title: 'Cut the silences', description: 'tightens a talking video: hesitations and quiet gaps shortened, the piece laid back to back',
+    prompt: 'Cut the silences of the talking video of this project (use_tool "silences" on it; transcribe it first if it is not). Read what it did — how many cuts and how much time saved — then run the check tool and fix what the cuts broke (a caption drifting off its moment, an entrance landing in a removed gap). Tell me the total saved and the one or two joins I should look at.',
+  },
+  {
+    name: 'beats', title: 'Cut to the music', description: 'the edit lands on the beats and the sections of the sound',
+    prompt: 'Make the edit land on the music: run the beats tool on the sound of the composition (use_tool "beats"), read its tempo, beats, bars and sections, then tell me in a few lines what you would put on the strong moments — entrances on beats, a change of scene on a section. When the composition is simple, go ahead and move them; otherwise wait for my word. Then check.',
+  },
+  {
+    name: 'still', title: 'Save a still', description: 'a picture of the composition at a moment, saved as an image asset (cover, thumbnail)',
+    prompt: 'Save a still of this composition (use_tool "still") at the moment I name — or, if I have not said one, look at a few candidates first and save the one that reads best: one clear subject, room for a title. Tell me where it was saved and what it shows. Place it as a layer only if I asked for a cover on the timeline.',
+  },
 ];
 
 /** the base vocabulary of the editor, before a document's plugins */
 export function editorRegistry() {
-  return builtinRegistry().registerTool(...EDITOR_TOOLS, ...FILM_TOOLS, ...RECIPE_TOOLS, ...FIGURE_TOOLS, ...EVENT_TOOLS, ...PERCEPTION_TOOLS, ...TRACKING_TOOLS, ...CUTOUT_TOOLS, ...DEPTH_TOOLS, ...MODEL_TOOLS, ...REMOVEBG_TOOLS, ...LIPSYNC_TOOLS, ...REVIEW_TOOLS, ...SOUND_TOOLS, ...MIXING_TOOLS, ...IMAGE_TOOLS, ...SHORTS_TOOLS, ...SOURCE_TOOLS, ...BLOCK_TOOLS, ...BRIEF_TOOLS, ...LIBRARY_TOOLS).registerPrompt(...EDITOR_PROMPTS).registerKit(...BUILTIN_KITS, ...FILM_KITS).registerPreset(...EDITOR_PRESETS);
+  return builtinRegistry().registerTool(...EDITOR_TOOLS, ...FILM_TOOLS, ...RECIPE_TOOLS, ...FIGURE_TOOLS, ...EVENT_TOOLS, ...PERCEPTION_TOOLS, ...TRACKING_TOOLS, ...CUTOUT_TOOLS, ...DEPTH_TOOLS, ...MODEL_TOOLS, ...REMOVEBG_TOOLS, ...LIPSYNC_TOOLS, ...CUTS_TOOLS, ...REVIEW_TOOLS, ...SOUND_TOOLS, ...MIXING_TOOLS, ...IMAGE_TOOLS, ...SHORTS_TOOLS, ...SOURCE_TOOLS, ...BLOCK_TOOLS, ...BRIEF_TOOLS, ...LIBRARY_TOOLS).registerPrompt(...EDITOR_PROMPTS).registerKit(...BUILTIN_KITS, ...FILM_KITS).registerPreset(...EDITOR_PRESETS);
 }

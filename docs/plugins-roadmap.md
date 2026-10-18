@@ -66,7 +66,7 @@ Done when: a project plugin exports a tool, the assistant finds it with `list_no
 - [x] Built-in: `/captions`, `/title`, `/keyword`, `/lower-third` (the templates as tools), `/dress` and `/review` (workflows). The editor's base vocabulary is `editorRegistry()` (`apps/editor/src/vocabulary.ts`).
 - [x] A tool run alone is told to the assistant at the next message.
 - [x] `/cutout` (step 4's segmentation masks).
-- [ ] More built-in commands as steps land: `/cut-silences`, `/transcript`, `/still`, `/beats`.
+- [x] More built-in commands as steps land: `/cut-silences` (the `silences` tool cuts on the transcript's gaps), `/transcript`, `/still` (the `still` tool saves a frame of the composition), `/beats`.
 
 ### Step 2. Recipes and style kits
 

@@ -1049,6 +1049,7 @@
     "subjectsDone": "Personnes trouvées dans {seen} regard(s) sur {looks}. Les contrôles signalent désormais un texte sur un visage.",
     "paletteDone": "Couleurs principales : {colours}. Elles sont maintenant les tokens fond, encre et accent.",
     "spaceDone": "Le cadre a des bords dégagés (jusqu'à {free} sur l'un) : le plus grand rectangle libre est là où un titre tient.",
+    "stillDone": "L'image fixe à {at} s est enregistrée comme asset image.",
     "cutoutDone": "Détourage sur {frames} images ({from} à {to} s). Placez les titres entre la vidéo et son détourage : ils passent derrière le sujet.",
     "cutoutLooking": "recherche des personnes",
     "cutoutMatting": "détourage",
@@ -1168,6 +1169,21 @@
     "a line that travels from stop to stop on a map (or a picture), a dot marking each stop: the route of a trip, a delivery, a story": "une ligne qui voyage d'étape en étape sur une carte (ou une image), un point marquant chaque étape : le trajet d'un voyage, d'une livraison, d'une histoire",
     "applies a motion language (colours, curves, pace, font) as the design tokens that recipes and dressings follow": "applique un langage de mouvement (couleurs, courbes, rythme, police) comme jetons de design que recettes et habillages suivent",
     "bring the kit's font file into the project (yes by default)": "apporte le fichier de police du kit dans le projet (oui par défaut)",
+    "Cut the silences": "Couper les silences",
+    "Cut to the music": "Couper sur la musique",
+    "Gaps longer than (s)": "Silences de plus de (s)",
+    "Pause kept (s)": "Pause gardée (s)",
+    "Save a still": "Enregistrer une image fixe",
+    "Transcribe and read": "Transcrire et lire",
+    "a picture of the composition at a moment, saved as an image asset (cover, thumbnail)": "une image de la composition à un instant, enregistrée comme asset image (couverture, vignette)",
+    "a quiet stretch longer than this is shortened": "un silence plus long que cela est raccourci",
+    "add the still to the composition as its own layer (no by default)": "ajoute l'image fixe à la composition comme son propre calque (non par défaut)",
+    "saves a picture of the composition at a moment as an image asset (a cover, a thumbnail, a frame to reuse)": "enregistre une image de la composition à un instant comme asset image (une couverture, une vignette, une image à réutiliser)",
+    "shortens the quiet gaps of a talking video (hesitations, breaths): the layer is split into the spans where something is said, laid back to back": "raccourcit les silences d'une vidéo parlée (hésitations, respirations) : le calque est découpé en les passages où quelque chose est dit, mis bout à bout",
+    "the edit lands on the beats and the sections of the sound": "le montage se cale sur les temps et les sections du son",
+    "the words of a sound or a video, with the moments that matter": "les mots d'un son ou d'une vidéo, avec les moments qui comptent",
+    "tightens a talking video: hesitations and quiet gaps shortened, the piece laid back to back": "resserre une vidéo parlée : hésitations et silences raccourcis, les passages mis bout à bout",
+    "what remains around each cut, so it breathes": "ce qui reste autour de chaque coupe, pour que ça respire",
     "Cut": "Coupe",
     "cuts the person (or the main subject) out of a video so titles and graphics can pass behind them": "détoure la personne (ou le sujet principal) d'une vidéo pour que titres et graphismes passent derrière",
     "From (s)": "De (s)",
@@ -2150,5 +2166,8 @@
   "removebg": {
     "reading": "lecture du sujet",
     "done": "Le fond de {name} est détouré."
+  },
+  "cuts": {
+    "done": "« {name} » resserré : {saved} gagnées."
   }
 }

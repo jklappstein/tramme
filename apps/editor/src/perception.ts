@@ -6,6 +6,7 @@
 import { ALL_FORMATS, AudioBufferSink, CanvasSink, Input, UrlSource } from 'mediabunny';
 import { analyseAudio, clearMargins, freeSides, largestFree, pointer, type Op, type ToolContext, type ToolType } from '@tramme/core';
 import { t } from './i18n/index.ts';
+import { freshId } from './model.ts';
 
 const RATE = 16000;
 
@@ -433,4 +434,42 @@ const space: ToolType<{ asset?: string; t?: number }> = {
   },
 };
 
-export const PERCEPTION_TOOLS: ToolType[] = [beats, shots, subjects, palette, space];
+// ── a still of the composition ───────────────────────────────
+const still: ToolType<{ at?: number; place?: boolean }> = {
+  name: 'still', title: 'Save a still', description: 'saves a picture of the composition at a moment as an image asset (a cover, a thumbnail, a frame to reuse)',
+  input: {
+    type: 'object',
+    properties: {
+      at: { type: 'number', minimum: 0, title: 'At (s)' },
+      place: { type: 'boolean', title: 'Place it', description: 'add the still to the composition as its own layer (no by default)' },
+    },
+  },
+  ai: { when: 'a cover or a thumbnail for the video, or a frame worth keeping as a picture', avoid: 'as a substitute for a real export: the still is a working copy' },
+  async run({ at: atWanted, place = false }, ctx) {
+    const c = ctx.doc.compositions[ctx.compId];
+    const at = r2(Math.max(0, Math.min(atWanted ?? ctx.time, c.duration)));
+    const url = await ctx.renderStill(at);
+    const blob = await (await fetch(url)).blob();
+    const id = `still-${Math.round(at * 1000)}`.slice(0, 64);
+    const path = await ctx.writeFile(`assets/stills/${id}.jpg`, blob);
+    const had = !!ctx.doc.assets[id];
+    const ops: Op[] = [{ op: had ? 'replace' : 'add', path: pointer('assets', id), value: { type: 'image', src: path, name: `Still at ${at.toFixed(2)} s` } }];
+    if (place) {
+      const taken: Record<string, unknown> = { ...c.layers };
+      const lid = freshId(taken, id);
+      ops.push(
+        { op: 'add', path: pointer('compositions', ctx.compId, 'layers', lid), value: { type: 'image', name: `Still at ${at.toFixed(2)} s`, in: ctx.time, props: { image: id, size: [c.width, c.height], fit: 'contain' }, transform: { position: [Math.round(c.width / 2), Math.round(c.height / 2)] } } },
+        { op: 'replace', path: pointer('compositions', ctx.compId, 'order'), value: [...c.order, lid] },
+      );
+    }
+    return {
+      ops, reload: had ? [id] : [], label: `Still at ${at.toFixed(2)} s`,
+      text: `The composition at ${at.toFixed(2)} s is saved as the image asset "${id}" (assets/stills/${id}.jpg).${place ? ' Placed as its own layer.' : ''} Covers and thumbnails read best at a pause: a face looking at the camera, one clear subject, room for a title.`,
+      notice: t('perception.stillDone', { at: at.toFixed(2) }),
+    };
+  },
+};
+
+const r2 = (x: number) => Math.round(x * 100) / 100;
+
+export const PERCEPTION_TOOLS: ToolType[] = [beats, shots, subjects, palette, space, still];

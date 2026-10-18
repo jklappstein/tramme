@@ -272,7 +272,7 @@ export const kits = [{
 }];
 ```
 
-A plugin may also export `prompts`: workflows the user picks in the `/` menu, whose instructions guide the assistant for one kind of result.
+A plugin may also export `prompts`: workflows the user picks in the `/` menu, whose instructions guide the assistant for one kind of result. The editor's own ones cover the usual passes (a film from a brief, the sources read, a talking video dressed, a review, the motion polished, a sound design, shorts, a transcript, the silences cut, the edit on the beats, a still saved).
 
 ```js
 export const prompts = [{
