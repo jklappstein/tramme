@@ -66,6 +66,7 @@ const HEADERS = `/assets/*
   Cache-Control: no-cache
 /plugin-worker.js
   Cache-Control: no-cache
+  Content-Security-Policy: default-src 'none'; script-src 'self' blob:; connect-src 'self'; img-src 'self' data: blob:; font-src 'self' data:; style-src 'unsafe-inline'
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: same-origin
