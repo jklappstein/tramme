@@ -30,6 +30,8 @@ export interface SchemaNode {
   ai?: NodeType['ai'];
   props: NodeType['props'];
   container?: boolean;
+  /** the node declares a `path` (its outline can be read as data by the draw protocol) */
+  hasPath?: boolean;
 }
 
 export interface SchemaEffect {

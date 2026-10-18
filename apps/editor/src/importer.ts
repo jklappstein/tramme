@@ -4,13 +4,15 @@
 // video to make (pictures, footage, sounds, documents, a whole folder with
 // its kit). Nothing reaches storage before the checks pass.
 
-import { stringifyDoc, validate, type TrammeDoc, type Registry } from '@tramme/core';
+import { stringifyDoc, validate, type EffectType, type ModifierType, type NodeType, type TrammeDoc, type Registry } from '@tramme/core';
 import { fromLottie } from '@tramme/interop';
 import { builtinRegistry } from '@tramme/nodes';
 import { checkProject, codeInventory, DOCUMENT, MANIFEST, newProject, pathIssue, srcPath, unpackProject, type CodeInventory, type Issue, type Manifest, type PluginCode } from '@tramme/project';
 import { probeVideo } from '@tramme/render';
 import { api } from './api.ts';
 import { confirmWith } from './confirm.ts';
+import { browserHost, type PluginHost } from './plugins/index.ts';
+import type { PluginDecl } from './plugins/protocol.ts';
 import { freePath, safeName } from './files.ts';
 import { BRIEF_PATH } from './brief.ts';
 import { applyKit, briefOfKit, FONT_FILE, KIT_PATH, namesOf, readKit, relink, type Kit } from './kit.ts';
@@ -57,8 +59,33 @@ const askInEditor: CodeAsk = async (inv) => {
 };
 
 /** the document's plugins, imported from the archive's own files */
-async function registryOf(doc: TrammeDoc, files: Map<string, Uint8Array>): Promise<Registry> {
+async function registryOf(doc: TrammeDoc, files: Map<string, Uint8Array>, sandbox?: PluginHost): Promise<Registry> {
   const reg = builtinRegistry().clone();
+  if (!(doc.plugins || []).length) return reg;
+  // a sandbox is usable (a browser): the modules are imported there, and the
+  // page's registry takes their declarations — schemas, never code
+  if (sandbox || typeof Worker !== 'undefined') {
+    const box = sandbox ?? browserHost('');
+    const plugins = (doc.plugins || []).map((id) => {
+      const path = srcPath(doc.assets[id]?.src ?? '');
+      const data = path ? files.get(path) : undefined;
+      if (!data) { if (!sandbox) box.dispose(); throw new ImportError(t('importer.pluginIdNotFound', { id })); }
+      return { id, url: URL.createObjectURL(new Blob([data as BlobPart], { type: 'text/javascript' })) };
+    });
+    try {
+      const decls = await box.ensure(plugins).catch((e: Error) => { throw new ImportError(e.message); });
+      for (const { id } of plugins) {
+        const d = decls.get(id);
+        if (!d) throw new ImportError(t('importer.pluginIdNotFound', { id }));
+        applyDeclarations(reg, d, id);
+      }
+    } finally {
+      for (const p of plugins) URL.revokeObjectURL(p.url);
+      if (!sandbox) box.dispose();
+    }
+    return reg;
+  }
+  // no sandbox (tests without a browser): the page imports, behind the ask
   for (const id of doc.plugins || []) {
     const path = srcPath(doc.assets[id]?.src ?? '');
     const data = path ? files.get(path) : undefined;
@@ -71,12 +98,22 @@ async function registryOf(doc: TrammeDoc, files: Map<string, Uint8Array>): Promi
   return reg;
 }
 
+/** what a plugin's declarations give the page's registry: every schema the validation reads, no function of the plugin's */
+function applyDeclarations(reg: Registry, d: PluginDecl, id: string) {
+  reg.use({
+    nodes: d.nodes.map((n) => ({ ...n, ...(n.hasPath ? { path: () => null } : {}), render: {} }) as unknown as NodeType),
+    effects: d.effects.map((e) => ({ ...e }) as unknown as EffectType),
+    modifiers: d.modifiers.map((m) => ({ ...m, apply: () => {} }) as unknown as ModifierType),
+  }, id);
+}
+
 /**
  * The files of an archive, checked: structure, then the meaning. The code it
  * carries (plugins, expressions) is inventoried before anything runs, and
- * nothing runs until the ask says yes.
+ * nothing runs until the ask says yes. With a sandbox, the plugins are
+ * imported there for the validation and the page never runs their code.
  */
-export async function readArchive(data: Uint8Array, ask?: CodeAsk | null): Promise<{ files: Map<string, Uint8Array>; manifest: Manifest; doc: TrammeDoc }> {
+export async function readArchive(data: Uint8Array, ask?: CodeAsk | null, opts?: { sandbox?: PluginHost }): Promise<{ files: Map<string, Uint8Array>; manifest: Manifest; doc: TrammeDoc }> {
   let files: Map<string, Uint8Array>;
   try { files = unpackProject(data); } catch (e) { throw new ImportError((e as Error).message); }
   for (const k of [...files.keys()]) if (k.startsWith('renders/')) files.delete(k);
@@ -86,7 +123,7 @@ export async function readArchive(data: Uint8Array, ask?: CodeAsk | null): Promi
   if ((inv.plugins.length || inv.expressions) && ask !== null && !await (ask ?? askInEditor)(inv)) {
     throw new ImportError(t('importer.codeRefused'));
   }
-  const meaning = validate(doc, await registryOf(doc, files)).map((i) => ({ path: `${DOCUMENT}${i.path}`, message: i.message }));
+  const meaning = validate(doc, await registryOf(doc, files, opts?.sandbox)).map((i) => ({ path: `${DOCUMENT}${i.path}`, message: i.message }));
   if (meaning.length) throw new ImportError(t('importer.theProjectSDocument'), meaning);
   return { files, manifest, doc };
 }

@@ -29,7 +29,7 @@ export interface WorkerSideOptions {
   sandbox?: (modules: Map<string, PluginModule>) => SandboxDrawSide;
 }
 
-const schemaNode = (n: NodeType): SchemaNode => ({ type: n.type, title: n.title, category: n.category, description: n.description, ai: n.ai, props: n.props, ...(n.container ? { container: true } : {}) });
+const schemaNode = (n: NodeType): SchemaNode => ({ type: n.type, title: n.title, category: n.category, description: n.description, ai: n.ai, props: n.props, ...(n.container ? { container: true } : {}), ...(n.path ? { hasPath: true } : {}) });
 const schemaEffect = (e: EffectType): SchemaEffect => ({ type: e.type, title: e.title, category: e.category, description: e.description, ai: e.ai, props: e.props, stage: e.stage });
 const schemaModifier = (m: ModifierType): SchemaModifier => ({ type: m.type, title: m.title, ...(m.params ? { params: m.params } : {}) });
 

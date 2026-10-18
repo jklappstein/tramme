@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { stringifyDoc, type TrammeDoc } from '@tramme/core';
 import { newProject, packProject, type CodeInventory, type Manifest } from '@tramme/project';
 import { ImportError, readArchive } from '../src/importer.ts';
+import type { PluginHost } from '../src/plugins/host.ts';
 
 // the api below the importer: its calls recorded, nothing stored
 const calls = vi.hoisted(() => ({ list: [] as string[] }));
@@ -78,5 +79,39 @@ describe('readArchive', () => {
     await readArchive(archiveOf(withCode([50, 50], ['stars']), { 'plugins/stars.js': PLUGIN }), ask).catch(() => {});
     expect(ask).toHaveBeenCalledTimes(1);
     expect(ask.mock.calls[0][0].plugins).toEqual([{ id: 'stars', path: 'plugins/stars.js', size: PLUGIN.length, kinds: ['nodes'] }]);
+  });
+
+  it('validates a plugin in the sandbox: the page never imports it, even when accepted', async () => {
+    const decls = new Map([['stars', {
+      id: 'stars', meta: { name: 'stars', api: 1 }, tools: [], checks: [],
+      nodes: [{ type: 'sky.moon', title: 'Moon', category: 'Shapes', props: { radius: { type: 'number', default: 10 } }, hasPath: true }],
+      effects: [], modifiers: [],
+    }]]);
+    const sandbox = {
+      ensure: async (list: { id: string }[]) => { expect(list.map((p) => p.id)).toEqual(['stars']); return decls; },
+      runTool: async () => ({}), runCheck: async () => [], setDoc: () => {}, draw: async () => [], dispose: () => {},
+    } as unknown as PluginHost;
+    const d = withCode([50, 50], ['stars']);
+    d.compositions[d.root].layers.a = { type: 'sky.moon', props: { radius: 5 } } as never;
+    const { doc } = await readArchive(archiveOf(d, { 'plugins/stars.js': PLUGIN }), async () => true, { sandbox });
+    // accepted and validated against the sandbox's declarations: the module's code never ran on the page
+    expect((globalThis as Record<string, unknown>).__trammePluginLoaded).toBeUndefined();
+    expect(doc.compositions[doc.root].layers.a).toBeDefined();
+  });
+
+  it('refuses a document that fails the sandbox validation', async () => {
+    const decls = new Map([['stars', {
+      id: 'stars', tools: [], checks: [],
+      nodes: [{ type: 'sky.moon', title: 'Moon', category: 'Shapes', props: { radius: { type: 'number', default: 10 } } }],
+      effects: [], modifiers: [],
+    }]]);
+    const sandbox = {
+      ensure: async () => decls, runTool: async () => ({}), runCheck: async () => [], setDoc: () => {}, draw: async () => [], dispose: () => {},
+    } as unknown as PluginHost;
+    const d = withCode([50, 50], ['stars']);
+    d.compositions[d.root].layers.a = { type: 'sky.moon', props: { radius: 'big' } } as never;
+    const err = await readArchive(archiveOf(d, { 'plugins/stars.js': PLUGIN }), async () => true, { sandbox }).catch((e) => e);
+    expect(err).toBeInstanceOf(ImportError);
+    expect(err.issues.some((i: { path: string }) => i.path.includes('radius'))).toBe(true);
   });
 });
