@@ -64,6 +64,8 @@ const HEADERS = `/assets/*
   Cache-Control: ${dev ? 'no-cache' : 'public, max-age=31536000, immutable'}
 /sw.js
   Cache-Control: no-cache
+/plugin-worker.js
+  Cache-Control: no-cache
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: same-origin
@@ -142,6 +144,13 @@ const workerOptions: esbuild.BuildOptions = {
   minify: !dev && !process.env.TRAMME_NOMINIFY, sourcemap: 'linked', logLevel: 'warning', legalComments: 'none',
 };
 
+/** the plugin sandbox: a module worker at a fixed address (src/plugins/worker.ts), its own bundle */
+const sandboxOptions: esbuild.BuildOptions = {
+  entryPoints: [path.join(HERE, 'src/plugins/worker.ts')], outfile: path.join(DIST, 'plugin-worker.js'),
+  bundle: true, format: 'esm', platform: 'browser', target: 'chrome120',
+  minify: !dev && !process.env.TRAMME_NOMINIFY, sourcemap: 'linked', logLevel: 'warning', legalComments: 'none',
+};
+
 // empty the folder rather than removing it (a running `wrangler dev` watches it)
 fs.mkdirSync(DIST, { recursive: true });
 for (const f of fs.readdirSync(DIST)) fs.rmSync(path.join(DIST, f), { recursive: true, force: true });
@@ -167,7 +176,7 @@ fs.copyFileSync(createRequire(import.meta.url).resolve('pdfjs-dist/build/pdf.wor
 
 if (!dev) {
   const t0 = performance.now();
-  const [r] = await Promise.all([esbuild.build(options), esbuild.build(workerOptions)]);
+  const [r] = await Promise.all([esbuild.build(options), esbuild.build(workerOptions), esbuild.build(sandboxOptions)]);
   writePage(r.metafile!);
   const size = Object.values(r.metafile!.outputs).reduce((n, o) => n + o.bytes, 0);
   console.log(`editor built in ${path.relative(process.cwd(), DIST)} in ${((performance.now() - t0) / 1000).toFixed(1)} s (${(size / 1e6).toFixed(1)} MB with source maps, ${examples} example(s))`);
@@ -177,8 +186,9 @@ if (!dev) {
     plugins: [{ name: 'page', setup: (b) => b.onEnd((r) => { if (r.metafile && !r.errors.length) { writePage(r.metafile); console.log(`[build] ${new Date().toLocaleTimeString('en-GB')} editor up to date`); } }) }],
   });
   const sw = await esbuild.context(workerOptions);
-  await Promise.all([ctx.rebuild(), sw.rebuild()]);
-  await Promise.all([ctx.watch(), sw.watch()]);
+  const sandbox = await esbuild.context(sandboxOptions);
+  await Promise.all([ctx.rebuild(), sw.rebuild(), sandbox.rebuild()]);
+  await Promise.all([ctx.watch(), sw.watch(), sandbox.watch()]);
   const port = process.env.PORT ?? '8787';
   // TRAMME_STATE: projects stored elsewhere (trials beside a running `npm run dev`)
   const state = process.env.TRAMME_STATE ?? '.wrangler/state';

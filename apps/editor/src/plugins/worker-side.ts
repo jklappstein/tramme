@@ -1,0 +1,178 @@
+// The sandbox's logic, written without the Worker API so it runs in a browser
+// worker (plugins/worker.ts wires it to postMessage) and in tests alike. It
+// imports the project's plugin modules, tells the page what they declare, and
+// runs their tools and checks against a context whose every reach into the
+// project is a message answered by the page. Nothing here touches the DOM.
+
+import { Registry, type CheckContext, type CheckType, type EffectType, type ModifierType, type NodeType, type PluginModule, type QualityIssue, type ToolContext, type ToolOutput } from '@tramme/core';
+import type { Ask, CheckCtxData, FromWorker, PluginDecl, SchemaEffect, SchemaModifier, SchemaNode, ToWorker, ToolCtxData } from './protocol.ts';
+
+export interface WorkerSide {
+  /** a message from the page */
+  receive(m: ToWorker): void;
+}
+
+export interface WorkerSideOptions {
+  /** speak to the page */
+  post(m: FromWorker): void;
+  /** import a plugin module (the worker's own import, version-busted by the caller) */
+  importModule(url: string): Promise<PluginModule>;
+}
+
+const schemaNode = (n: NodeType): SchemaNode => ({ type: n.type, title: n.title, category: n.category, description: n.description, ai: n.ai, props: n.props, ...(n.container ? { container: true } : {}) });
+const schemaEffect = (e: EffectType): SchemaEffect => ({ type: e.type, title: e.title, category: e.category, description: e.description, ai: e.ai, props: e.props, stage: e.stage });
+const schemaModifier = (m: ModifierType): SchemaModifier => ({ type: m.type, title: m.title, ...(m.params ? { params: m.params } : {}) });
+
+/**
+ * The vocabulary as a sandboxed tool may read it: schemas and notes, never
+ * code. A node's render is an empty object (the registry asks for one), a
+ * modifier's apply refuses: their code does not cross the boundary.
+ */
+function schemaRegistryOf(mods: PluginModule[]): Registry {
+  const reg = new Registry();
+  for (const mod of mods) {
+    reg.use({
+      nodes: (mod.nodes ?? []).map((n) => ({ ...schemaNode(n), render: {} }) as unknown as NodeType),
+      effects: (mod.effects ?? []).map((e) => ({ ...schemaEffect(e) }) as unknown as EffectType),
+      modifiers: (mod.modifiers ?? []).map((m) => ({ ...schemaModifier(m), apply: () => { throw new Error("a modifier's code does not cross the sandbox"); } }) as unknown as ModifierType),
+    }, 'sandbox');
+  }
+  return reg;
+}
+
+export function startWorkerSide({ post, importModule }: WorkerSideOptions): WorkerSide {
+  const modules = new Map<string, PluginModule>();
+  /** one abort controller per running tool or check */
+  const controllers = new Map<number, AbortController>();
+  /** the asks this side is waiting on: id -> settle */
+  const asks = new Map<number, { call: number; resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  let askId = 0;
+
+  const ask = (call: number, q: Ask): Promise<any> =>
+    new Promise((resolve, reject) => {
+      const id = ++askId;
+      asks.set(id, { call, resolve, reject });
+      post({ kind: 'ask', id, call, q });
+    });
+
+  const declare = (id: string, mod: PluginModule): PluginDecl => ({
+    id,
+    meta: mod.meta,
+    tools: (mod.tools ?? []).map(({ run, ...decl }) => decl),
+    checks: (mod.checks ?? []).map(({ run, ...decl }) => decl),
+    nodes: (mod.nodes ?? []).map(schemaNode),
+    effects: (mod.effects ?? []).map(schemaEffect),
+    modifiers: (mod.modifiers ?? []).map(schemaModifier),
+  });
+
+  const find = (name: string): { kind: 'tool' | 'check'; run: (input: any, ctx: any) => unknown; id: string } | null => {
+    for (const [id, mod] of modules) {
+      const tool = mod.tools?.find((t) => t.name === name);
+      if (tool) return { kind: 'tool', run: tool.run, id };
+      const check = mod.checks?.find((c) => c.name === name);
+      if (check) return { kind: 'check', run: check.run, id };
+    }
+    return null;
+  };
+
+  const toolContext = (call: number, data: ToolCtxData, registry: Registry, signal: AbortSignal): ToolContext => {
+    const doc = data.doc as ToolContext['doc'];
+    const base = data.docUrl;
+    return {
+      doc, compId: data.compId, time: data.time, selection: data.selection, registry,
+      assetUrl: (id) => { const src = doc.assets[id]?.src; if (!src) throw new Error(`unknown asset: ${id}`); return new URL(src, base).href; },
+      fileUrl: (path) => new URL(path, base).href,
+      readText: (path) => ask(call, { kind: 'readText', path }),
+      files: () => ask(call, { kind: 'files' }),
+      writeFile: async (path, d) => ask(call, { kind: 'writeFile', path, data: typeof d === 'string' ? { text: d } : { bytes: await d.arrayBuffer() } }),
+      renderStill: (t, compId) => ask(call, { kind: 'renderStill', t, compId }),
+      transcript: (assetId, opts) => ask(call, { kind: 'transcript', assetId, ask: opts?.ask ?? true }),
+      signal,
+      progress: (done, total, step) => post({ kind: 'progress', call, done, total, step }),
+    };
+  };
+
+  const checkContext = (call: number, data: CheckCtxData, registry: Registry): CheckContext => ({
+    doc: data.doc as CheckContext['doc'],
+    compId: data.compId,
+    comp: data.comp as CheckContext['comp'],
+    registry,
+    evaluator: undefined as never,
+    samples: data.samples as CheckContext['samples'],
+    step: data.step,
+    data: (assetId) => ask(call, { kind: 'data', assetId }),
+  });
+
+  return {
+    receive(m) {
+      if (m.kind === 'load') {
+        void (async () => {
+          const loaded: PluginDecl[] = [];
+          for (const { id, url } of m.plugins) {
+            try {
+              modules.set(id, await importModule(url));
+              loaded.push(declare(id, modules.get(id)!));
+            } catch (e) { post({ kind: 'loadFailed', id, message: (e as Error).message }); }
+          }
+          if (loaded.length) post({ kind: 'loaded', plugins: loaded });
+        })();
+        return;
+      }
+      if (m.kind === 'abort') {
+        controllers.get(m.call)?.abort();
+        for (const [id, a] of asks) if (a.call === m.call) { asks.delete(id); a.reject(new Error('aborted')); }
+        return;
+      }
+      if (m.kind === 'answer') {
+        const a = asks.get(m.id);
+        if (!a) return;
+        asks.delete(m.id);
+        if (m.err) a.reject(new Error(m.err));
+        else a.resolve(m.ok);
+        return;
+      }
+      if (m.kind === 'tool' || m.kind === 'check') {
+        const found = find(m.name);
+        if (!found) { post({ kind: 'result', call: m.call, err: `unknown ${m.kind}: ${m.name}` }); return; }
+        if (found.kind !== m.kind) { post({ kind: 'result', call: m.call, err: `${m.name} is a ${found.kind}, called as a ${m.kind}` }); return; }
+        const controller = new AbortController();
+        controllers.set(m.call, controller);
+        const registry = schemaRegistryOf([...modules.values()]);
+        const ctx: ToolContext | CheckContext = m.kind === 'tool'
+          ? toolContext(m.call, m.ctx, registry, controller.signal)
+          : checkContext(m.call, m.ctx, registry);
+        const input = m.kind === 'tool' ? m.input : ctx;
+        void (async () => {
+          try {
+            const out = await found.run(input, ctx);
+            post({ kind: 'result', call: m.call, ok: out === undefined ? null : out });
+          } catch (e) {
+            post({ kind: 'result', call: m.call, err: controller.signal.aborted ? 'aborted' : (e as Error).message });
+          } finally { controllers.delete(m.call); }
+        })();
+      }
+    },
+  };
+}
+
+/**
+ * The sandbox's reduced reach, applied to its own realm before any plugin
+ * loads: fetch only the project's origin (the editor's storage and API), no
+ * sockets. What stays open — dynamic import of remote modules — is a limit
+ * said plainly in the design note, for a CSP to close.
+ */
+export function guardRealm(realm: { fetch?: typeof fetch; WebSocket?: unknown; location?: { href?: string } }, origin: string) {
+  const real = realm.fetch?.bind(realm);
+  if (real) {
+    realm.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const target = new URL(url, realm.location?.href ?? origin);
+      if (target.origin !== origin) return Promise.reject(new Error(`the plugin sandbox reaches its own origin only, not ${target.origin}`));
+      return real(input, init);
+    }) as typeof fetch;
+  }
+  realm.WebSocket = undefined;
+}
+
+/** a tool's or check's result as plain data (what crosses back) */
+export type SandboxResult = ToolOutput | string | void | QualityIssue[];
