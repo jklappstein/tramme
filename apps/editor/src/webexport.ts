@@ -14,6 +14,7 @@ import { encodeWav, mixComposition, Renderer } from '@tramme/render';
 import { AVC_FROM_STREAM } from './avc.ts';
 import type { WebFormat } from './formats.ts';
 import { filterModule } from './plugins/index.ts';
+import { primeSandboxExports } from './plugins/sandbox-draw.ts';
 import { t } from './i18n/index.ts';
 
 export interface WebExportOptions {
@@ -39,6 +40,8 @@ const aborted = (signal?: AbortSignal) => { if (signal?.aborted) throw new DOMEx
 export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebFormat, opts: WebExportOptions): Promise<WebExportResult> {
   if (format === 'lottie' || format === 'svg') {
     const readAsset = await fetchAssetReader(doc, base);
+    // the sandboxed nodes' vector exports are computed in the sandbox first: the conversion reads them synchronously
+    await primeSandboxExports(doc, opts.registry, opts.t ?? 0);
     if (format === 'lottie') {
       const { lottie, warnings } = toLottie(doc, opts.registry, { compId: opts.compId, readAsset });
       return { blob: new Blob([JSON.stringify(lottie)], { type: 'application/json' }), ext: 'lottie.json', warnings };

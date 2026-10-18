@@ -8,7 +8,8 @@
 // rather than nothing. One sample per frame: a plugin layer's motion blur
 // takes its picture at the first sub-time.
 
-import type { Host, NodeType, Rect, TrammeDoc } from '@tramme/core';
+import type { Handle, Host, NodeType, Rect, Registry, TrammeDoc } from '@tramme/core';
+import { Evaluator } from '@tramme/core';
 import type { PluginHost } from './host.ts';
 import type { SandboxDoc } from './protocol.ts';
 
@@ -25,31 +26,60 @@ let env: { host: () => PluginHost; context: () => SandboxContext | null } | null
 /** bound once by the preview: every sandboxed draw goes through the project's sandbox */
 export function bindSandbox(e: { host: () => PluginHost; context: () => SandboxContext | null }) { env = e; }
 
-/** a node whose geometry the page never needs synchronously can draw in the sandbox */
-export const sandboxable = (node: NodeType) => !node.path && !node.handles && !node.export;
+/** identity of a set of evaluated props, for the caches the page reads synchronously */
+const hash = (props: unknown) => {
+  try { return JSON.stringify(props); } catch { return `${Date.now()}`; }
+};
 
 /**
  * The node as the page's registry holds it: schemas, notes, simulations
- * (still stepped on the page, their state shipped per frame) — and a draw
- * that asks the sandbox instead of the plugin's code.
+ * (still stepped on the page, their state shipped per frame), and every
+ * geometry the page reads — outline, handles, vector export — served from
+ * what the sandbox shipped with the frame's picture. The draw itself asks
+ * the sandbox instead of the plugin's code.
  */
 export function sandboxNode(node: NodeType): NodeType {
-  return {
+  const out: NodeType = {
     ...node,
-    path: undefined,
-    handles: undefined,
-    export: undefined,
-    bounds: undefined,
     load: undefined,
+    bounds: undefined,
     render: { canvas2d: (ctx, props, host) => drawSandboxed(ctx, host, node, props) },
   };
+  if (node.path) {
+    out.path = (_props, host) => {
+      const e = ready.get(host.layerId);
+      return e?.pathData ? new Path2D(e.pathData) : null;
+    };
+  }
+  if (node.handles) {
+    out.handles = (props) => (handlesCache.get(`${node.type}/${hash(props)}`) ?? []) as Handle[];
+  }
+  if (node.export) {
+    out.export = {
+      svg: (props) => {
+        const v = exportCache.get(`${node.type}/${hash(props)}`);
+        if (!v?.svg) throw new Error(`${node.type}: its vector export is computed in the sandbox and was not primed here`);
+        return v.svg;
+      },
+      lottie: (props) => {
+        const v = exportCache.get(`${node.type}/${hash(props)}`);
+        if (!v || v.lottie === undefined) throw new Error(`${node.type}: its vector export is computed in the sandbox and was not primed here`);
+        return v.lottie as unknown[];
+      },
+    };
+  }
+  return out;
 }
 
-interface Picture { frame: number; bitmap?: CanvasImageSource; area?: Rect; err?: string }
+interface Picture { frame: number; bitmap?: CanvasImageSource; area?: Rect; pathData?: string; handlesData?: unknown[]; err?: string }
 /** the last picture of a layer (drawn again while the fresh one is in flight) */
 const ready = new Map<string, Picture>();
 /** the draws in flight, by layer and frame */
 const pending = new Map<string, Promise<Picture>>();
+/** the viewport handles, keyed by node type and props */
+const handlesCache = new Map<string, unknown[]>();
+/** the vector exports, keyed by node type and props */
+const exportCache = new Map<string, { svg?: string; lottie?: unknown }>();
 
 const FALLING: Rect = { x: -60, y: -60, w: 120, h: 120 };
 
@@ -69,6 +99,7 @@ function drawSandboxed(ctx: CanvasRenderingContext2D, host: Host, node: NodeType
       const old = ready.get(host.layerId);
       if (old?.bitmap && old.bitmap !== r.bitmap) (old.bitmap as { close?(): void }).close?.();
       ready.set(host.layerId, { ...r, frame: host.frame });
+      if (r.handlesData) handlesCache.set(`${node.type}/${hash(props)}`, r.handlesData);
     }).catch(() => {}).finally(() => pending.delete(key));
     host.defer?.(p);
   }
@@ -94,7 +125,14 @@ async function request(host: Host, type: string, props: unknown, previousFrame?:
   });
   const r = results.find((x) => x.id === host.layerId);
   if (!r) return { err: 'the sandbox sent no picture', frame: host.frame };
-  return { bitmap: r.bitmap as CanvasImageSource | undefined, area: r.area, err: r.ok ? undefined : r.err, frame: host.frame };
+  return {
+    bitmap: r.bitmap as CanvasImageSource | undefined,
+    area: r.area,
+    pathData: r.path,
+    handlesData: r.handles,
+    err: r.ok ? undefined : r.err,
+    frame: host.frame,
+  };
 }
 
 /** the document's side, sent when the document (or an asset) changed */
@@ -125,4 +163,36 @@ export function resetSandbox() {
   pending.clear();
   for (const [, pic] of ready) (pic.bitmap as { close?(): void } | undefined)?.close?.();
   ready.clear();
+  handlesCache.clear();
+  exportCache.clear();
+}
+
+/**
+ * The vector exports of a document's sandboxed nodes, computed in the
+ * sandbox and cached by props: called before a vector export (svg, Lottie)
+ * so the page's synchronous read finds them.
+ */
+export async function primeSandboxExports(doc: TrammeDoc, registry: Registry, t: number) {
+  const e = env;
+  if (!e) return;
+  const h = e.host();
+  const evaluator = new Evaluator(doc, registry);
+  const jobs: Promise<void>[] = [];
+  for (const [cid, comp] of Object.entries(doc.compositions)) {
+    for (const [id, layer] of Object.entries(comp.layers)) {
+      if (!registry.hasNode(layer.type)) continue;
+      const node = registry.node(layer.type);
+      if (!node.export) continue;
+      const placed = evaluator.layerAt(id, t, cid);
+      if (!placed) continue;
+      const key = `${layer.type}/${hash(placed.props)}`;
+      if (exportCache.has(key)) continue;
+      jobs.push(
+        h.exportOf(layer.type, placed.props)
+          .then((r) => { if (!r.err) exportCache.set(key, { svg: r.svg, lottie: r.lottie }); })
+          .catch(() => {}),
+      );
+    }
+  }
+  await Promise.all(jobs);
 }

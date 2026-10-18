@@ -18,6 +18,8 @@ export interface SandboxDrawSide {
   setDoc(d: SandboxDoc): void | Promise<void>;
   /** draw a frame's sandboxed layers; the pictures may be transferred back */
   draw(p: DrawPayload): Promise<{ results: DrawResult[]; transfer?: Transferable[] }>;
+  /** a node's vector export, computed from its declarations' code */
+  exportOf(type: string, props: unknown): Promise<{ svg?: string; lottie?: unknown; err?: string }>;
 }
 
 export interface WorkerSideOptions {
@@ -140,6 +142,14 @@ export function startWorkerSide({ post, importModule, sandbox: makeSandbox }: Wo
           try { ({ results, transfer } = await sandbox.draw(m.payload)); }
           catch (e) { results = m.payload.items.map((i) => ({ id: i.id, ok: false, err: (e as Error).message })); }
           post({ kind: 'drawn', call: m.call, frame: m.payload.frame, results }, transfer);
+        })();
+        return;
+      }
+      if (m.kind === 'export') {
+        if (!sandbox) { post({ kind: 'exported', call: m.call, err: 'the sandbox cannot export here' }); return; }
+        void (async () => {
+          const r = await sandbox.exportOf(m.type, m.props).catch((e: Error) => ({ err: e.message }));
+          post({ kind: 'exported', call: m.call, ...r });
         })();
         return;
       }

@@ -21,6 +21,8 @@ export interface PluginHost {
   setDoc(doc: SandboxDoc): void;
   /** draw a frame's sandboxed layers; resolves with one result per item */
   draw(payload: DrawPayload): Promise<DrawResult[]>;
+  /** a node's vector export, computed in the sandbox */
+  exportOf(type: string, props: unknown): Promise<{ svg?: string; lottie?: unknown; err?: string }>;
   dispose(): void;
 }
 
@@ -85,6 +87,14 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
       w.resolve(m.results);
       return;
     }
+    if (m.kind === 'exported') {
+      const w = waits.get(m.call);
+      if (!w) return;
+      waits.delete(m.call);
+      if (m.err) w.reject(new Error(m.err));
+      else w.resolve({ svg: m.svg, lottie: m.lottie });
+      return;
+    }
     if (m.kind === 'progress') {
       const ctx = bridges.get(m.call);
       if (ctx && 'progress' in ctx) (ctx as ToolContext).progress?.(m.done, m.total, m.step);
@@ -138,6 +148,10 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
     },
     async draw(payload) {
       return await run({ kind: 'draw', call: ++call, payload }) as DrawResult[];
+    },
+    async exportOf(type, props) {
+      const r = await run({ kind: 'export', call: ++call, type, props });
+      return (r ?? {}) as { svg?: string; lottie?: unknown; err?: string };
     },
     dispose() {
       for (const [, w] of waits) w.reject(new Error('the plugin sandbox is closed'));

@@ -10,7 +10,8 @@ import { newProject, type Manifest } from '@tramme/project';
 import { Registry, toolOutput, type Host, type PluginModule, type ToolContext, type CheckContext, type TrammeDoc } from '@tramme/core';
 import { connectHost, type PluginHost } from '../src/plugins/host.ts';
 import { guardRealm, startWorkerSide, type SandboxDrawSide } from '../src/plugins/worker-side.ts';
-import { bindSandbox, resetSandbox, sandboxNode, sandboxable } from '../src/plugins/sandbox-draw.ts';
+import { bindSandbox, resetSandbox, primeSandboxExports, sandboxNode } from '../src/plugins/sandbox-draw.ts';
+import { RecordingPath2D } from '../src/plugins/recording-path.ts';
 import type { DrawPayload, DrawResult, SandboxDoc } from '../src/plugins/protocol.ts';
 import { attachIsolated, filterModule } from '../src/plugins/vocabulary.ts';
 
@@ -22,6 +23,7 @@ const plugin = (): PluginModule => ({
   nodes: [{
     type: 'sky.moon', title: 'Moon', category: 'Shapes', props: { radius: { type: 'number', default: 10 } },
     render: { canvas2d: () => {} }, bounds: () => null, simulate: { init: () => 0, step: (s) => s },
+    path: () => null, handles: () => [{ prop: 'radius', at: [0, 0] }], export: { svg: (p: unknown) => `<circle r="${(p as { radius: number }).radius}"/>` },
   }],
   tools: [{
     name: 'sky.stars', title: 'Star field', description: 'scatters stars',
@@ -93,6 +95,7 @@ describe('the plugin sandbox', () => {
     expect(d.checks.map((c) => c.name)).toEqual(['sky.cover']);
     expect(d.nodes[0].type).toBe('sky.moon');
     expect(d.nodes[0]).not.toHaveProperty('render');
+    expect(d.nodes[0].hasPath).toBe(true);
     // the same url again: nothing reloaded
     const again = await host.ensure([{ id: 'stars', url: 'blob:stars' }]);
     expect(again.get('stars')).toBe(d);
@@ -198,18 +201,15 @@ describe('the plugin sandbox', () => {
     expect(filtered.checks).toBeUndefined();
     expect(filtered.nodes).toHaveLength(1);
     expect(filtered.meta?.name).toBe('stars');
-    // the sandboxable node is wrapped: its draw belongs to the sandbox, its schema and simulation stay
+    // the node is wrapped: its draw belongs to the sandbox; its schema and simulation stay; its geometry is served from the sandbox
     const n = filtered.nodes![0];
-    expect(n.path).toBeUndefined();
     expect(n.render.gl).toBeUndefined();
     expect(typeof (n.render as { canvas2d?: unknown }).canvas2d).toBe('function');
     expect(n.simulate).toBeDefined();
     expect(n.props).toBeDefined();
-    // a node the page must read geometry from stays whole
-    const withPath = { ...plugin().nodes![0], path: () => null } as never;
-    expect(sandboxable(plugin().nodes![0] as never)).toBe(true);
-    expect(sandboxable(withPath)).toBe(false);
-    expect(filterModule({ nodes: [withPath] }).nodes![0]).toHaveProperty('path');
+    expect(typeof n.path).toBe('function');
+    expect(typeof n.handles).toBe('function');
+    expect(typeof n.export?.svg).toBe('function');
   });
 });
 
@@ -223,17 +223,39 @@ describe('the sandboxed drawing', () => {
       setDoc: (d) => { docs.push(d); },
       draw: async (p) => {
         payloads.push(p);
-        return { results: p.items.map((i): DrawResult => ({ id: i.id, ok: true, bitmap, area: { x: -10, y: -10, w: 20, h: 20 } })), transfer: [bitmap] };
+        return {
+          results: p.items.map((i): DrawResult => ({ id: i.id, ok: true, bitmap, area: { x: -10, y: -10, w: 20, h: 20 }, path: 'M 0 0 L 10 10', handles: [{ prop: 'radius', at: [1, 2] }] })),
+          transfer: [bitmap],
+        };
       },
+      exportOf: async () => ({ err: 'not this test' }),
     };
     const { host } = pair(new Map([['blob:stars', plugin()]]), undefined, () => sandbox);
     await host.ensure([{ id: 'stars', url: 'blob:stars' }]);
     host.setDoc({ doc: { assets: { moon: { type: 'image', src: 'assets/moon.png' } } }, docUrl: DOC_URL, images: {}, json: {}, fonts: [] });
     const results = await host.draw({ frame: 3, comp: { width: 100, height: 100, duration: 2, fps: 30 }, layers: [{ id: 'moon', props: {}, transform: { anchor: [0, 0], position: [50, 50], scale: [1, 1], rotation: 0, opacity: 1 }, in: 0, out: 2 }], items: [{ id: 'moon', type: 'sky.moon', props: { radius: 5 }, t: 0.1, frame: 3 }] });
-    expect(results[0]).toMatchObject({ id: 'moon', ok: true, area: { w: 20 } });
+    expect(results[0]).toMatchObject({ id: 'moon', ok: true, area: { w: 20 }, path: 'M 0 0 L 10 10' });
     expect(payloads).toHaveLength(1);
     expect(payloads[0].items[0].type).toBe('sky.moon');
     expect(docs).toHaveLength(1);
+  });
+
+  it('hands a node\'s vector export across', async () => {
+    const sandbox: SandboxDrawSide = {
+      setDoc: () => {},
+      draw: async () => ({ results: [] }),
+      exportOf: async (type, props) => {
+        const mod = plugin();
+        const node = type === 'sky.moon' ? mod.nodes![0] : undefined;
+        if (!node?.export) return { err: `${type} has no vector export` };
+        return { svg: node.export.svg?.(props), lottie: node.export.lottie?.(props) };
+      },
+    };
+    const { host } = pair(new Map([['blob:stars', plugin()]]), undefined, () => sandbox);
+    await host.ensure([{ id: 'stars', url: 'blob:stars' }]);
+    const r = await host.exportOf('sky.moon', { radius: 7 });
+    expect(r.svg).toBe('<circle r="7"/>');
+    await expect(host.exportOf('sky.other', {})).rejects.toThrow(/sky\.other/);
   });
 
   it('the wrapper defers, then draws the picture over its bounds; a later frame keeps the last one', async () => {
@@ -287,5 +309,102 @@ describe('the sandboxed drawing', () => {
     resolveDraw([{ id: 'moon', ok: false, err: 'boom in the sandbox' }]);
     await new Promise((r) => setTimeout(r, 5));
     expect(() => node.render.canvas2d!(ctx, {}, layer)).toThrow(/boom in the sandbox/);
+  });
+
+  it('serves the outline and the handles the sandbox shipped with the frame', async () => {
+    vi.stubGlobal('Path2D', class { d?: string; constructor(d?: string) { this.d = d; } });
+    const drawn: unknown[][] = [];
+    const ctx = { drawImage: (...a: unknown[]) => drawn.push(a) } as unknown as CanvasRenderingContext2D;
+    let resolveDraw: (r: DrawResult[]) => void = () => {};
+    const fakeHost = {
+      ensure: async () => new Map(),
+      runTool: async () => ({}),
+      runCheck: async () => [],
+      setDoc: () => {},
+      draw: () => new Promise<DrawResult[]>((res) => { resolveDraw = res; }),
+      exportOf: async () => ({ svg: '<circle r="5"/>' }),
+      dispose: () => {},
+    } as unknown as PluginHost;
+    bindSandbox({ host: () => fakeHost, context: () => ({ doc: doc().doc, docUrl: DOC_URL, loaded: () => null }) });
+    const node = sandboxNode(plugin().nodes![0]);
+    const layer = { layerId: 'moon', t: 0.1, frame: 3, fps: 30, width: 100, height: 100, duration: 2, defer: () => {}, state: () => undefined } as unknown as Host;
+    // before the first frame: no outline, no handles
+    expect(node.path!({ radius: 5 }, layer)).toBeNull();
+    expect(node.handles!({ radius: 5 })).toEqual([]);
+    node.render.canvas2d!(ctx, { radius: 5 }, layer);
+    resolveDraw([{ id: 'moon', ok: true, bitmap: {} as unknown as CanvasImageSource, area: { x: -10, y: -10, w: 20, h: 20 }, path: 'M 0 0 L 10 10', handles: [{ prop: 'radius', at: [1, 2] }] }]);
+    await new Promise((r) => setTimeout(r, 5));
+    // the page reads the geometry the sandbox shipped, as data
+    const outline = node.path!({ radius: 5 }, layer) as unknown as { d?: string };
+    expect(outline.d).toBe('M 0 0 L 10 10');
+    expect(node.handles!({ radius: 5 })).toEqual([{ prop: 'radius', at: [1, 2] }]);
+    vi.unstubAllGlobals();
+  });
+
+  it('primes a node\'s vector export from the sandbox before the page reads it', async () => {
+    const exported: unknown[] = [];
+    const fakeHost = {
+      ensure: async () => new Map(),
+      runTool: async () => ({}),
+      runCheck: async () => [],
+      setDoc: () => {},
+      draw: async () => [],
+      exportOf: async (_type: string, props: unknown) => { exported.push(props); return { svg: `<circle r="${(props as { radius: number }).radius}"/>`, lottie: [{ radius: (props as { radius: number }).radius }] }; },
+      dispose: () => {},
+    } as unknown as PluginHost;
+    bindSandbox({ host: () => fakeHost, context: () => ({ doc: doc().doc, docUrl: DOC_URL, loaded: () => null }) });
+    const { doc: d } = doc();
+    d.compositions[d.root].layers.moon = { type: 'sky.moon', props: { radius: 5 } } as never;
+    d.compositions[d.root].order = ['moon'];
+    const reg = new Registry().register({ ...sandboxNode(plugin().nodes![0]) });
+    await primeSandboxExports(d, reg, 0);
+    expect(exported).toEqual([{ radius: 5 }]);
+    expect(reg.node('sky.moon').export!.svg!({ radius: 5 })).toBe('<circle r="5"/>');
+    expect(reg.node('sky.moon').export!.lottie!({ radius: 5 })).toEqual([{ radius: 5 }]);
+  });
+});
+
+describe('the recording path', () => {
+  it('writes the commands as SVG path data', () => {
+    const p = new RecordingPath2D();
+    p.moveTo(10, 10.005);
+    p.lineTo(20, 10);
+    p.bezierCurveTo(30, 10, 40, 20, 50, 20);
+    p.quadraticCurveTo(60, 20, 70, 20);
+    p.rect(0, 0, 5, 5);
+    p.closePath();
+    const d = p.toString();
+    expect(d).toContain('M 10 10');
+    expect(d).toContain('L 20 10');
+    expect(d).toContain('C 30 10 40 20 50 20');
+    expect(d).toContain('Q 60 20 70 20');
+    expect(d).toContain('R 0 0 5 5');
+    expect(d).toContain('Z');
+  });
+
+  it('turns arcs into cubic beziers a real Path2D can parse', () => {
+    const p = new RecordingPath2D();
+    p.moveTo(100, 0);
+    p.arc(0, 0, 100, 0, Math.PI / 2);
+    const d = p.toString();
+    expect(d).toContain('C');
+    expect(d.startsWith('M 100 0')).toBe(true);
+    // the sweep ends on the quarter's end point (0, 100)
+    expect(d.trimEnd().endsWith('0 100')).toBe(true);
+    // a full circle: two arcs' worth of beziers
+    const c = new RecordingPath2D();
+    c.arc(0, 0, 10, 0, Math.PI * 2);
+    expect(c.toString().split('C').length - 1).toBeGreaterThanOrEqual(4);
+  });
+
+  it('joins paths and copies one built from data', () => {
+    const a = new RecordingPath2D();
+    a.moveTo(0, 0);
+    a.lineTo(1, 1);
+    const b = new RecordingPath2D('M 5 5 L 6 6');
+    a.addPath(b);
+    expect(a.toString()).toContain('M 5 5 L 6 6');
+    const c = new RecordingPath2D(a);
+    expect(c.toString()).toBe(a.toString());
   });
 });

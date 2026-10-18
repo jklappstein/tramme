@@ -124,6 +124,10 @@ export interface DrawResult {
   bitmap?: unknown;
   /** the bounds the picture covers, in the layer's local space */
   area?: { x: number; y: number; w: number; h: number };
+  /** the node's outline as SVG path data (for clips and the viewport) */
+  path?: string;
+  /** the node's viewport handles at these props */
+  handles?: unknown[];
   err?: string;
 }
 
@@ -136,6 +140,7 @@ export type ToWorker =
   | { kind: 'check'; name: string; ctx: CheckCtxData; call: number }
   | { kind: 'doc'; doc: SandboxDoc }
   | { kind: 'draw'; call: number; payload: DrawPayload }
+  | { kind: 'export'; call: number; type: string; props: unknown }
   | { kind: 'abort'; call: number }
   | { kind: 'answer'; id: number; ok?: unknown; err?: string };
 
@@ -145,6 +150,7 @@ export type FromWorker =
   | { kind: 'loadFailed'; id: string; message: string }
   | { kind: 'result'; call: number; ok?: unknown; err?: string }
   | { kind: 'drawn'; call: number; frame: number; results: DrawResult[] }
+  | { kind: 'exported'; call: number; svg?: string; lottie?: unknown; err?: string }
   | { kind: 'ask'; id: number; call: number; q: Ask }
   | { kind: 'progress'; call: number; done: number; total: number; step?: string };
 

@@ -10,6 +10,7 @@
 
 import type { Host, NodeType, PluginModule } from '@tramme/core';
 import { nodeContext, resizeNode } from '@tramme/render/src/gpu.ts';
+import { RecordingPath2D } from './recording-path.ts';
 import type { DrawPayload, DrawResult, SandboxDoc } from './protocol.ts';
 import type { SandboxDrawSide } from './worker-side.ts';
 
@@ -93,6 +94,22 @@ export function makeSandboxDraw(modules: Map<string, PluginModule>): SandboxDraw
         let area = FALLING_AREA;
         try { area = node.bounds?.(item.props, host) ?? FALLING_AREA; } catch { area = FALLING_AREA; }
         const w = Math.min(MAX_PIXELS, Math.max(1, Math.round(area.w))), h = Math.min(MAX_PIXELS, Math.max(1, Math.round(area.h)));
+        // the outline crosses as SVG path data: the node's `path` runs with a recording Path2D in place of the real one
+        let pathData: string | undefined;
+        if (node.path) {
+          const realm = globalThis as { Path2D?: unknown };
+          const real = realm.Path2D;
+          realm.Path2D = RecordingPath2D;
+          try {
+            const p = node.path(item.props, host);
+            pathData = p ? String(p) : undefined;
+          } catch { pathData = undefined; }
+          finally { realm.Path2D = real; }
+        }
+        let handles: unknown[] | undefined;
+        if (node.handles) {
+          try { const hs = node.handles(item.props); if (Array.isArray(hs)) handles = hs; } catch { handles = undefined; }
+        }
         try {
           if (node.render.canvas2d) {
             const canvas = new OffscreenCanvas(w, h);
@@ -102,14 +119,14 @@ export function makeSandboxDraw(modules: Map<string, PluginModule>): SandboxDraw
             ctx.translate(-area.x, -area.y);
             node.render.canvas2d(ctx, item.props, host);
             const bitmap = await createImageBitmap(canvas);
-            return { id: item.id, ok: true, bitmap, area };
+            return { id: item.id, ok: true, bitmap, area, ...(pathData ? { path: pathData } : {}), ...(handles ? { handles } : {}) };
           }
           if (node.render.gl) {
             const g = nodeContext(`sandbox/${item.type}`);
             resizeNode(g, w, h);
             node.render.gl(g, item.props, host, area);
             const bitmap = await createImageBitmap(g.canvas as OffscreenCanvas, 0, (g.canvas as OffscreenCanvas).height - h, w, h);
-            return { id: item.id, ok: true, bitmap, area };
+            return { id: item.id, ok: true, bitmap, area, ...(pathData ? { path: pathData } : {}), ...(handles ? { handles } : {}) };
           }
           return { id: item.id, ok: false, err: `${item.type} draws nothing` };
         } catch (e) {
@@ -118,6 +135,16 @@ export function makeSandboxDraw(modules: Map<string, PluginModule>): SandboxDraw
       }));
       const transfer: Transferable[] = results.flatMap((r) => (r.ok && r.bitmap ? [r.bitmap as Transferable] : []));
       return { results, transfer };
+    },
+
+    async exportOf(type: string, props: unknown) {
+      const node = nodeOf(type);
+      if (!node?.export) return { err: node ? `${type} has no vector export` : `unknown node type: ${type}` };
+      try {
+        return { svg: node.export.svg?.(props), lottie: node.export.lottie?.(props) };
+      } catch (e) {
+        return { err: (e as Error).message };
+      }
     },
   };
 }
