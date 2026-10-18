@@ -8,8 +8,14 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-18
+
 ### Added
 
+- A **compressor** per sound (`compress`, 0 to 1): one DynamicsCompressor between the equaliser and the gain in the one mixer — the loud moments brought down (a voice kept level, a hero that never jumps out), harder as the amount grows, in the preview and every export alike.
+- Four **new commands**: `/transcript` (the words of a sound or a video, read with the moments that matter), `/cut-silences` (a new `silences` tool cuts a talking video on the gaps of its transcript — hesitations shortened, the spans laid back to back), `/beats` (the edit lands on the beats and sections), and `/still` (a new `still` tool saves a picture of the composition at a moment as an image asset).
+- A **low contrast** check: the free-space analysis now carries each cell's luminance, and the check weighs a text's ink (its colour, its opacity) against what sits under it — a picture through the analysis, or the composition's background — and warns when the contrast ratio falls under 2.5:1.
+- **Effect-stack presets**: a preset can now be a stack of effects applied to every selected layer at once (the add menu pushes it). Built-in: cinematic tone, dreamy glow, VHS, and a dark shadow plus halo that keeps type readable over anything.
 - **3D models** placed by node matrices load: a node's matrix is read as its translation, rotation and scale (glTF's own Duck, BrainStem and many exports used to be refused).
 
 ### Fixed
@@ -21,10 +27,6 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
-- A **compressor** per sound (`compress`, 0 to 1): one DynamicsCompressor between the equaliser and the gain in the one mixer — the loud moments brought down (a voice kept level, a hero that never jumps out), harder as the amount grows, in the preview and every export alike.
-- Four **new commands**: `/transcript` (the words of a sound or a video, read with the moments that matter), `/cut-silences` (a new `silences` tool cuts a talking video on the gaps of its transcript — hesitations shortened, the spans laid back to back), `/beats` (the edit lands on the beats and sections), and `/still` (a new `still` tool saves a picture of the composition at a moment as an image asset).
-- A **low contrast** check: the free-space analysis now carries each cell's luminance, and the check weighs a text's ink (its colour, its opacity) against what sits under it — a picture through the analysis, or the composition's background — and warns when the contrast ratio falls under 2.5:1.
-- **Effect-stack presets**: a preset can now be a stack of effects applied to every selected layer at once (the add menu pushes it). Built-in: cinematic tone, dreamy glow, VHS, and a dark shadow plus halo that keeps type readable over anything.
 - **Fonts in the style kits**: each built-in kit names its typeface (Newsreader for Editorial, IBM Plex Mono for Hairline, Archivo Black for Punchy, Karla for Calm, Space Grotesk for Neon). Applying a kit fetches its woff2 once, keeps it in the project as a font asset, and the recipes write in it; the project keeps its own font if it has one.
 - Six **new recipes**, laid out as ordinary editable layers like the others: a **map journey** (a line travelling stop to stop on a map, revealed in step with the riding dot), a **word-by-word quote** with its author line, a **logo reveal** (iris, wipe or rise) that holds, a **list** that ticks in (tick, number or dash markers), a **timeline** that draws itself across the frame, and a **split screen** of two or three sliding panels.
 - A **background removal** tool (`remove-bg`): the U²-Net matte run once on a picture becomes the alpha of a PNG saved as a new image asset, placed as its own layer — titles and graphics pass behind the subject.
@@ -317,7 +319,8 @@ First public release.
 
 - Cloudflare Worker serving the editor and the API, projects stored in R2, access protected by Cloudflare Access.
 
-[Unreleased]: ../../compare/v0.8.0...HEAD
+[Unreleased]: ../../compare/v0.9.0...HEAD
+[0.9.0]: ../../compare/v0.8.0...v0.9.0
 [0.8.0]: ../../compare/v0.7.1...v0.8.0
 [0.7.1]: ../../compare/v0.7.0...v0.7.1
 [0.7.0]: ../../compare/v0.6.0...v0.7.0
