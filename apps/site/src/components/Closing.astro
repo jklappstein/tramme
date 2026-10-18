@@ -1,0 +1,25 @@
+---
+// The last word before the footer: the way in, once more, on the accent.
+import AppLink from './AppLink.astro';
+import DownloadLink from './DownloadLink.astro';
+---
+
+<section class="section" aria-label="Get started">
+  <div class="wrap">
+    <div class="band" data-reveal>
+      <h2>Your next film starts with a sentence.</h2>
+      <p>Open the app in your browser, nothing to install. Or take the desktop app, it works offline.</p>
+      <div class="ctas">
+        <AppLink />
+        <DownloadLink />
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .band { display: grid; justify-items: center; gap: 18px; padding: clamp(48px, 7vw, 96px) clamp(20px, 5vw, 72px); border-radius: var(--r-lg); background: var(--accent-soft); text-align: center; }
+  h2 { max-width: 18ch; font-size: clamp(2rem, 4.2vw, 3.5rem); letter-spacing: -0.04em; }
+  p { max-width: 34rem; color: var(--ink-2); font-size: 1.0625rem; }
+  .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; }
+</style>

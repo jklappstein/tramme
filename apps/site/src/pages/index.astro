@@ -2,6 +2,8 @@
 import Base from '../layouts/Base.astro';
 import Nav from '../components/Nav.astro';
 import Hero from '../components/Hero.astro';
+import Steps from '../components/Steps.astro';
+import Closing from '../components/Closing.astro';
 import Studio from '../components/Studio.astro';
 import Made from '../components/Made.astro';
 import Inside from '../components/Inside.astro';
@@ -24,6 +26,7 @@ const data = landingData(Astro.site!, previewUrl(Astro.site), systems);
   <Nav />
   <main>
     <Hero />
+    <Steps />
     <Studio />
     <Editor />
     <Assistant />
@@ -31,6 +34,7 @@ const data = landingData(Astro.site!, previewUrl(Astro.site), systems);
     <Inside />
     <Render />
     <OpenSource />
+    <Closing />
   </main>
   <Footer />
 </Base>
