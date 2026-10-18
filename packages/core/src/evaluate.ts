@@ -7,7 +7,7 @@
 
 import { audioReader, type AudioReader } from './analysis.ts';
 import { eventsReader, type EventsReader } from './events.ts';
-import { trackId, trackReader, type TrackReader } from './track.ts';
+import { mediaTime, trackId, trackReader, type TrackReader } from './track.ts';
 import { compileExpr, type ExprScope } from './expr.ts';
 import { modifierParams, seedOf, type ModifierContext } from './modifiers.ts';
 import { asExpr, asKeyframed, asLink, easeFn, modsOf, propKind, resolveTokens, sampleKeyframes, staticValue, tokenValue } from './props.ts';
@@ -142,13 +142,16 @@ export class Evaluator {
   private trackAt(ctx: FrameCtx, layerId: string, name = ''): TrackReader {
     const layer = ctx.comp.layers[layerId];
     if (!layer || layer.type !== 'video' || !layerActive(layer, ctx.comp, ctx.t)) return trackReader(null, 0, null);
-    const asset = String(staticValue(layer.props?.video) ?? ''), start = Number(staticValue(layer.props?.start) ?? 0) || 0;
+    const asset = String(staticValue(layer.props?.video) ?? '');
     const id = this.doc.assets[name] ? name : name ? trackId(asset, name) : Object.keys(this.doc.assets).find((a) => a.startsWith(`track-${asset}-`)) ?? '';
+    // the layer as the video node shows it: its frame, fit and focus, its transform, its clock (start, speed, loop)
+    const prop = (p: string) => this.read(ctx, `${layerId}.${p}`);
     const video = {
-      size: this.read(ctx, `${layerId}.size`) as Vec2, fit: String(this.read(ctx, `${layerId}.fit`)),
+      size: prop('size') as Vec2, fit: String(prop('fit')), focus: prop('focus') as Vec2,
       transform: this.evalSchema(ctx, `${layerId}.transform`, TRANSFORM_SCHEMA) as unknown as EvaluatedTransform,
     };
-    return trackReader(this.data?.(id), start + ctx.t - (layer.in ?? 0), video);
+    const clock = { start: Number(prop('start')), rate: Number(prop('rate')), loop: prop('loop') === true, loopEnd: Number(prop('loopEnd')) };
+    return trackReader(this.data?.(id), mediaTime(clock, ctx.t, layer.in ?? 0), video);
   }
 
   comp(compId = this.doc.root): Composition {

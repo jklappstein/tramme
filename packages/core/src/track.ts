@@ -6,6 +6,7 @@
 // node, and expressions through track().
 
 import { applyMat, layerMatrix, lastIndex } from './math.ts';
+import { staticValue } from './props.ts';
 import type { Rect } from './registry.ts';
 import type { Vec2 } from './types.ts';
 
@@ -32,20 +33,57 @@ export const isTrack = (x: unknown): x is Track =>
 /** the asset id of a video's track */
 export const trackId = (asset: string, name: string) => `track-${asset}-${name}`.slice(0, 64);
 
+// ── a media layer's clock ────────────────────────────────────
+/** what plays a file: where in it the layer starts, its pace, its looped section (the section from start to loopEnd) */
+export interface MediaClock { start?: number; rate?: number; loop?: boolean; loopEnd?: number }
+
+/** a layer's clock from its props as written, for the editor's tools (static values; an animated one counts as its default) */
+export function mediaClockOf(props: Record<string, unknown> | undefined): MediaClock {
+  const v = (k: string) => staticValue(props?.[k]);
+  return { start: Number(v('start')) || 0, rate: Number(v('rate')) || 1, loop: v('loop') === true, loopEnd: Number(v('loopEnd')) || 0 };
+}
+
+/** the time in its file a video or sound layer plays at composition time t (looping, the section starts over): the video node's clock */
+export function mediaTime(p: MediaClock, t: number, layerIn: number): number {
+  const start = Number(p.start) || 0, s = start + (t - layerIn) * (Number(p.rate) || 1);
+  const len = (Number(p.loopEnd) || 0) - start;
+  if (p.loop !== true || len <= 0.001) return Math.max(0, s);
+  return start + (((s - start) % len) + len) % len;
+}
+
+/** the composition times at which a layer plays a moment of its file, within [layerIn, layerOut): once, or once per turn of its loop */
+export function mediaMoments(p: MediaClock, fileTime: number, layerIn: number, layerOut: number): number[] {
+  const start = Number(p.start) || 0, rate = Number(p.rate) || 1, len = (Number(p.loopEnd) || 0) - start;
+  const first = layerIn + (fileTime - start) / rate;
+  if (p.loop !== true || len <= 0.001) return first >= layerIn && first < layerOut ? [first] : [];
+  if (fileTime < start || fileTime >= start + len) return [];
+  const out: number[] = [];
+  for (let t = first; t < layerOut; t += len / rate) out.push(t);
+  return out;
+}
+
 // ── on screen ────────────────────────────────────────────────
-/** where a picture of picW × picH sits in a frame of w × h centred on the origin, as the video node draws it */
-export function pictureRect(fit: string, w: number, h: number, picW: number, picH: number): Rect {
+/**
+ * Where a picture of picW × picH sits in a frame of w × h centred on the
+ * origin, as the video node draws it. Cropped (cover), `focus` names the
+ * point of the picture kept at the frame's centre, held so the picture never
+ * shows past the frame's edges.
+ */
+export function pictureRect(fit: string, w: number, h: number, picW: number, picH: number, focus: readonly number[] = [0.5, 0.5]): Rect {
   if (fit === 'fill' || !(picW > 0) || !(picH > 0)) return { x: -w / 2, y: -h / 2, w, h };
   const s = fit === 'contain' ? Math.min(w / picW, h / picH) : Math.max(w / picW, h / picH);
-  return { x: (-picW * s) / 2, y: (-picH * s) / 2, w: picW * s, h: picH * s };
+  const pw = picW * s, ph = picH * s;
+  if (fit !== 'cover') return { x: -pw / 2, y: -ph / 2, w: pw, h: ph };
+  const [fx, fy] = [Number(focus[0] ?? 0.5), Number(focus[1] ?? 0.5)];
+  return { x: Math.min(-w / 2, Math.max(w / 2 - pw, -fx * pw)), y: Math.min(-h / 2, Math.max(h / 2 - ph, -fy * ph)), w: pw, h: ph };
 }
 
 /** a video layer as it is placed: its frame, its fit, its own transform */
-export interface VideoPlacement { size: Vec2; fit: string; transform: { anchor: Vec2; position: Vec2; scale: Vec2; rotation: number } }
+export interface VideoPlacement { size: Vec2; fit: string; focus?: readonly number[]; transform: { anchor: Vec2; position: Vec2; scale: Vec2; rotation: number } }
 
 /** a box of a picture on screen, in the space the video layer sits in; inside: its middle shows in the layer's frame (cover crops) */
 export function placeBox(picW: number, picH: number, box: Box, v: VideoPlacement): { rect: Rect; inside: boolean } {
-  const [w, h] = v.size, r = pictureRect(v.fit, w, h, picW, picH), m = layerMatrix(v.transform);
+  const [w, h] = v.size, r = pictureRect(v.fit, w, h, picW, picH, v.focus), m = layerMatrix(v.transform);
   const at = (u: number, k: number): Vec2 => [r.x + u * r.w, r.y + k * r.h];
   const pts = [at(box[0], box[1]), at(box[0] + box[2], box[1]), at(box[0], box[1] + box[3]), at(box[0] + box[2], box[1] + box[3])].map((p) => applyMat(m, p));
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), [cx, cy] = at(box[0] + box[2] / 2, box[1] + box[3] / 2);

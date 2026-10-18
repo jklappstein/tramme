@@ -9,7 +9,7 @@ import { Evaluator, nestedTime, type EvaluatedLayer, type NestedTiming } from '.
 import { asKeyframed, modsOf, propKind } from './props.ts';
 import { animatedSlots, motionFigures, motionStretches, pathDeviation, sampleAddress, spanOf } from './motion.ts';
 import { layerMatrix, matMul, type Mat2D } from './math.ts';
-import { pictureRect } from './track.ts';
+import { mediaTime, pictureRect } from './track.ts';
 import type { Host, NodeType, Rect, Registry } from './registry.ts';
 import type { Composition, Layer, TrammeDoc } from './types.ts';
 
@@ -261,13 +261,12 @@ export interface Subjects {
 }
 export const isSubjects = (x: unknown): x is Subjects => !!x && typeof x === 'object' && (x as Subjects).kind === 'subjects' && Array.isArray((x as Subjects).frames);
 
-/** the time in its file a media layer shows at composition time t: its start, its pace and its loop, like the video node's clock (a picture: 0) */
-function fileTime(p: PlacedLayer, t: number): number {
-  if (p.node.type !== 'video') return 0;
-  const start = Number(p.props.start) || 0, rate = Number(p.props.rate) || 1;
-  const s = start + (t - (p.layer.in ?? 0)) * rate, len = (Number(p.props.loopEnd) || 0) - start;
-  return p.props.loop === true && len > 0.001 ? start + (((s - start) % len) + len) % len : Math.max(0, s);
-}
+/** the time in its file a media layer shows at composition time t: the video node's clock (a picture: 0) */
+const fileTime = (p: PlacedLayer, t: number): number => (p.node.type === 'video' ? mediaTime(p.props, t, p.layer.in ?? 0) : 0);
+
+/** the picture of a media layer in its frame, as the node draws it (cover crops around its focus, contain fits, fill stretches) */
+const pictureOf = (p: PlacedLayer, f: Rect, picW: number, picH: number): Rect =>
+  pictureRect(String(p.props.fit ?? 'cover'), f.w, f.h, picW, picH, Array.isArray(p.props.focus) ? p.props.focus as number[] : undefined);
 
 /** the people of a media layer at one instant, in composition space: their box and their head (the top quarter) */
 export function subjectsOn(p: PlacedLayer, t: number, data: (id: string) => unknown): { box: Rect; head: Rect }[] {
@@ -276,8 +275,8 @@ export function subjectsOn(p: PlacedLayer, t: number, data: (id: string) => unkn
   if (!isSubjects(s) || !s.frames.length) return [];
   const ft = fileTime(p, t);
   const frame = s.frames.reduce((a, b) => (Math.abs(b.t - ft) < Math.abs(a.t - ft) ? b : a));
-  // the picture in its frame: cover crops, contain fits, fill stretches (focus and zoom left aside)
-  const f = p.box, r = pictureRect(String(p.props.fit ?? 'cover'), f.w, f.h, s.width, s.height);
+  // the picture in its frame: cover crops around its focus, contain fits, fill stretches (an image's zoom left aside)
+  const f = p.box, r = pictureOf(p, f, s.width, s.height);
   const sx = r.w, sy = r.h, ox = f.x + f.w / 2 + r.x, oy = f.y + f.h / 2 + r.y;
   return frame.boxes.filter((b) => b.label === 'person').map((b) => {
     const box = { x: ox + b.x * sx, y: oy + b.y * sy, w: b.w * sx, h: b.h * sy };
@@ -314,7 +313,7 @@ export function spaceOn(p: PlacedLayer, t: number, data: (id: string) => unknown
   const ft = fileTime(p, t);
   // one frame was read: too far from this one, the grid would describe another shot
   if (p.node.type === 'video' && Math.abs(s.t - ft) > 0.6) return [];
-  const f = p.box, r = pictureRect(String(p.props.fit ?? 'cover'), f.w, f.h, s.width, s.height);
+  const f = p.box, r = pictureOf(p, f, s.width, s.height);
   const cw = r.w / s.cols, ch = r.h / s.rows, ox = f.x + f.w / 2 + r.x, oy = f.y + f.h / 2 + r.y;
   const cells: { busy: number; box: Rect }[] = [];
   for (let i = 0; i < s.busy.length; i++) if (s.busy[i] >= 0.6) cells.push({ busy: s.busy[i], box: { x: ox + (i % s.cols) * cw, y: oy + Math.floor(i / s.cols) * ch, w: cw, h: ch } });
@@ -348,7 +347,7 @@ export function lumaUnder(p: PlacedLayer, t: number, tb: Rect, data: (id: string
   if (!isSpace(s) || !s.luma || s.luma.length !== s.cols * s.rows || !s.width || !s.height) return null;
   const ft = fileTime(p, t);
   if (p.node.type === 'video' && Math.abs(s.t - ft) > 0.6) return null;
-  const f = p.box, r = pictureRect(String(p.props.fit ?? 'cover'), f.w, f.h, s.width, s.height);
+  const f = p.box, r = pictureOf(p, f, s.width, s.height);
   const cw = r.w / s.cols, ch = r.h / s.rows, ox = f.x + f.w / 2 + r.x, oy = f.y + f.h / 2 + r.y;
   let sum = 0, area = 0;
   for (let i = 0; i < s.luma.length; i++) {

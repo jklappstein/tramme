@@ -8,6 +8,15 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+### Added
+
+- **3D models** placed by node matrices load: a node's matrix is read as its translation, rotation and scale (glTF's own Duck, BrainStem and many exports used to be refused).
+
+### Fixed
+
+- A cropped video (fit cover, the default, the one an imported video takes) drew from its layer's centre instead of around it: only a quarter of the picture showed, pushed to the bottom right. The picture is centred on the layer again, around its focal point.
+- One clock and one framing for a video everywhere: the tracks, the callouts that follow them, the checks and the sound moments read a video at its start, speed and loop and through its focal point, as the picture is drawn (they assumed normal speed, no loop and a centred crop).
+
 ## [0.8.0] - 2026-10-18
 
 ### Added

@@ -6,7 +6,7 @@
 // the assistant runs them (use_tool), the user too (/ menu).
 
 import { ALL_FORMATS, CanvasSink, Input, UrlSource, type InputVideoTrack } from 'mediabunny';
-import { applyMat, Evaluator, following, grayFrame, invertMat, isTrack, layerMatrix, matMul, pictureRect, pointer, trackId, type Box, type Composition, type GrayFrame, type Mat2D, type Op, type ToolContext, type ToolType, type Track, type Vec2 } from '@tramme/core';
+import { applyMat, Evaluator, following, grayFrame, invertMat, isTrack, layerMatrix, matMul, mediaClockOf, mediaMoments, mediaTime, pictureRect, pointer, trackId, type Box, type Composition, type GrayFrame, type Mat2D, type Op, type ToolContext, type ToolType, type Track, type Vec2 } from '@tramme/core';
 import { t } from './i18n/index.ts';
 import { freshId, parentOf, siblingsOf, slug } from './model.ts';
 import { canvas, CUT, distance, histogram, objectsIn, readJson } from './perception.ts';
@@ -41,7 +41,7 @@ function worldMatrix(ev: Evaluator, c: Composition, compId: string, id: string, 
 
 /** points of the composition at time t as a box of the video's picture (fractions), through where the video layer shows it */
 export function toPicture(ev: Evaluator, c: Composition, compId: string, videoId: string, at: number, points: Vec2[], picW: number, picH: number): Box {
-  const L = ev.layerAt(videoId, at, compId), [w, h] = L.props.size as Vec2, rect = pictureRect(String(L.props.fit), w, h, picW, picH);
+  const L = ev.layerAt(videoId, at, compId), [w, h] = L.props.size as Vec2, rect = pictureRect(String(L.props.fit), w, h, picW, picH, L.props.focus as Vec2 | undefined);
   const inv = invertMat(worldMatrix(ev, c, compId, videoId, at));
   if (!inv) throw new Error(`${videoId} is flattened (a scale of 0)`);
   const uv = points.map((p) => applyMat(inv, p)).map(([x, y]) => [(x - rect.x) / rect.w, (y - rect.y) / rect.h]);
@@ -108,15 +108,18 @@ const track: ToolType<TrackArgs> = {
   async run(a, ctx) {
     const c = compOf(ctx), videoId = videoLayer(ctx, a.video), vl = c.layers[videoId], asset = String(vl.props?.video ?? '');
     if (!ctx.doc.assets[asset]) throw new Error(`${videoId} plays no video file`);
-    const start = Number(vl.props?.start ?? 0) || 0, vin = vl.in ?? 0, vout = vl.out ?? c.duration, now = ctx.time;
-    const from = Math.max(vin, a.from ?? vin), to = Math.min(vout, a.to ?? vout), every = a.every ?? 0.1, file = (at: number) => start + at - vin;
+    const clock = mediaClockOf(vl.props), vin = vl.in ?? 0, vout = vl.out ?? c.duration, now = ctx.time;
+    const from = Math.max(vin, a.from ?? vin), to = Math.min(vout, a.to ?? vout), every = a.every ?? 0.1, file = (at: number) => mediaTime(clock, at, vin);
     if (now < from || now > to) throw new Error(`track: the current time (${r(now)} s) is outside the span followed (${r(from)} to ${r(to)} s of "${videoId}"): put the playhead where the object shows`);
     const ev = new Evaluator(ctx.doc, ctx.registry);
     const rect = a.rectangle ?? (a.region === undefined && !a.object ? ctx.selection.find((id) => c.layers[id]?.type === 'shape.rect') : undefined);
     if (rect && c.layers[rect]?.type !== 'shape.rect') throw new Error(`${rect} is not a rectangle`);
     if (!rect && a.region === undefined && !a.object) throw new Error('track: frame the object first: draw a rectangle over it at the current time and select it, or give its region or what it is');
-    // looks every `every` seconds of the file, the current time among them
-    const t0 = file(now), before = Math.floor((t0 - file(from)) / every + 1e-9), after = Math.floor((file(to) - t0) / every + 1e-9);
+    // looks every `every` seconds of the file, the current time among them, over the file the span plays (at its speed);
+    // a looped section is followed once: a turn of the loop is a jump back, the span stops at its ends
+    const t0 = file(now), wraps = (x: number, back: boolean) => (back ? x > t0 : x < t0);
+    const lo = clock.loop && wraps(file(from), true) ? clock.start! : file(from), hi = clock.loop && wraps(file(to), false) ? clock.loopEnd! : file(to);
+    const before = Math.floor((t0 - lo) / every + 1e-9), after = Math.floor((hi - t0) / every + 1e-9);
     const times = Array.from({ length: before + after + 1 }, (_, i) => +(t0 + (i - before) * every).toFixed(4));
     if (times.length > 3000) throw new Error(`track: ${times.length} looks are too many: follow a shorter span (from, to) or look less often (every)`);
     const input = new Input({ source: new UrlSource(ctx.assetUrl(asset)), formats: ALL_FORMATS });
@@ -164,9 +167,10 @@ const track: ToolType<TrackArgs> = {
       const data: Track = { version: 1, kind: 'track', source: asset, name, width: W, height: H, frames: times.map((at, i) => ({ t: at, box: boxes[i] })) };
       const path = await ctx.writeFile(`assets/tracks/${asset}-${name}.json`, JSON.stringify(data));
       const had = ctx.doc.assets[id], entry = { type: 'json' as const, src: path, name: `Track · ${name}` };
-      // what was seen, in composition time
-      const seen = times.filter((_, i) => boxes[i]).map((at) => r(vin + at - start)), share = Math.round((100 * seen.length) / times.length);
-      const image = strip(kept, boxes, (i) => `${(vin + times[i] - start).toFixed(2)} s`);
+      // what was seen, in composition time (at the layer's speed, once per turn of a loop)
+      const comp = (at: number) => mediaMoments(clock, at, vin, vout);
+      const seen = times.filter((_, i) => boxes[i]).flatMap(comp).sort((x, y) => x - y).map(r), share = Math.round((100 * times.filter((_, i) => boxes[i]).length) / times.length);
+      const image = strip(kept, boxes, (i) => `${(comp(times[i])[0] ?? vin).toFixed(2)} s`);
       return {
         ops: had?.type === 'json' && had.src === entry.src ? [] : [{ op: had ? 'replace' : 'add', path: pointer('assets', id), value: entry }],
         reload: had ? [id] : [],
@@ -209,9 +213,9 @@ const callout: ToolType<CalloutArgs> = {
     const tr = data, playing = Object.keys(c.layers).filter((lid) => c.layers[lid].type === 'video' && c.layers[lid].props?.video === tr.source);
     const videoId = a.video ?? ctx.selection.find((s) => playing.includes(s)) ?? playing[0];
     if (!videoId || !playing.includes(videoId)) throw new Error(`no video layer of this composition plays ${tr.source ?? 'the file tracked'}${a.video ? ` ("${a.video}" plays another one)` : ''}`);
-    const vl = c.layers[videoId], start = Number(vl.props?.start ?? 0) || 0, vin = vl.in ?? 0, vout = vl.out ?? c.duration;
-    // when the object shows, in composition time, while its layer plays
-    const seen = tr.frames.filter((f) => f.box).map((f) => vin + f.t - start).filter((at) => at >= vin && at < vout);
+    const vl = c.layers[videoId], clock = mediaClockOf(vl.props), vin = vl.in ?? 0, vout = vl.out ?? c.duration;
+    // when the object shows, in composition time, while its layer plays (at its speed, once per turn of a loop)
+    const seen = tr.frames.filter((f) => f.box).flatMap((f) => mediaMoments(clock, f.t, vin, vout)).sort((x, y) => x - y);
     if (!seen.length && a.at === undefined) throw new Error(`the object of ${id} is never seen while "${videoId}" plays`);
     const step = tr.frames.length > 1 ? (tr.frames.at(-1)!.t - tr.frames[0].t) / (tr.frames.length - 1) : 0.1;
     const at = r(a.at ?? Math.min(...seen)), end = r(Math.min(vout, a.duration ? at + a.duration : Math.max(...seen) + step));

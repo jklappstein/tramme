@@ -120,21 +120,46 @@ function meshOf(gltf: any, bin: ArrayBuffer, meshIndex: number): { prims: GltfPr
   return { prims, center, radius: radius || 1 };
 }
 
+/**
+ * A node matrix (column-major, no shear: what glTF allows) as translation,
+ * rotation and scale. A mirroring matrix keeps its flip on the x scale.
+ */
+export function decompose(m: readonly number[]): { translation: Vec3; rotation: Quat; scale: Vec3 } {
+  let sx = Math.hypot(m[0], m[1], m[2]);
+  const sy = Math.hypot(m[4], m[5], m[6]), sz = Math.hypot(m[8], m[9], m[10]);
+  const det = m[0] * (m[5] * m[10] - m[6] * m[9]) - m[4] * (m[1] * m[10] - m[2] * m[9]) + m[8] * (m[1] * m[6] - m[2] * m[5]);
+  if (det < 0) sx = -sx;
+  // the rotation's columns, the scale divided out
+  const r00 = m[0] / (sx || 1), r10 = m[1] / (sx || 1), r20 = m[2] / (sx || 1);
+  const r01 = m[4] / (sy || 1), r11 = m[5] / (sy || 1), r21 = m[6] / (sy || 1);
+  const r02 = m[8] / (sz || 1), r12 = m[9] / (sz || 1), r22 = m[10] / (sz || 1);
+  // the quaternion of a rotation matrix, from its largest diagonal term (stable)
+  const tr = r00 + r11 + r22;
+  let q: Quat;
+  if (tr > 0) { const s = Math.sqrt(tr + 1) * 2; q = [(r21 - r12) / s, (r02 - r20) / s, (r10 - r01) / s, s / 4]; }
+  else if (r00 > r11 && r00 > r22) { const s = Math.sqrt(1 + r00 - r11 - r22) * 2; q = [s / 4, (r01 + r10) / s, (r02 + r20) / s, (r21 - r12) / s]; }
+  else if (r11 > r22) { const s = Math.sqrt(1 + r11 - r00 - r22) * 2; q = [(r01 + r10) / s, s / 4, (r12 + r21) / s, (r02 - r20) / s]; }
+  else { const s = Math.sqrt(1 + r22 - r00 - r11) * 2; q = [(r02 + r20) / s, (r12 + r21) / s, s / 4, (r10 - r01) / s]; }
+  const l = Math.hypot(...q) || 1;
+  return { translation: [m[12], m[13], m[14]], rotation: q.map((v) => v / l) as Quat, scale: [sx, sy, sz] };
+}
+
 function nodeOf(gltf: any, bin: ArrayBuffer, index: number, duration: { n: number }): GltfNode {
   const n = gltf.nodes[index];
   const mesh = n.mesh === undefined ? null : meshOf(gltf, bin, n.mesh);
+  // a node placed by a matrix is read as its translation, rotation and scale (glTF never animates such a node)
+  const trs = Array.isArray(n.matrix) && n.matrix.length === 16 ? decompose(n.matrix) : null;
   const made: GltfNode = {
     name: n.name ?? `node ${index}`,
     prims: mesh?.prims ?? [],
     children: (n.children ?? []).map((c: number) => nodeOf(gltf, bin, c, duration)),
-    translation: n.translation ?? [0, 0, 0],
-    rotation: n.rotation ?? [0, 0, 0, 1],
-    scale: n.scale ?? [1, 1, 1],
+    translation: trs?.translation ?? n.translation ?? [0, 0, 0],
+    rotation: trs?.rotation ?? n.rotation ?? [0, 0, 0, 1],
+    scale: trs?.scale ?? n.scale ?? [1, 1, 1],
     channels: [],
     center: mesh?.center ?? [0, 0, 0],
     radius: mesh?.radius ?? 0,
   };
-  if (n.matrix) throw new Error('glTF node matrices are not supported (use translation, rotation, scale)');
   // its animation tracks
   for (const anim of gltf.animations ?? []) for (const ch of anim.channels) {
     if (ch.target.node !== index || ch.target.path === 'weights') continue;

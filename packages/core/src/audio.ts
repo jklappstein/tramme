@@ -6,6 +6,7 @@
 // mix the same clips with one mixer (@tramme/render, audio.ts).
 
 import { propKind, sampleKeyframes, staticValue } from './props.ts';
+import { mediaTime } from './track.ts';
 import type { Composition, Keyframe, TrammeDoc } from './types.ts';
 
 /** what a sound is in the mix: effects share the room, music and ambience are the bed, the voice leads */
@@ -104,8 +105,8 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
     const start = Math.max(0, num(staticValue(props.start), 0));
     // looping: the section [start, loopEnd] wraps as long as the layer runs
     const loopEnd = num(staticValue(props.loopEnd), 0), loops = staticValue(props.loop) === true && loopEnd > start + 0.01;
-    const raw = start + (at - (layer.in ?? 0)) * rate;
-    const offset = loops ? start + (((raw - start) % (loopEnd - start)) + (loopEnd - start)) % (loopEnd - start) : raw;
+    // where the clip starts in its file: the video node's clock, so picture and sound agree
+    const offset = mediaTime({ start, rate, loop: loops, loopEnd }, at, layer.in ?? 0);
     clips.push({
       layerId, asset, at, duration,
       // unsaid: a video's sound is someone speaking; a sound is what its names say, an effect otherwise

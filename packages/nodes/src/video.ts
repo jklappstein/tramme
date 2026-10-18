@@ -5,7 +5,7 @@
 // speeds it up or slows it down (the pitch of its sound with it); looping,
 // the section from `start` to `loopEnd` starts over as long as the layer runs.
 
-import { pictureRect, type NodeType, type Vec2, type VideoAsset } from '@tramme/core';
+import { mediaTime, pictureRect, type NodeType, type Vec2, type VideoAsset } from '@tramme/core';
 import { RATE_PROP, SOUND_PROPS } from './sound.ts';
 
 interface VideoProps {
@@ -20,14 +20,6 @@ interface VideoProps {
   gain: number;
   muted: boolean;
 }
-
-/** time in the file at composition time t (looping: the section starts over) */
-export const videoTime = (p: { start: number; rate?: number; loop?: boolean; loopEnd?: number }, t: number, layerIn: number) => {
-  const s = p.start + (t - layerIn) * (p.rate ?? 1);
-  const len = (p.loopEnd ?? 0) - p.start;
-  if (!p.loop || len <= 0.001) return Math.max(0, s);
-  return p.start + (((s - p.start) % len) + len) % len;
-};
 
 export const video: NodeType<VideoProps> = {
   type: 'video', title: 'Video', category: 'Media',
@@ -51,21 +43,14 @@ export const video: NodeType<VideoProps> = {
       const [w, h] = p.size;
       if (w <= 0 || h <= 0) return;
       const src = host.asset<VideoAsset>(p.video);
-      const t = videoTime(p, host.t, host.layerIn ?? 0);
+      const t = mediaTime(p, host.t, host.layerIn ?? 0);
       const { image, exact } = src.frameAt(t);
       if (!exact) host.defer?.(src.request(t));
       if (!image || !src.width || !src.height) return;
-      const r = pictureRect(p.fit, w, h, src.width, src.height);
-      if (p.fit === 'cover') {
-        ctx.beginPath(); ctx.rect(-w / 2, -h / 2, w, h); ctx.clip();
-        // the point of the picture named by focus stays at the centre of the frame, without showing past the edges
-        const s = Math.max(w / src.width, h / src.height);
-        const ox = Math.min(0, Math.max(w - src.width * s, w / 2 - p.focus[0] * src.width * s));
-        const oy = Math.min(0, Math.max(h - src.height * s, h / 2 - p.focus[1] * src.height * s));
-        ctx.drawImage(image, ox, oy, src.width * s, src.height * s);
-      } else {
-        ctx.drawImage(image, r.x, r.y, r.w, r.h);
-      }
+      // the frame is centred on the layer origin; cropped, the point named by focus stays at its centre (pictureRect, shared with the tracking and the checks)
+      const r = pictureRect(p.fit, w, h, src.width, src.height, p.focus);
+      if (p.fit === 'cover') { ctx.beginPath(); ctx.rect(-w / 2, -h / 2, w, h); ctx.clip(); }
+      ctx.drawImage(image, r.x, r.y, r.w, r.h);
     },
   },
 };

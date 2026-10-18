@@ -5,7 +5,7 @@
 // when that layer moves or is cut otherwise. Drawn in the space the video
 // layer sits in: keep it beside its video, its own transform at rest.
 
-import { clamp, cubicBezier, isTrack, trackReader, type Host, type NodeType, type Paint, type Rect, type TrackReader, type Vec2 } from '@tramme/core';
+import { clamp, cubicBezier, isTrack, mediaTime, trackReader, type Host, type NodeType, type Paint, type Rect, type TrackReader, type Vec2 } from '@tramme/core';
 import { chipOf, drawChip, measureCtx, setType, TYPE, type TypeProps } from './text.ts';
 
 const OUT = cubicBezier(0.16, 1, 0.3, 1);
@@ -26,7 +26,8 @@ function objectAt(p: CalloutProps, host: Host): TrackReader | null {
   let track: unknown;
   try { track = host.asset(p.track); } catch { return null; }
   if (!isTrack(track)) return null;
-  const r = trackReader(track, (Number(v.props.start) || 0) + host.t - v.in, { size: v.props.size as Vec2, fit: String(v.props.fit ?? 'cover'), transform: v.transform }, p.smooth);
+  // the video's own clock (start, speed, loop) and framing (fit, focus): the callout lands where the picture shows the object
+  const r = trackReader(track, mediaTime(v.props, host.t, v.in), { size: v.props.size as Vec2, fit: String(v.props.fit ?? 'cover'), focus: v.props.focus as Vec2 | undefined, transform: v.transform }, p.smooth);
   return r.found > 0 ? r : null;
 }
 

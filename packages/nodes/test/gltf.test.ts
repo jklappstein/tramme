@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseGltf, sampleChannel } from '../src/gltf.ts';
+import { decompose, parseGltf, sampleChannel } from '../src/gltf.ts';
 
 /** builds a GLB: a JSON chunk and a binary chunk, 4-byte aligned */
 function glb(json: object, bin: ArrayBuffer): ArrayBuffer {
@@ -106,6 +106,25 @@ describe('a .glb file read as a model', () => {
     sampleChannel(c, -1, out); expect(Array.from(out)).toEqual([1, 2, 0]);
     sampleChannel(c, 0.5, out); expect(out[0]).toBeCloseTo(2.75); expect(out[1]).toBeCloseTo(3.5); expect(out[2]).toBeCloseTo(2);
     sampleChannel(c, 9, out); expect(Array.from(out)).toEqual([8, 8, 8]);
+  });
+
+  it('reads a node placed by a matrix as its translation, rotation and scale', () => {
+    // a quarter turn about y, scaled by 0.01 (a file in centimetres), moved to (3, 4, 5): column-major
+    const m = [0, 0, -0.01, 0, 0, 0.01, 0, 0, 0.01, 0, 0, 0, 3, 4, 5, 1];
+    const d = decompose(m);
+    expect(d.translation).toEqual([3, 4, 5]);
+    d.scale.forEach((s) => expect(s).toBeCloseTo(0.01));
+    const h = Math.SQRT1_2;
+    [0, h, 0, h].forEach((v, i) => expect(d.rotation[i]).toBeCloseTo(v));
+    // a mirror keeps its flip
+    expect(decompose([-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]).scale[0]).toBeCloseTo(-1);
+    // and a whole file whose node carries one is drawn, its bounds through it
+    const j = JSON.parse(JSON.stringify(json));
+    j.nodes = [{ name: 'quad', mesh: 0, matrix: [2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 10, 0, 0, 1] }];
+    const model = parseGltf(glb(j, bin as ArrayBuffer));
+    expect(model.roots[0].translation).toEqual([10, 0, 0]);
+    expect(model.center[0]).toBeCloseTo(10);
+    expect(model.radius).toBeGreaterThan(1.3);
   });
 
   it('says what is wrong with a file it cannot draw', () => {

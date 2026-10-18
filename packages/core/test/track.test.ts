@@ -11,6 +11,18 @@ describe('a picture in its frame', () => {
     expect(pictureRect('contain', 1080, 1920, 1920, 1080)).toEqual({ x: -540, y: -303.75, w: 1080, h: 607.5 });
   });
 
+  it('keeps a cropped picture centred on the frame, around its focus, never past the frame', () => {
+    // the same shape: the picture lies exactly on its frame, centred on the origin
+    expect(pictureRect('cover', 640, 360, 640, 360)).toEqual({ x: -320, y: -180, w: 640, h: 360 });
+    const mid = pictureRect('cover', 1080, 1920, 1920, 1080);
+    expect(mid.x + mid.w / 2).toBeCloseTo(0);
+    // the focus on the right third: the picture slides left, as far as the frame allows
+    const right = pictureRect('cover', 1080, 1920, 1920, 1080, [0.66, 0.5]);
+    expect(right.x).toBeCloseTo(-0.66 * right.w);
+    const edge = pictureRect('cover', 1080, 1920, 1920, 1080, [1, 0.5]);
+    expect(edge.x + edge.w).toBeCloseTo(540);
+  });
+
   it('places a box of the picture on screen, and knows when the frame crops it out', () => {
     const v = { size: [1080, 1920] as Vec2, fit: 'cover', transform: { anchor: [0, 0] as Vec2, position: [540, 960] as Vec2, scale: [1, 1] as Vec2, rotation: 0 } };
     const mid = placeBox(1920, 1080, [0.45, 0.45, 0.1, 0.1], v);
