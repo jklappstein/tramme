@@ -19,7 +19,7 @@ import { editorRegistry } from './vocabulary.ts';
 import { clipChain, masterGainDb, mixBus, playClip, Renderer } from '@tramme/render';
 import { comp, compIdOf, S, setRegistry, setTime, toast, viewDoc } from './state.ts';
 import { attachIsolated, filterModule, pluginHost } from './plugins/index.ts';
-import { bindSandbox, ensureSandboxDoc, resetSandbox, type SandboxContext } from './plugins/sandbox-draw.ts';
+import { bindSandbox, blitSandboxFrame, ensureSandboxDoc, resetSandbox, sandboxVideoFrames, type SandboxContext } from './plugins/sandbox-draw.ts';
 import { t } from './i18n/index.ts';
 import { prefs } from './settings.ts';
 import { syncPluginTours } from './tours/index.ts';
@@ -298,21 +298,11 @@ class Preview {
       loaded: (id) => { try { return r.assets.get(id); } catch { return null; } },
     };
     ensureSandboxDoc(pluginHost(docUrl), ctx);
-    const videos: Record<string, unknown> = {};
-    for (const [id, a] of Object.entries(doc.assets)) {
-      if (a.type !== 'video') continue;
-      try {
-        const va = r.assets.get<{ frameAt(x: number): unknown } | null>(id);
-        const fr = va?.frameAt?.(t);
-        if (fr) videos[id] = fr;
-      } catch { /* not decoded yet: the node's draw says so */ }
-    }
+    const videos = await sandboxVideoFrames(r, doc, t);
     const pic = await pluginHost(docUrl).renderFrame({ compId: r.compId, t, scale: r.scale, width: c.width, height: c.height, videos });
     if (pic.err) { S.renderError.value = `sandbox: ${pic.err}`; return; }
     if (!pic.bitmap) return;
-    r.compositor.begin();
-    r.compositor.add(pic.bitmap as unknown as OffscreenCanvas, 1);
-    r.compositor.finish({ bloom: 0, bloomThreshold: 0.85, vignette: 0, grain: 0, exposure: 1 }, { bg: null, checker: true }, 1, { t, scale: r.scale, onError: (e: Error) => { throw e; } });
+    blitSandboxFrame(r, pic.bitmap, t, true);
     if (S.renderError.peek()?.startsWith('sandbox')) S.renderError.value = null;
   }
 

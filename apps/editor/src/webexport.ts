@@ -13,8 +13,9 @@ import { encodeWav, mixComposition, Renderer, SETTLE_LIMIT } from '@tramme/rende
 
 import { AVC_FROM_STREAM } from './avc.ts';
 import type { WebFormat } from './formats.ts';
-import { filterModule } from './plugins/index.ts';
-import { primeSandboxExports } from './plugins/sandbox-draw.ts';
+import { filterModule, pluginHost } from './plugins/index.ts';
+import { blitSandboxFrame, ensureSandboxDoc, primeSandboxExports, sandboxVideoFrames } from './plugins/sandbox-draw.ts';
+import { prefs } from './settings.ts';
 import { t } from './i18n/index.ts';
 
 export interface WebExportOptions {
@@ -71,6 +72,9 @@ export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebF
   const canvas = document.createElement('canvas');
   // plugin tools and checks stay where the editor put them (the sandbox); an export runs render-time code only
   const r = await Renderer.open(doc, opts.registry, base, canvas, { compId: opts.compId, pluginModule: filterModule });
+  // the flag: the whole picture — plugins, modifiers, effects, simulations — is evaluated and drawn in the sandbox
+  const sandboxed = prefs.peek().sandboxPreview && (doc.plugins ?? []).length > 0;
+  const sandboxHost = () => pluginHost(base);
   try {
     const { fps, duration } = r.comp;
     // the render size (the width is rounded to a multiple of 8)
@@ -83,12 +87,33 @@ export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebF
     const frames = Math.round(duration * fps);
     // straight RGBA of frame f (alpha kept)
     const rgba = new Uint8Array(W * H * 4);
+    // the sandbox's picture, read as pixels
+    const readBack = document.createElement('canvas');
+    readBack.width = W; readBack.height = H;
+    const readCtx = readBack.getContext('2d', { willReadFrequently: true })!;
     // every video frame exact before reading it; a frame whose pictures never come stops the export rather than hang it
     const complete = async (f: number, toFbo: boolean) => {
       await r.renderComplete(f / fps, { samples: opts.samples, toFbo, signal: opts.signal });
       if (r.late) throw new Error(t('export.frameNeverReady', { frame: f, time: (f / fps).toFixed(2), s: SETTLE_LIMIT / 1000 }));
     };
+    /** the sandbox's frame f: videos decoded here, then one renderFrame, read as pixels */
+    const sandboxFrame = async (f: number) => {
+      aborted(opts.signal);
+      const time = f / fps;
+      const videos = await sandboxVideoFrames(r, doc, time);
+      const c = doc.compositions[r.compId];
+      const pic = await sandboxHost().renderFrame({ compId: r.compId, t: time, scale: 1, width: c.width, height: c.height, videos });
+      if (pic.err) throw new Error(pic.err);
+      if (!pic.bitmap) throw new Error(t('export.frameNeverReady', { frame: f, time: time.toFixed(2), s: SETTLE_LIMIT / 1000 }));
+      return pic.bitmap as OffscreenCanvas;
+    };
     const readFrame = async (f: number) => {
+      if (sandboxed) {
+        const bmp = await sandboxFrame(f);
+        readCtx.drawImage(bmp, 0, 0, W, H);
+        rgba.set(readCtx.getImageData(0, 0, W, H).data);
+        return rgba;
+      }
       await complete(f, true);
       return r.compositor.readRGBA(rgba, r.lastSeed);
     };
@@ -157,7 +182,12 @@ export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebF
             await encoderStep(video.add(sample), opts.signal);
             sample.close();
           } else {
-            await complete(f, false);
+            if (sandboxed) {
+              const bmp = await sandboxFrame(f);
+              blitSandboxFrame(r, bmp, f / fps, false);
+            } else {
+              await complete(f, false);
+            }
             await encoderStep(video.add(f / fps, 1 / fps), opts.signal);
           }
           opts.onProgress?.(f + 1, frames);

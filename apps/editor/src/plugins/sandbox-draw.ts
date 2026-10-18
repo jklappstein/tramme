@@ -10,6 +10,7 @@
 
 import type { Handle, Host, NodeType, Rect, Registry, TrammeDoc } from '@tramme/core';
 import { Evaluator } from '@tramme/core';
+import type { Renderer } from '@tramme/render';
 import type { PluginHost } from './host.ts';
 import type { SandboxDoc } from './protocol.ts';
 
@@ -166,6 +167,32 @@ export function resetSandbox() {
   ready.clear();
   handlesCache.clear();
   exportCache.clear();
+}
+
+/**
+ * Every video asset's exact frame at t, decoded on the page (the sandbox
+ * does not decode): shipped with the sandbox's render request.
+ */
+export async function sandboxVideoFrames(r: Renderer, doc: TrammeDoc, t: number): Promise<Record<string, unknown>> {
+  const videos: Record<string, unknown> = {};
+  for (const [id, a] of Object.entries(doc.assets)) {
+    if (a.type !== 'video') continue;
+    try {
+      const va = r.assets.get<{ request?(x: number): Promise<void>; frameAt(x: number): { image: CanvasImageSource | null } | null } | null>(id);
+      if (!va) continue;
+      await va.request?.(t);
+      const fr = va.frameAt(t);
+      if (fr?.image) videos[id] = fr.image;
+    } catch { /* not decodable: the node's draw says so */ }
+  }
+  return videos;
+}
+
+/** the sandbox's finished picture, shown through the renderer's own compositor (its canvas is WebGL) */
+export function blitSandboxFrame(r: Renderer, bitmap: unknown, t: number, checker: boolean) {
+  r.compositor.begin();
+  r.compositor.add(bitmap as OffscreenCanvas, 1);
+  r.compositor.finish({ bloom: 0, bloomThreshold: 0.85, vignette: 0, grain: 0, exposure: 1 }, { bg: null, checker }, 1, { t, scale: r.scale, onError: (e: Error) => { throw e; } });
 }
 
 /**

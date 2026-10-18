@@ -8,6 +8,8 @@ import type { TrammeDoc } from '@tramme/core';
 import { Renderer } from '@tramme/render';
 import { editorRegistry } from './vocabulary.ts';
 import { attachIsolated, filterModule, pluginHost } from './plugins/index.ts';
+import { ensureSandboxDoc, sandboxVideoFrames } from './plugins/sandbox-draw.ts';
+import { prefs } from './settings.ts';
 import { S } from './state.ts';
 
 /** a renderer of its own (never the preview's) and the stills it draws */
@@ -33,7 +35,21 @@ export class Stills {
   /** the frame at t, at most `width` pixels wide, as a JPEG data URL */
   async still(doc: TrammeDoc, t: number, compId: string, width: number, quality = 0.86): Promise<string> {
     const r = await this.rendererFor(doc, compId);
-    r.setScale(Math.min(1, width / doc.compositions[compId].width));
+    const c = doc.compositions[compId];
+    const k = Math.min(1, width / c.width);
+    // the flag: the picture comes from the sandbox, videos decoded here
+    if (prefs.peek().sandboxPreview && (doc.plugins ?? []).length) {
+      const docUrl = new URL(S.docUrl.peek(), location.href).href;
+      ensureSandboxDoc(pluginHost(docUrl), { doc, docUrl, loaded: (id) => { try { return r.assets.get(id); } catch { return null; } } });
+      const videos = await sandboxVideoFrames(r, doc, t);
+      const pic = await pluginHost(docUrl).renderFrame({ compId, t, scale: k, width: c.width, height: c.height, videos });
+      if (pic.err || !pic.bitmap) throw new Error(pic.err ?? 'no picture from the sandbox');
+      const small = document.createElement('canvas');
+      small.width = Math.round(c.width * k); small.height = Math.round(c.height * k);
+      small.getContext('2d')!.drawImage(pic.bitmap as OffscreenCanvas, 0, 0, small.width, small.height);
+      return small.toDataURL('image/jpeg', quality);
+    }
+    r.setScale(k);
     await r.renderComplete(t);
     r.render(t);
     // copied right after drawing, before the WebGL canvas is presented
