@@ -298,6 +298,8 @@ export interface Space {
   cols: number;
   rows: number;
   busy: number[];
+  /** the mean luminance of each cell, 0 black to 1 white (for the contrast check) */
+  luma?: number[];
   /** fractions of the frame: the clear sides and the largest clear rectangle */
   sides?: { left: number; right: number; top: number; bottom: number };
   rect?: Rect;
@@ -320,6 +322,78 @@ export function spaceOn(p: PlacedLayer, t: number, data: (id: string) => unknown
 }
 
 const overlapArea = (a: Rect, b: Rect) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+
+/** a paint's luminance, 0 black to 1 white: hex and rgb()/rgba() colours and their @tokens; null for gradients and unknown names */
+export function paintLuma(paint: unknown, tokens?: Record<string, { type: string; value: unknown }>): number | null {
+  let c = paint;
+  if (typeof c === 'string' && c.startsWith('@')) {
+    const tk = tokens?.[c.slice(1)];
+    if (!tk || tk.type !== 'color' || typeof tk.value !== 'string') return null;
+    c = tk.value;
+  }
+  if (typeof c !== 'string') return null;
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(c.trim());
+  if (hex) {
+    const h = hex[1].length === 3 ? [...hex[1]].map((x) => x + x).join('') : hex[1];
+    return 0.2126 * (parseInt(h.slice(0, 2), 16) / 255) + 0.7152 * (parseInt(h.slice(2, 4), 16) / 255) + 0.0722 * (parseInt(h.slice(4, 6), 16) / 255);
+  }
+  const rgb = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/.exec(c);
+  return rgb ? 0.2126 * (Number(rgb[1]) / 255) + 0.7152 * (Number(rgb[2]) / 255) + 0.0722 * (Number(rgb[3]) / 255) : null;
+}
+
+/** the mean luminance under a box of a media layer's picture, from its free-space grid (null without one): a cheap stand-in for real pixels */
+export function lumaUnder(p: PlacedLayer, t: number, tb: Rect, data: (id: string) => unknown): number | null {
+  if ((p.node.type !== 'video' && p.node.type !== 'image') || !p.box) return null;
+  const asset = String(p.props[p.node.type] ?? ''), s = data(`space-${asset}`.slice(0, 64));
+  if (!isSpace(s) || !s.luma || s.luma.length !== s.cols * s.rows || !s.width || !s.height) return null;
+  const ft = fileTime(p, t);
+  if (p.node.type === 'video' && Math.abs(s.t - ft) > 0.6) return null;
+  const f = p.box, r = pictureRect(String(p.props.fit ?? 'cover'), f.w, f.h, s.width, s.height);
+  const cw = r.w / s.cols, ch = r.h / s.rows, ox = f.x + f.w / 2 + r.x, oy = f.y + f.h / 2 + r.y;
+  let sum = 0, area = 0;
+  for (let i = 0; i < s.luma.length; i++) {
+    const a = overlapArea(tb, { x: ox + (i % s.cols) * cw, y: oy + Math.floor(i / s.cols) * ch, w: cw, h: ch });
+    if (a > 0) { sum += s.luma[i] * a; area += a; }
+  }
+  return area > 0 ? sum / area : null;
+}
+
+const textContrast: CheckType = {
+  name: 'text-contrast', title: 'Low contrast', description: 'text whose colour sits too close to what is behind it (against a picture after the space tool, or the composition background)',
+  texts: ['"{name}" is hard to read at {t} s: its colour is too close to what is behind it (contrast {cr}:1)'],
+  run({ samples, data, comp, doc }) {
+    const out = new Map<string, QualityIssue>();
+    for (const s of samples) {
+      for (const p of s.layers) {
+        if (out.has(p.id) || !p.box || p.textSize === undefined || p.opacity < 0.5 || !p.text?.trim()) continue;
+        const ink = paintLuma(p.props.color, doc.tokens);
+        if (ink === null) continue;
+        // what is under: the picture with a free-space analysis that covers most of the text, else the composition's own background
+        let bgL: number | null = null, bg = '';
+        let cover = 0;
+        for (const q of s.layers) {
+          if (q.id === p.id || (q.node.type !== 'video' && q.node.type !== 'image') || !q.box) continue;
+          const l = lumaUnder(q, s.t, p.box, data);
+          if (l === null) continue;
+          const cov = overlapArea(p.box, q.box) / (p.box.w * p.box.h || 1);
+          if (cov > cover) { cover = cov; bgL = l; bg = q.node.type === 'video' ? 'footage' : 'a picture'; }
+        }
+        if (cover < 0.6) { bgL = paintLuma(comp.background, doc.tokens); bg = 'the background'; }
+        if (bgL === null) continue;
+        // half-transparent ink sinks into its ground
+        const mixed = ink * p.opacity + bgL * (1 - p.opacity);
+        const cr = (Math.max(mixed, bgL) + 0.05) / (Math.min(mixed, bgL) + 0.05);
+        if (cr >= 2.5) continue;
+        out.set(p.id, {
+          check: 'text-contrast', severity: 'warning', t: s.t, layers: [p.id],
+          message: `"${name(p)}" is hard to read at ${s2(s.t)} s: its colour is too close to ${bg} (contrast ${cr.toFixed(1)}:1). A colour further from it, or a soft shadow, would hold.`,
+          say: { text: '"{name}" is hard to read at {t} s: its colour is too close to what is behind it (contrast {cr}:1)', params: { name: name(p), t: s2(s.t), cr: cr.toFixed(1) } },
+        });
+      }
+    }
+    return [...out.values()];
+  },
+};
 
 const overSubject: CheckType = {
   name: 'text-over-subject', title: 'Text over a person', description: 'text covering the face or the body of someone filmed (after the subjects tool)',
@@ -616,7 +690,7 @@ const uniformStagger: CheckType = {
   },
 };
 
-export const BUILTIN_CHECKS: CheckType[] = [textSize, textTime, safeZone, overlap, crossing, overSubject, overDetail, crowd, stillness, linearTravel, springSettle, twinMotion, abruptEntrance, straightTravel, uniformStagger];
+export const BUILTIN_CHECKS: CheckType[] = [textSize, textTime, safeZone, overlap, crossing, overSubject, overDetail, textContrast, crowd, stillness, linearTravel, springSettle, twinMotion, abruptEntrance, straightTravel, uniformStagger];
 
 /** every check of the registry on one composition, the failures of a check reported as issues */
 export async function runChecks(doc: TrammeDoc, registry: Registry, compId = doc.root, { step = 0.25, only, data = () => undefined }: { step?: number; only?: string[]; data?: (assetId: string) => unknown } = {}): Promise<QualityIssue[]> {

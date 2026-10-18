@@ -12,6 +12,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- A **low contrast** check: the free-space analysis now carries each cell's luminance, and the check weighs a text's ink (its colour, its opacity) against what sits under it — a picture through the analysis, or the composition's background — and warns when the contrast ratio falls under 2.5:1.
 - **Effect-stack presets**: a preset can now be a stack of effects applied to every selected layer at once (the add menu pushes it). Built-in: cinematic tone, dreamy glow, VHS, and a dark shadow plus halo that keeps type readable over anything.
 - **Fonts in the style kits**: each built-in kit names its typeface (Newsreader for Editorial, IBM Plex Mono for Hairline, Archivo Black for Punchy, Karla for Calm, Space Grotesk for Neon). Applying a kit fetches its woff2 once, keeps it in the project as a font asset, and the recipes write in it; the project keeps its own font if it has one.
 - Six **new recipes**, laid out as ordinary editable layers like the others: a **map journey** (a line travelling stop to stop on a map, revealed in step with the riding dot), a **word-by-word quote** with its author line, a **logo reveal** (iris, wipe or rise) that holds, a **list** that ticks in (tick, number or dash markers), a **timeline** that draws itself across the frame, and a **split screen** of two or three sliding panels.

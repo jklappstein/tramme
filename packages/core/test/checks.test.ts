@@ -87,6 +87,25 @@ describe('quality checks', () => {
     expect((await runChecks(d, builtinRegistry())).some((i) => i.check === 'text-over-detail')).toBe(false);
   });
 
+  it('find text too close in colour to what sits behind it', async () => {
+    // a picture bright at the top, dark at the bottom, its luminance known through the space analysis
+    const d = doc({
+      photo: { type: 'image', transform: { position: [540, 960] }, props: { image: 'shot', size: [1080, 1920], fit: 'fill' } },
+      washed: text('Pale', {}, { color: '#FFFFFF' }),
+      dark: text('Dark', { transform: { position: [540, 1500] } }, { color: '#000000' }),
+    });
+    d.assets = { shot: { type: 'image', src: 'shot.png' }, 'space-shot': { type: 'json', src: 'shot-space.json' } };
+    const space = { version: 1, kind: 'space', t: 0, width: 1080, height: 1920, cols: 1, rows: 2, busy: [0.1, 0.1], luma: [0.9, 0.15] };
+    const issues = await runChecks(d, builtinRegistry(), 'main', { data: (id) => (id === 'space-shot' ? space : undefined) });
+    expect(issues.filter((i) => i.check === 'text-contrast').map((i) => i.layers?.join())).toEqual(['washed']);
+    // against the composition's own background when no picture is under
+    const plain = doc({ t: text('Plate', {}, { color: '#F0EFEA' }) });
+    plain.compositions.main.background = '#F0EFEA';
+    expect((await runChecks(plain, builtinRegistry())).some((i) => i.check === 'text-contrast')).toBe(true);
+    // and nothing without any ground to measure
+    expect((await runChecks(doc({ t: text('Ghost', {}, { color: '#F0EFEA' }) }), builtinRegistry())).some((i) => i.check === 'text-contrast')).toBe(false);
+  });
+
   it('run the checks of a plugin, and report one that fails', async () => {
     const custom: CheckType = { name: 'brand', description: 'logo present', run: () => [{ check: 'brand', severity: 'warning', message: 'no logo' }] };
     const broken: CheckType = { name: 'broken', description: 'fails', run: () => { throw new Error('boom'); } };

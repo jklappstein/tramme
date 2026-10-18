@@ -358,8 +358,8 @@ const palette: ToolType<{ asset?: string; t?: number; tokens?: boolean }> = {
 };
 
 // ── free space of a frame ────────────────────────────────────
-/** how busy each cell of a small grid is: the edge energy of its pixels, 0 clear to 1 crowded */
-function busyGrid(g: CanvasRenderingContext2D, w: number, h: number): number[] {
+/** how busy each cell of a small grid is (edge energy, robustly scaled) and its mean luminance */
+function busyGrid(g: CanvasRenderingContext2D, w: number, h: number): { busy: number[]; luma: number[] } {
   const px = g.getImageData(0, 0, w, h).data;
   const luma = new Float32Array(w * h);
   for (let i = 0; i < luma.length; i++) luma[i] = (0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]) / 255;
@@ -378,7 +378,7 @@ function busyGrid(g: CanvasRenderingContext2D, w: number, h: number): number[] {
   // robust scale: the 95th percentile, so one hot edge does not flatten the rest
   const sorted = [...energy].sort((a, b) => a - b);
   const cap = sorted[Math.floor(sorted.length * 0.95)] || 1;
-  return [...energy].map((e) => Math.min(1, e / cap));
+  return { busy: [...energy].map((e) => Math.min(1, e / cap)), luma: [...luma] };
 }
 
 const space: ToolType<{ asset?: string; t?: number }> = {
@@ -413,16 +413,16 @@ const space: ToolType<{ asset?: string; t?: number }> = {
     const gw = w >= h ? 48 : 27, gh = w >= h ? 27 : 48;
     const { g } = canvas(gw, gh);
     g.drawImage(source, 0, 0, gw, gh);
-    const busy = busyGrid(g, gw, gh);
+    const { busy, luma } = busyGrid(g, gw, gh);
     const grid = { cols: gw, rows: gh, busy };
     const sides = freeSides(grid), rect = largestFree(grid), margins = clearMargins(grid);
-    const data = { version: 1, kind: 'space', source: asset, t: at, width: w, height: h, cols: gw, rows: gh, busy, sides, rect, margins };
+    const data = { version: 1, kind: 'space', source: asset, t: at, width: w, height: h, cols: gw, rows: gh, busy, luma, sides, rect, margins };
     const { id, ops, reload } = await save(ctx, asset, 'space', data, `Free space · ${a.name ?? asset}`);
     const pct = (x: number) => `${Math.round(x * 100)} %`;
     return {
       ops, reload, label: `Free space of ${a.name ?? asset}`,
       text: [
-        `Free space of "${asset}"${a.type === 'video' ? ` at ${at} s` : ''}, saved as asset "${id}" (a ${gw}×${gh} grid of how busy each cell is, plus the sides and the largest clear rectangle, all in fractions of the frame).`,
+        `Free space of "${asset}"${a.type === 'video' ? ` at ${at} s` : ''}, saved as asset "${id}" (a ${gw}×${gh} grid of how busy each cell is and how bright it is, plus the sides and the largest clear rectangle, all in fractions of the frame).`,
         `Clear edges: left ${pct(sides.left)}, right ${pct(sides.right)}, top ${pct(sides.top)}, bottom ${pct(sides.bottom)}.`,
         `Clear bands inward from each edge: left ${pct(margins.left)}, right ${pct(margins.right)}, top ${pct(margins.top)}, bottom ${pct(margins.bottom)} of the frame.`,
         `The largest clear rectangle holds at x ${pct(rect.x)}–${pct(rect.x + rect.w)}, y ${pct(rect.y)}–${pct(rect.y + rect.h)}: that is where a title or a caption block fits without covering what matters.`,

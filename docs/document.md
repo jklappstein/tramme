@@ -248,7 +248,7 @@ In the editor's preview, a node or effect that fails is drawn as a red frame and
 
 Tools also appear in the chat's `/` menu, with a form generated from `input` (`title` as the label; `format: 'asset'` with `assetType` picks an asset, `format: 'layer'` a layer). Once the required fields are filled, the tool runs at once without a model; words written after the command send it to the assistant instead.
 
-A plugin may also export `checks`: quality checks run by the `check` tool (assistant and `/check`) next to the built-in ones (text size, reading time, safe zone, overlapping text, text crossing an element, crowded entrances, still stretches). A check reads the composition sampled four times a second, each layer placed in composition space, and returns issues:
+A plugin may also export `checks`: quality checks run by the `check` tool (assistant and `/check`) next to the built-in ones (text size, reading time, safe zone, overlapping text, text crossing an element, text over a person or on a busy area, low contrast behind text, crowded entrances, still stretches). A check reads the composition sampled four times a second, each layer placed in composition space, and returns issues:
 
 ```js
 export const checks = [{

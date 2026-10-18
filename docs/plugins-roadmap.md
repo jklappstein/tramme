@@ -79,7 +79,7 @@ Done when: a project plugin exports a tool, the assistant finds it with `list_no
 ### Step 3. Quality loop
 
 - [x] `checks` export: `run(ctx) → issues` with a severity, the times and layers involved; `ctx.samples` is the composition sampled 4 times a second, each layer placed in composition space (`packages/core/src/checks.ts`). Built-in: text size, reading time, safe zone, overlapping text, text crossing an element, crowded entrances, still stretches.
-- [ ] Checks that need pixels or perception: low contrast behind text, text over a detected face (step 4).
+- [x] Checks that need pixels or perception: text over a detected face (step 4), low contrast behind text (the free-space grid carries each cell's luminance; the check weighs the ink, its opacity and what sits under).
 - [x] `check` tool: runs the checks and returns a contact sheet of the key moments; `motion` tool: a strip of frames to judge a movement (`apps/editor/src/review.ts`). Both in the `/` menu too.
 - [x] The system prompt asks for `check` before summing up; the `/review` workflow uses both tools.
 
