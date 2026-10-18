@@ -58,7 +58,7 @@ type Progress = (done: number, total: number, step: string) => void;
 const MATTING: Partial<Record<Subject, () => Promise<Matting>>> = {};
 
 /** the matte of a picture, 0..255 per pixel at its size: on the GPU (WebGPU), on the processor when the GPU refuses the model */
-function matting(subject: Subject): Promise<Matting> {
+export function matting(subject: Subject): Promise<Matting> {
   return (MATTING[subject] ??= onDemand('the cut-out model', async () => {
     // transformers.js sets onnxruntime up (where its wasm files are): load it first
     await import('@huggingface/transformers');

@@ -125,7 +125,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 ### Step 8. Generated assets
 
 - [x] Voice (TTS), music beds and sound effects through the Worker at authoring time, saved with their prompt and provider: the `generate-sound` tool ([sound-roadmap.md](sound-roadmap.md), step 8).
-- [ ] Images and textures, background removal, the same way.
+- [x] Images and textures, background removal, the same way (the `remove-bg` tool): the same U²-Net matte the video cutout uses, run once on a picture, written as its alpha — a PNG with transparency saved as a new image asset and placed as its own layer, so titles pass behind the subject.
 
 ### Step 9. Editor surfaces
 

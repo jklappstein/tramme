@@ -10,6 +10,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- A **background removal** tool (`remove-bg`): the U²-Net matte run once on a picture becomes the alpha of a PNG saved as a new image asset, placed as its own layer — titles and graphics pass behind the subject.
 - A **free space** tool (`space`): a frame read as a small grid of how busy each cell is (edges, robustly scaled), saved as data with the clear sides and the largest clear rectangle in fractions of the frame — where a title or a caption block fits without covering what matters.
 
 - A **lip sync** tool (`lipsync`): the words of a transcript drive a drawn character's mouth — the nine classic shapes (closed, M/B/P, F/V, A/I, E, O, U/W/Q, L, other) written as keys on a sequence's `drawing`, closed between the words, remappable with a mouths map.
