@@ -210,7 +210,7 @@ A plugin can be kept in the library shared by the projects (`library-add` tool, 
 
 A node may declare `handles(props)`: points the viewport lets the user drag, in local space, each editing one property (`{ prop, at, kind: 'point' }` sets a vec2 to the point; `{ prop, at, kind: 'distance', from }` sets a number to the distance from `from`). Vector exports cannot run code: `export: { svg(props), lottie(props) }` gives SVG markup in local space and static Lottie shape items; without them the layer is left out with a warning.
 
-A plugin may also export `presets`, ready-made layers offered in the add menu: `{ name, title, category, layer }` where `layer` is an ordinary layer (type, props, transform, effects), centred when it has no position.
+A plugin may also export `presets`, ready-made layers offered in the add menu: `{ name, title, category, layer }` where `layer` is an ordinary layer (type, props, transform, effects), centred when it has no position. A preset may instead be an effect stack: `{ name, title, category, effects: [{ type, props }] }` — applying it pushes those effects onto every selected layer at once (ids made at apply time).
 
 Nodes, effects, modifiers and tools may carry notes for the assistant, returned by `list_nodes`: `ai: { when, avoid, example }` (when to use it, what looks bad, an example of props or input).
 

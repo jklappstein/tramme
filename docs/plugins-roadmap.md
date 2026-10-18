@@ -132,7 +132,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 - [x] Plugin tools in the editor: the chat's `/` menu runs the same tools (form generated from the input schema), see step 1b.
 - [x] Viewport handles declared by nodes (`handles(props)`: points and distances in local space), drawn as accent diamonds and dragged like the frame's handles (a key at the current time when animated). Built-in: the rectangle's corner radius; the example's moon radius.
 - [x] Presets in the add menu (`presets` export, ready-made layers with effects and motion). Built-in: neon title, frosted card, light leak, spotlight.
-- [ ] Effect-stack presets (several effects applied to the selection at once).
+- [x] Effect-stack presets (several effects applied to the selection at once): a preset may carry an `effects` stack instead of a layer; the add menu pushes it onto every selected layer. Built-in: cinematic tone, dreamy glow, VHS, readable over anything.
 - [x] Export hooks (`export.svg`, `export.lottie`) so plugin nodes are not dropped from vector exports.
 
 ### Step 10. Ecosystem

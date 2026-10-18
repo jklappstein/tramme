@@ -59,8 +59,23 @@ export function newLayer(doc: TrammeDoc, compId: string, node: NodeType, extra: 
 /** a preset as a layer of the open composition: centred when it has no position */
 function presetLayer(p: PresetType): Layer {
   const c = S.doc.peek().compositions[S.compId.peek()];
-  const tr0 = p.layer.transform ?? {};
-  return { ...structuredClone(p.layer), name: tr(p.title ?? p.name), transform: { ...structuredClone(tr0), position: tr0.position ?? [c.width / 2, c.height / 2] } } as Layer;
+  const tr0 = p.layer!.transform ?? {};
+  return { ...structuredClone(p.layer!), name: tr(p.title ?? p.name), transform: { ...structuredClone(tr0), position: tr0.position ?? [c.width / 2, c.height / 2] } } as Layer;
+}
+
+/** an effect-stack preset: its effects pushed onto every selected layer at once */
+function applyStack(p: PresetType) {
+  const doc = S.doc.peek(), compId = S.compId.peek(), c = doc.compositions[compId];
+  const sel = S.selection.peek().filter((id) => c.layers[id]);
+  if (!sel.length) { toast(t('panel.stackNeedsSelection')); return; }
+  const ops = sel.flatMap((id) => {
+    const effects = c.layers[id].effects ?? [];
+    const stack = p.effects!.map((e, i) => ({ id: freshId(Object.fromEntries(effects.map((x) => [x.id, 1])), `${e.type.split('.').pop()}-${i + 1}`), type: e.type, ...(e.props ? { props: structuredClone(e.props) } : {}) }));
+    return effects.length
+      ? [{ op: 'add' as const, path: `${pointer('compositions', compId, 'layers', id)}/effects/-`, value: stack }]
+      : [{ op: 'add' as const, path: `${pointer('compositions', compId, 'layers', id)}/effects`, value: stack }];
+  });
+  commit(t('panel.stackApplied', { name: tr(p.title ?? p.name) }), ops);
 }
 
 /** add a layer above the selection (same parent), or at the top of the root */
@@ -90,12 +105,14 @@ export function addLayerMenu(e: MouseEvent | DOMRect) {
     for (const n of nodes) items.push({ label: t(n.title), icon: kindIcon(n.type), onClick: () => insertLayer(newLayer(S.doc.peek(), S.compId.peek(), n)) });
   }
   // ready-made layers: the editor's and the project's plugins'
-  const presets = reg.listPresets().filter(({ preset }) => reg.hasNode(preset.layer.type));
+  const presets = reg.listPresets().filter(({ preset }) => (preset.layer ? reg.hasNode(preset.layer.type) : !!preset.effects?.length));
   const sections = new Map<string, typeof presets>();
   for (const p of presets) { const cat = p.preset.category ?? m('panel.presets'); if (!sections.has(cat)) sections.set(cat, []); sections.get(cat)!.push(p); }
   for (const [cat, list] of sections) {
     items.push({ section: t(cat) });
-    for (const { preset } of list) items.push({ label: tr(preset.title ?? preset.name), icon: kindIcon(preset.layer.type), onClick: () => insertLayer(presetLayer(preset), preset.name) });
+    for (const { preset } of list) items.push(preset.effects
+      ? { label: tr(preset.title ?? preset.name), icon: 'effects' as const, onClick: () => applyStack(preset) }
+      : { label: tr(preset.title ?? preset.name), icon: kindIcon(preset.layer!.type), onClick: () => insertLayer(presetLayer(preset), preset.name) });
   }
   openMenu(e as MouseEvent, items);
 }

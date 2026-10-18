@@ -1,7 +1,9 @@
 // Ready-made layers of the add menu: a node with props, effects and motion
-// already tuned. Plugins add theirs (`presets` export) the same way.
+// already tuned. Effect stacks, below, apply several effects at once to the
+// selected layers. Plugins add theirs (`presets` export) the same way.
 
 import type { PresetType } from '@tramme/core';
+import { m } from './i18n/index.ts';
 
 export const EDITOR_PRESETS: PresetType[] = [
   {
@@ -34,5 +36,35 @@ export const EDITOR_PRESETS: PresetType[] = [
       type: 'shape.ellipse', blend: 'overlay',
       props: { size: [900, 900], fill: { type: 'radial', center: [0, 0], radius: 450, stops: [[0, 'rgba(255,255,255,0.75)'], [1, 'rgba(255,255,255,0)']] } },
     },
+  },
+  // effect stacks: pushed onto the selected layers at once
+  {
+    name: 'cinematic-tone', title: 'Cinematic tone', description: 'a filmic grade: a touch more contrast, colours held back, teal in the shadows', category: m('panel.effectStacks'),
+    effects: [
+      { type: 'fx.color', props: { contrast: 1.1, saturation: 0.92 } },
+      { type: 'fx.tint', props: { color: '#0E3A4A', amount: 0.16 } },
+    ],
+  },
+  {
+    name: 'dreamy-glow', title: 'Dreamy glow', description: 'a soft white bloom that lifts the picture, a little brighter', category: m('panel.effectStacks'),
+    effects: [
+      { type: 'fx.glow', props: { color: '#FFFFFF', radius: 34, strength: 0.5 } },
+      { type: 'fx.color', props: { brightness: 1.06 } },
+    ],
+  },
+  {
+    name: 'vhs', title: 'VHS', description: 'a worn tape look: loud colours, softened edges, a magenta drift', category: m('panel.effectStacks'),
+    effects: [
+      { type: 'fx.color', props: { saturation: 1.18, contrast: 0.96 } },
+      { type: 'fx.blur', props: { radius: 1.6 } },
+      { type: 'fx.tint', props: { color: '#FF3EF2', amount: 0.1 } },
+    ],
+  },
+  {
+    name: 'readable-title', title: 'Readable over anything', description: 'a soft dark shadow and a dark halo, so type holds over busy footage', category: m('panel.effectStacks'),
+    effects: [
+      { type: 'fx.shadow', props: { color: 'rgba(0,0,0,0.55)', blur: 18, offset: [0, 4] } },
+      { type: 'fx.glow', props: { color: '#000000', radius: 12, strength: 0.35 } },
+    ],
   },
 ];

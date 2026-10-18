@@ -192,7 +192,7 @@ export interface Handle {
   factor?: number;
 }
 
-/** a ready-made layer offered in the add menu: a node with its props, effects and transform */
+/** a ready-made layer of the add menu (a node with its props, effects and transform), or a stack of effects to push onto the selected layers at once */
 export interface PresetType {
   name: string;
   title?: string;
@@ -200,7 +200,9 @@ export interface PresetType {
   category?: string;
   description?: string;
   /** the layer to add (centred in the composition when it has no position); its children are not supported */
-  layer: Omit<Layer, 'children'>;
+  layer?: Omit<Layer, 'children'>;
+  /** instead of a layer: effects pushed onto every selected layer at once (their ids are made at apply time) */
+  effects?: { type: string; props?: Record<string, unknown> }[];
 }
 
 export interface EffectType<P = any> {
@@ -404,7 +406,8 @@ export class Registry {
       this.kits.set(k.name, { kit: k, from });
     }
     for (const p of mod.presets || []) {
-      if (!p || typeof p.name !== 'string' || !TOOL_NAME.test(p.name) || !p.layer || typeof p.layer.type !== 'string') throw new Error(`plugin ${from}: malformed preset${p && typeof p.name === 'string' ? ` "${p.name}"` : ''}`);
+      const stack = Array.isArray(p?.effects) && p.effects.length > 0 && p.effects.every((e) => e && typeof e.type === 'string');
+      if (!p || typeof p.name !== 'string' || !TOOL_NAME.test(p.name) || ((!p.layer || typeof p.layer.type !== 'string') && !stack)) throw new Error(`plugin ${from}: malformed preset${p && typeof p.name === 'string' ? ` "${p.name}"` : ''}`);
       this.presets.set(p.name, { preset: p, from });
     }
     return this;
