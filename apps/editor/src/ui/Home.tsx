@@ -216,7 +216,7 @@ function DirectionBox({ busy, onStart }: { busy: boolean; onStart: (words: strin
         <div class="brief-bar">
           <button type="button" class="btn sm ghost" title={t('home.addMaterialHint')} onClick={() => files.current?.click()}><Icon name="attach" />{t('home.addMaterial')}</button>
           <button type="button" class="icon-btn sm" title={t('home.fromSourcesFolder')} onClick={() => folder.current?.click()}><Icon name="folder" /></button>
-          <input ref={files} type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,application/pdf,.md,.markdown,.json,.ttf,.otf,.woff,.woff2" onChange={chosen} />
+          <input ref={files} type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,application/pdf,.md,.markdown,.json,.ttf,.otf,.woff,.woff2,.glb,.gltf" onChange={chosen} />
           <input ref={folder} type="file" multiple hidden {...{ webkitdirectory: true }} onChange={chosen} />
           <span class="grow" />
           <Seg value={format} role="radiogroup" ariaLabel={t('common.format')}

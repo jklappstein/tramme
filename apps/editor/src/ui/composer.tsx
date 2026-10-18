@@ -18,7 +18,7 @@ import { Icon } from './icons.tsx';
 import { t, tr } from '../i18n/index.ts';
 
 /** what the file picker of a message accepts */
-export const ATTACHABLE = 'image/*,audio/*,video/*,.pdf,application/pdf,.md,.markdown,.json,.svg';
+export const ATTACHABLE = 'image/*,audio/*,video/*,.pdf,application/pdf,.md,.markdown,.json,.svg,.glb,.gltf,model/gltf-binary,model/gltf+json';
 
 /** files dropped or picked: joined to the next message */
 export const join = (list: FileList | File[] | null | undefined) => { const f = Array.from(list ?? []); if (f.length) attachFiles(f); };

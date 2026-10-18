@@ -139,7 +139,7 @@
     "sheet": "Contact sheet of the {n} shorts"
   },
   "attachments": {
-    "nameImageSoundVideo": "{name}: image, sound, video, PDF or JSON expected",
+    "nameImageSoundVideo": "{name}: image, sound, video, 3D model (.glb), PDF or JSON expected",
     "attachmentName": "Attachment: {name}"
   },
   "figures": {
@@ -710,6 +710,7 @@
     "fonts": "Fonts",
     "sounds": "Sounds",
     "videos": "Videos",
+    "models": "3D models",
     "code": "Code",
     "data": "Data",
     "importName": "Import {name}",

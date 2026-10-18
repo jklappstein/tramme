@@ -45,6 +45,7 @@ export function newLayer(doc: TrammeDoc, compId: string, node: NodeType, extra: 
     case 'image': { const img = firstAsset(doc, 'image'); Object.assign(props, { size: [Math.round(u * 0.6), Math.round(u * 0.6)], fit: 'contain', ...(img ? { image: img } : {}) }); break; }
     case 'audio': { const a = firstAsset(doc, 'audio'); if (a) props.audio = a; break; }
     case 'video': { const v = firstAsset(doc, 'video'); Object.assign(props, { size: [c.width, c.height], fit: 'cover', ...(v ? { video: v } : {}) }); break; }
+    case 'model.3d': { const m3 = firstAsset(doc, 'model'); Object.assign(props, { height: Math.round(u * 0.6), ...(m3 ? { source: m3 } : {}) }); break; }
   }
   const positioned = node.type !== 'group' && node.type !== 'code' && node.type !== 'audio';
   return {
@@ -412,8 +413,8 @@ function LayerTree() {
 }
 
 // ── assets ───────────────────────────────────────────────────
-const ASSET_ICON: Record<string, string> = { image: 'image', font: 'text', audio: 'audio', video: 'film', module: 'code', json: 'code' };
-const ASSET_LABEL: Record<string, string> = { image: m('panel.images'), font: m('panel.fonts'), audio: m('panel.sounds'), video: m('panel.videos'), module: m('panel.code'), json: m('panel.data') };
+const ASSET_ICON: Record<string, string> = { image: 'image', font: 'text', audio: 'audio', video: 'film', module: 'code', json: 'code', model: 'box' };
+const ASSET_LABEL: Record<string, string> = { image: m('panel.images'), font: m('panel.fonts'), audio: m('panel.sounds'), video: m('panel.videos'), module: m('panel.code'), json: m('panel.data'), model: m('panel.models') };
 
 function typeOfFile(name: string): Asset['type'] | null {
   const ext = name.toLowerCase().split('.').pop()!;
@@ -421,6 +422,7 @@ function typeOfFile(name: string): Asset['type'] | null {
   if (['ttf', 'otf', 'woff', 'woff2'].includes(ext)) return 'font';
   if (['wav', 'mp3', 'ogg', 'm4a', 'flac'].includes(ext)) return 'audio';
   if (['mp4', 'webm', 'mov'].includes(ext)) return 'video';
+  if (['glb', 'gltf'].includes(ext)) return 'model';
   if (['js', 'mjs'].includes(ext)) return 'module';
   if (ext === 'json') return 'json';
   return null;
@@ -545,7 +547,7 @@ function Assets() {
   const assetMenu = (e: MouseEvent | { clientX: number; clientY: number }, id: string, a: Asset) => {
     if ('preventDefault' in e) e.preventDefault();
     openMenu(e, [
-      ...(a.type === 'image' || a.type === 'audio' || a.type === 'video' ? [{ label: t('panel.createALayer'), icon: 'plus' as const, onClick: () => use(id, a) }] : []),
+      ...(a.type === 'image' || a.type === 'audio' || a.type === 'video' || a.type === 'model' ? [{ label: t('panel.createALayer'), icon: 'plus' as const, onClick: () => use(id, a) }] : []),
       ...(a.type === 'audio' || a.type === 'video' ? [transcribeItem(id)] : []),
       ...(a.type === 'image' ? [{ label: t('panel.animateTheFolderN', { n: imagesIn(doc, folderOf(a.src)).length }), icon: 'film' as const, onClick: () => animateFolder(folderOf(a.src)) }] : []),
       { label: t('panel.removeFromProject'), icon: 'trash', onClick: () => commit(t('common.removeName', { name: a.name || id }), [{ op: 'remove', path: pointer('assets', id) }]) },
@@ -556,6 +558,7 @@ function Assets() {
     if (a.type === 'image') insertLayer(newLayer(doc, S.compId.peek(), reg.node('image'), { name: a.name || id, props: { image: id, size: [600, 600], fit: 'contain' } }), id);
     else if (a.type === 'audio') insertLayer(newLayer(doc, S.compId.peek(), reg.node('audio'), { name: a.name || id, props: { audio: id } }), id);
     else if (a.type === 'video') { const l = newLayer(doc, S.compId.peek(), reg.node('video'), { name: a.name || id }); insertLayer({ ...l, props: { ...l.props, video: id } }, id); }
+    else if (a.type === 'model' && reg.hasNode('model.3d')) { const l = newLayer(doc, S.compId.peek(), reg.node('model.3d'), { name: a.name || id }); insertLayer({ ...l, props: { ...l.props, source: id } }, id); }
   };
   return (
     <div class={`panel-body${over ? ' drop' : ''}`} style={over ? { boxShadow: 'inset 0 0 0 2px var(--accent-line)' } : undefined}

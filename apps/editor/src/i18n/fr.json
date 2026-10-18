@@ -139,7 +139,7 @@
     "sheet": "Planche contact des {n} shorts"
   },
   "attachments": {
-    "nameImageSoundVideo": "{name} : image, son, vidéo, PDF ou JSON attendus",
+    "nameImageSoundVideo": "{name} : image, son, vidéo, modèle 3D (.glb), PDF ou JSON attendus",
     "attachmentName": "Pièce jointe : {name}"
   },
   "figures": {
@@ -710,6 +710,7 @@
     "fonts": "Polices",
     "sounds": "Sons",
     "videos": "Vidéos",
+    "models": "Modèles 3D",
     "code": "Code",
     "data": "Données",
     "importName": "Importer {name}",
