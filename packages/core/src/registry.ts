@@ -262,6 +262,10 @@ export interface PluginModule {
   checks?: CheckType[];
   kits?: KitType[];
   presets?: PresetType[];
+  /** guided tours the editor offers while the plugin is used */
+  tours?: unknown[];
+  /** interface translations the plugin carries (per language, per key) */
+  messages?: unknown;
 }
 
 export class Registry {

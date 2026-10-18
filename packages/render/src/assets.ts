@@ -39,6 +39,8 @@ export class AssetStore {
   private base: string;
   /** bumped when a module reloads, so a changed plugin file is imported again */
   private version = 0;
+  /** the sandbox owns the project's plugin modules: sync skips them, their code never loads here */
+  sandboxModules = false;
 
   constructor(doc: TrammeDoc, docUrl: string) {
     this.doc = doc;
@@ -69,6 +71,8 @@ export class AssetStore {
     for (const id of this.loaded.keys()) if (!doc.assets[id]) this.loaded.delete(id);
     if (reload.length) this.version++;
     await Promise.all(Object.entries(doc.assets).map(async ([id, a]) => {
+      // the sandbox owns the project's plugin modules: their code never loads here
+      if (this.sandboxModules && a.type === 'module' && (doc.plugins || []).includes(id)) { this.loaded.delete(id); return; }
       const have = this.loaded.get(id);
       if (have && !reload.includes(id)) {
         if (have.entry === a) return;

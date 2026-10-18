@@ -19,6 +19,10 @@ export interface PluginDecl {
   nodes: SchemaNode[];
   effects: SchemaEffect[];
   modifiers: SchemaModifier[];
+  /** the tours, as the page's tour engine reads them */
+  tours: unknown[];
+  /** the interface translations the module carries */
+  messages: unknown;
 }
 
 /** a node without its code: what a tool inside the sandbox may still read */
@@ -32,6 +36,10 @@ export interface SchemaNode {
   container?: boolean;
   /** the node declares a `path` (its outline can be read as data by the draw protocol) */
   hasPath?: boolean;
+  /** the node declares viewport `handles` */
+  hasHandles?: boolean;
+  /** the node declares a vector `export` */
+  hasExport?: boolean;
 }
 
 export interface SchemaEffect {

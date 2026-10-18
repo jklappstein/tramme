@@ -8,11 +8,11 @@
 // rather than nothing. One sample per frame: a plugin layer's motion blur
 // takes its picture at the first sub-time.
 
-import type { Handle, Host, NodeType, Rect, Registry, TrammeDoc } from '@tramme/core';
+import type { EffectType, Handle, Host, ModifierType, NodeType, PluginModule, Rect, Registry, TrammeDoc } from '@tramme/core';
 import { Evaluator } from '@tramme/core';
 import type { Renderer } from '@tramme/render';
 import type { PluginHost } from './host.ts';
-import type { SandboxDoc } from './protocol.ts';
+import type { PluginDecl, SandboxDoc, SchemaModifier, SchemaNode } from './protocol.ts';
 
 /** what the wrapper needs from the editor: the document and its loaded assets */
 export interface SandboxContext {
@@ -46,27 +46,12 @@ export function sandboxNode(node: NodeType): NodeType {
     bounds: undefined,
     render: { canvas2d: (ctx, props, host) => drawSandboxed(ctx, host, node, props) },
   };
-  if (node.path) {
-    out.path = (_props, host) => {
-      const e = ready.get(host.layerId);
-      return e?.pathData ? new Path2D(e.pathData) : null;
-    };
-  }
-  if (node.handles) {
-    out.handles = (props) => (handlesCache.get(`${node.type}/${hash(props)}`) ?? []) as Handle[];
-  }
+  if (node.path) out.path = (_props, host) => pathOf(host);
+  if (node.handles) out.handles = (props) => handlesFor(node.type, props);
   if (node.export) {
     out.export = {
-      svg: (props) => {
-        const v = exportCache.get(`${node.type}/${hash(props)}`);
-        if (!v?.svg) throw new Error(`${node.type}: its vector export is computed in the sandbox and was not primed here`);
-        return v.svg;
-      },
-      lottie: (props) => {
-        const v = exportCache.get(`${node.type}/${hash(props)}`);
-        if (!v || v.lottie === undefined) throw new Error(`${node.type}: its vector export is computed in the sandbox and was not primed here`);
-        return v.lottie as unknown[];
-      },
+      svg: (props) => exportFor(node.type, props).svg!,
+      lottie: (props) => exportFor(node.type, props).lottie as unknown[],
     };
   }
   return out;
@@ -81,6 +66,55 @@ const pending = new Map<string, Promise<Picture>>();
 const handlesCache = new Map<string, unknown[]>();
 /** the vector exports, keyed by node type and props */
 const exportCache = new Map<string, { svg?: string; lottie?: unknown }>();
+/** the declarations the sandbox sent, by plugin id (the page's registry may be built from them) */
+const declareCache = new Map<string, PluginDecl>();
+
+/** the declarations of a project's plugin, once the sandbox has them */
+export function sandboxDeclaration(id: string): PluginDecl | null { return declareCache.get(id) ?? null; }
+/** remembered as the sandbox reports a plugin's declarations (the page's registry may be built from them) */
+export function noteSandboxDeclaration(d: PluginDecl) { declareCache.set(d.id, d); }
+
+const handlesFor = (type: string, props: unknown): Handle[] => (handlesCache.get(`${type}/${hash(props)}`) ?? []) as Handle[];
+const exportFor = (type: string, props: unknown) => {
+  const v = exportCache.get(`${type}/${hash(props)}`);
+  if (!v?.svg && v?.lottie === undefined) throw new Error(`${type}: its vector export is computed in the sandbox and was not primed here`);
+  return v;
+};
+/** the node's outline as it crossed, or null before the first frame */
+const pathOf = (host: Host): Path2D | null => {
+  const e = ready.get(host.layerId);
+  return e?.pathData ? new Path2D(e.pathData) : null;
+};
+
+/**
+ * The page's registry module built from a plugin's declarations: every schema
+ * the interface reads, the same sandbox-backed draw and geometry the wrapped
+ * module carries, and the data exports (tours, translations). No function of
+ * the plugin's is on the page: this is what the renderer registers when the
+ * sandbox owns the plugin's modules.
+ */
+export function declarationsModule(decl: PluginDecl, id: string): PluginModule {
+  const nodeOf = (n: SchemaNode): NodeType => {
+    const stub = { type: n.type } as NodeType;
+    return {
+      type: n.type, title: n.title, category: n.category, description: n.description, ai: n.ai, props: n.props,
+      ...(n.container ? { container: true } : {}),
+      render: { canvas2d: (ctx, props, host) => drawSandboxed(ctx, host, stub, props) },
+      ...(n.hasPath ? { path: (_props: unknown, host: Host) => pathOf(host) } : {}),
+      ...(n.hasHandles ? { handles: (props: unknown) => handlesFor(n.type, props) } : {}),
+      ...(n.hasExport ? { export: { svg: (props: unknown) => exportFor(n.type, props).svg!, lottie: (props: unknown) => exportFor(n.type, props).lottie as unknown[] } } : {}),
+    };
+  };
+  const modifierOf = (m: SchemaModifier): ModifierType => ({ ...m, apply: () => { throw new Error("a modifier's code does not cross the sandbox"); } }) as unknown as ModifierType;
+  return {
+    ...(decl.meta ? { meta: decl.meta } : {}),
+    nodes: decl.nodes.map(nodeOf),
+    effects: decl.effects.map((e) => ({ ...e })) as unknown as EffectType[],
+    modifiers: decl.modifiers.map(modifierOf),
+    ...(decl.tours.length ? { tours: decl.tours } : {}),
+    ...(decl.messages ? { messages: decl.messages } : {}),
+  } as PluginModule;
+}
 
 const FALLING: Rect = { x: -60, y: -60, w: 120, h: 120 };
 
@@ -167,6 +201,12 @@ export function resetSandbox() {
   ready.clear();
   handlesCache.clear();
   exportCache.clear();
+  declareCache.clear();
+}
+
+/** the sandbox's requests for a document's plugins: id and url (the asset's own, resolved against the document) */
+export function pluginItemsOf(doc: TrammeDoc, docUrl: string): { id: string; url: string }[] {
+  return (doc.plugins ?? []).map((id) => ({ id, url: new URL(String(doc.assets[id]?.src ?? ''), docUrl).href })).filter((p) => !!p.url);
 }
 
 /**

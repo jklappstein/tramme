@@ -70,6 +70,14 @@ export interface RendererOptions {
    * (docs/plugin-isolation.md) — without the hook, the whole module is used.
    */
   pluginModule?: (mod: PluginModule, id: string) => PluginModule;
+  /**
+   * The sandbox owns the plugin's modules: the asset store skips them (their
+   * code never loads on the page) and the registry takes what
+   * `sandboxDeclarations` builds from the sandbox's declarations.
+   */
+  sandboxModules?: boolean;
+  /** the registry module of a plugin, built from the sandbox's declarations (required when sandboxModules) */
+  sandboxDeclarations?: (id: string) => PluginModule;
 }
 
 export class Renderer {
@@ -100,6 +108,9 @@ export class Renderer {
   private preserve = true;
   private isolate = false;
   private pluginModule?: RendererOptions['pluginModule'];
+  /** the sandbox owns the plugin's modules: the asset store skips them and the registry takes `sandboxDeclarations`; the editor flips it when the setting changes */
+  sandboxModules = false;
+  private sandboxDeclarations?: RendererOptions['sandboxDeclarations'];
   /** what failed in the last frame drawn (isolate mode): layer id -> message */
   readonly errors = new Map<string, string>();
   /** simulations: a state every CHECKPOINT frames from the in point, and the last one computed */
@@ -121,6 +132,9 @@ export class Renderer {
     r.preserve = opts.preserve ?? true;
     r.isolate = opts.isolate ?? false;
     r.pluginModule = opts.pluginModule;
+    r.sandboxModules = opts.sandboxModules ?? false;
+    r.sandboxDeclarations = opts.sandboxDeclarations;
+    r.assets.sandboxModules = r.sandboxModules;
     await r.setDoc(doc, { compId: opts.compId });
     return r;
   }
@@ -139,7 +153,10 @@ export class Renderer {
     await this.assets.sync(doc, reload);
     const samePlugins = this.registry && !reload.length && doc.plugins === this.doc?.plugins && (doc.plugins || []).every((id) => doc.assets[id] === this.doc.assets[id]);
     const registry = samePlugins ? this.registry : this.base.clone();
-    if (!samePlugins) for (const id of doc.plugins || []) registry.use(this.pluginModule?.(this.assets.get(id), id) ?? this.assets.get(id), id);
+    if (!samePlugins) for (const id of doc.plugins || []) {
+      if (this.sandboxModules) registry.use(this.sandboxDeclarations!(id), id);
+      else registry.use(this.pluginModule?.(this.assets.get(id), id) ?? this.assets.get(id), id);
+    }
     if (!trusted) assertValid(doc, registry);
     this.doc = doc;
     this.registry = registry;

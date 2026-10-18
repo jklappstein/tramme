@@ -33,7 +33,7 @@ export interface WorkerSideOptions {
   sandbox?: (modules: Map<string, PluginModule>) => SandboxDrawSide;
 }
 
-const schemaNode = (n: NodeType): SchemaNode => ({ type: n.type, title: n.title, category: n.category, description: n.description, ai: n.ai, props: n.props, ...(n.container ? { container: true } : {}), ...(n.path ? { hasPath: true } : {}) });
+const schemaNode = (n: NodeType): SchemaNode => ({ type: n.type, title: n.title, category: n.category, description: n.description, ai: n.ai, props: n.props, ...(n.container ? { container: true } : {}), ...(n.path ? { hasPath: true } : {}), ...(n.handles ? { hasHandles: true } : {}), ...(n.export ? { hasExport: true } : {}) });
 const schemaEffect = (e: EffectType): SchemaEffect => ({ type: e.type, title: e.title, category: e.category, description: e.description, ai: e.ai, props: e.props, stage: e.stage });
 const schemaModifier = (m: ModifierType): SchemaModifier => ({ type: m.type, title: m.title, ...(m.params ? { params: m.params } : {}) });
 
@@ -78,6 +78,8 @@ export function startWorkerSide({ post, importModule, sandbox: makeSandbox }: Wo
     nodes: (mod.nodes ?? []).map(schemaNode),
     effects: (mod.effects ?? []).map(schemaEffect),
     modifiers: (mod.modifiers ?? []).map(schemaModifier),
+    tours: (mod.tours ?? []) as unknown[],
+    messages: (mod.messages ?? null) as unknown,
   });
 
   const find = (name: string): { kind: 'tool' | 'check'; run: (input: any, ctx: any) => unknown; id: string } | null => {

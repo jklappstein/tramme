@@ -19,7 +19,7 @@ import { editorRegistry } from './vocabulary.ts';
 import { clipChain, masterGainDb, mixBus, playClip, Renderer } from '@tramme/render';
 import { comp, compIdOf, S, setRegistry, setTime, toast, viewDoc } from './state.ts';
 import { attachIsolated, filterModule, pluginHost } from './plugins/index.ts';
-import { bindSandbox, blitSandboxFrame, ensureSandboxDoc, resetSandbox, sandboxVideoFrames, type SandboxContext } from './plugins/sandbox-draw.ts';
+import { bindSandbox, blitSandboxFrame, declarationsModule, ensureSandboxDoc, pluginItemsOf, resetSandbox, sandboxDeclaration, sandboxVideoFrames, type SandboxContext } from './plugins/sandbox-draw.ts';
 import { t } from './i18n/index.ts';
 import { prefs } from './settings.ts';
 import { syncPluginTours } from './tours/index.ts';
@@ -87,8 +87,12 @@ class Preview {
       },
     });
     try {
-      this.renderer = await Renderer.open(S.doc.peek(), editorRegistry(), new URL(S.docUrl.peek(), location.href).href, this.canvas, { compId: compIdOf(S.doc.peek()), raster: 'gpu', scale: S.previewScale.peek(), preserve: false, isolate: true, pluginModule: filterModule });
-      this.applied = S.doc.peek();
+      const doc0 = S.doc.peek();
+      const sandboxed = prefs.peek().sandboxPreview && (doc0.plugins ?? []).length > 0;
+      // the sandbox's declarations are needed before the renderer opens: it registers from them, and the modules never load on the page
+      if (sandboxed) await pluginHost(new URL(S.docUrl.peek(), location.href).href).ensure(pluginItemsOf(doc0, new URL(S.docUrl.peek(), location.href).href));
+      this.renderer = await Renderer.open(doc0, editorRegistry(), new URL(S.docUrl.peek(), location.href).href, this.canvas, { compId: compIdOf(doc0), raster: 'gpu', scale: S.previewScale.peek(), preserve: false, isolate: true, pluginModule: sandboxed ? undefined : filterModule, sandboxModules: sandboxed, sandboxDeclarations: sandboxed ? (id) => declarationsModule(sandboxDeclaration(id)!, id) : undefined });
+      this.applied = doc0;
       await this.attachPlugins();
       setRegistry(this.renderer.registry);
       if (this.renderer.compositor.software) toast(t('editor.softwareGpu'), 'error');
@@ -118,7 +122,12 @@ class Preview {
     const r = this.renderer;
     if (!r) return;
     const doc = this.applied ?? S.doc.peek();
-    syncPluginTours((doc.plugins ?? []).map((id) => { try { return { id, module: r.assets.get(id) }; } catch { return { id, module: null }; } }));
+    syncPluginTours((doc.plugins ?? []).map((id) => {
+      // the sandbox's declarations carry them (the sandbox owns the modules); the native path reads the module
+      const decl = sandboxDeclaration(id);
+      if (decl) return { id, module: declarationsModule(decl, id) };
+      try { return { id, module: r.assets.get(id) }; } catch { return { id, module: null }; }
+    }));
   }
 
   /** the plugins' tools and checks join the registry as sandbox-backed entries (no cost when there are none, or nothing new) */
@@ -171,6 +180,15 @@ class Preview {
     setRegistry(this.renderer.registry);
     this.pluginTours();
     this.invalidate();
+  }
+
+  /** the sandbox-preview flag changed: the registry is rebuilt from the other source (declarations or real modules) */
+  async reloadPlugins() {
+    const doc = this.applied;
+    if (!doc || !this.renderer) { await this.start(); return; }
+    this.renderer.sandboxModules = prefs.peek().sandboxPreview;
+    this.renderer.assets.sandboxModules = this.renderer.sandboxModules;
+    await this.reload((doc.plugins ?? []).concat(Object.entries(doc.assets).filter(([, a]) => a.type === 'module').map(([id]) => id)));
   }
 
   /** a small picture of the current frame, for the home screen */

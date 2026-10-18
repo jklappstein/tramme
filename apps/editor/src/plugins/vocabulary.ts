@@ -7,7 +7,7 @@
 
 import type { PluginModule, Registry, TrammeDoc } from '@tramme/core';
 import type { PluginHost } from './host.ts';
-import { sandboxNode } from './sandbox-draw.ts';
+import { noteSandboxDeclaration, sandboxNode } from './sandbox-draw.ts';
 
 /**
  * What the page's registry takes from a plugin module: the tools and checks
@@ -47,6 +47,7 @@ export async function attachIsolated(registry: Registry, host: PluginHost, doc: 
     done.add(id);
     const d = decls.get(id);
     if (!d) throw new Error(`plugin ${id} did not load in the sandbox`);
+    noteSandboxDeclaration(d);
     if (!d.tools.length && !d.checks.length) continue;
     registry.use({
       tools: d.tools.map((t) => ({ ...t, run: (input, ctx) => host.runTool(t.name, input, ctx) })),

@@ -15,7 +15,7 @@ import { api, type Voice } from '../api.ts';
 import { EffortPicker, ModelPicker } from './ModelPicker.tsx';
 import { aiSettings, aiStatus, connectProvider, disconnectProvider, ensureStatus, providersChanged, refreshStatus, removeCustomProvider, saveCustomProvider, serverName, setAiSettings, statusLabels } from '../ai/index.ts';
 import { allowNotifications, notificationState } from '../notify.ts';
-import { previewInfo } from '../preview.ts';
+import { preview, previewInfo } from '../preview.ts';
 import { DEFAULT_PREFERENCES, prefs, resetPrefs, setLanguage, setPrefs, settingsOpen, settingsSection, THEMES, type Preferences, type SettingsSection, type ThemeInfo } from '../settings.ts';
 import { S, toast } from '../state.ts';
 import { Modal, NumberField, Select, Seg, Toggle } from './controls.tsx';
@@ -115,7 +115,7 @@ function Preview() {
         <Toggle on={p.exactFrames} onChange={(v) => setPrefs({ exactFrames: v })} />
       </Row>
       <Row label={t('settings.sandboxPreview')} hint={t('settings.sandboxPreviewHint')}>
-        <Toggle on={p.sandboxPreview} onChange={(v) => setPrefs({ sandboxPreview: v })} />
+        <Toggle on={p.sandboxPreview} onChange={(v) => { setPrefs({ sandboxPreview: v }); void preview.reloadPlugins(); }} />
       </Row>
       {inEditor && (
         <div class="set-info">

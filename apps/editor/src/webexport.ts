@@ -14,7 +14,7 @@ import { encodeWav, mixComposition, Renderer, SETTLE_LIMIT } from '@tramme/rende
 import { AVC_FROM_STREAM } from './avc.ts';
 import type { WebFormat } from './formats.ts';
 import { filterModule, pluginHost } from './plugins/index.ts';
-import { blitSandboxFrame, ensureSandboxDoc, primeSandboxExports, sandboxVideoFrames } from './plugins/sandbox-draw.ts';
+import { blitSandboxFrame, declarationsModule, ensureSandboxDoc, pluginItemsOf, primeSandboxExports, sandboxDeclaration, sandboxVideoFrames } from './plugins/sandbox-draw.ts';
 import { prefs } from './settings.ts';
 import { t } from './i18n/index.ts';
 
@@ -70,10 +70,12 @@ export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebF
   }
 
   const canvas = document.createElement('canvas');
-  // plugin tools and checks stay where the editor put them (the sandbox); an export runs render-time code only
-  const r = await Renderer.open(doc, opts.registry, base, canvas, { compId: opts.compId, pluginModule: filterModule });
   // the flag: the whole picture — plugins, modifiers, effects, simulations — is evaluated and drawn in the sandbox
   const sandboxed = prefs.peek().sandboxPreview && (doc.plugins ?? []).length > 0;
+  // under the flag the sandbox owns the plugins' modules: its declarations feed the registry, nothing loads on the page
+  if (sandboxed) await pluginHost(base).ensure(pluginItemsOf(doc, base));
+  // plugin tools and checks stay where the editor put them (the sandbox); an export runs render-time code only
+  const r = await Renderer.open(doc, opts.registry, base, canvas, { compId: opts.compId, pluginModule: sandboxed ? undefined : filterModule, sandboxModules: sandboxed, sandboxDeclarations: sandboxed ? (id) => declarationsModule(sandboxDeclaration(id)!, id) : undefined });
   const sandboxHost = () => pluginHost(base);
   try {
     const { fps, duration } = r.comp;
@@ -100,6 +102,7 @@ export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebF
     const sandboxFrame = async (f: number) => {
       aborted(opts.signal);
       const time = f / fps;
+      ensureSandboxDoc(sandboxHost(), { doc, docUrl: base, loaded: (id) => { try { return r.assets.get(id); } catch { return null; } } });
       const videos = await sandboxVideoFrames(r, doc, time);
       const c = doc.compositions[r.compId];
       const pic = await sandboxHost().renderFrame({ compId: r.compId, t: time, scale: 1, width: c.width, height: c.height, videos });

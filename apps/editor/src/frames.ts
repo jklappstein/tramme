@@ -8,7 +8,7 @@ import type { TrammeDoc } from '@tramme/core';
 import { Renderer } from '@tramme/render';
 import { editorRegistry } from './vocabulary.ts';
 import { attachIsolated, filterModule, pluginHost } from './plugins/index.ts';
-import { ensureSandboxDoc, sandboxVideoFrames } from './plugins/sandbox-draw.ts';
+import { declarationsModule, ensureSandboxDoc, pluginItemsOf, sandboxDeclaration, sandboxVideoFrames } from './plugins/sandbox-draw.ts';
 import { prefs } from './settings.ts';
 import { S } from './state.ts';
 
@@ -23,7 +23,12 @@ export class Stills {
   async rendererFor(doc: TrammeDoc, compId?: string): Promise<Renderer> {
     const id = compId ?? doc.root;
     const base = new URL(S.docUrl.peek(), location.href).href;
-    if (!this.renderer) this.renderer = await Renderer.open(doc, editorRegistry(), base, this.canvas, { compId: id, raster: 'gpu', pluginModule: filterModule });
+    if (!this.renderer) {
+      // the flag: the sandbox owns the plugins' modules, the registry takes its declarations
+      const sandboxed = prefs.peek().sandboxPreview && (doc.plugins ?? []).length > 0;
+      if (sandboxed) await pluginHost(base).ensure(pluginItemsOf(doc, base));
+      this.renderer = await Renderer.open(doc, editorRegistry(), base, this.canvas, { compId: id, raster: 'gpu', pluginModule: sandboxed ? undefined : filterModule, sandboxModules: sandboxed, sandboxDeclarations: sandboxed ? (pid) => declarationsModule(sandboxDeclaration(pid)!, pid) : undefined });
+    }
     // the same version again: its simulations stay computed
     else if (doc !== this.doc || id !== this.compId) await this.renderer.setDoc(doc, { compId: id, trusted: true });
     this.doc = doc; this.compId = id;

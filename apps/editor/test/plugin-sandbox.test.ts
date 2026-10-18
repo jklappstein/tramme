@@ -10,7 +10,7 @@ import { newProject, type Manifest } from '@tramme/project';
 import { Registry, toolOutput, type Host, type PluginModule, type ToolContext, type CheckContext, type TrammeDoc } from '@tramme/core';
 import { connectHost, type PluginHost } from '../src/plugins/host.ts';
 import { guardRealm, startWorkerSide, type SandboxDrawSide } from '../src/plugins/worker-side.ts';
-import { bindSandbox, resetSandbox, primeSandboxExports, sandboxNode } from '../src/plugins/sandbox-draw.ts';
+import { bindSandbox, declarationsModule, noteSandboxDeclaration, resetSandbox, primeSandboxExports, sandboxDeclaration, sandboxNode } from '../src/plugins/sandbox-draw.ts';
 import { RecordingPath2D } from '../src/plugins/recording-path.ts';
 import type { DrawPayload, DrawResult, SandboxDoc } from '../src/plugins/protocol.ts';
 import { attachIsolated, filterModule } from '../src/plugins/vocabulary.ts';
@@ -434,5 +434,34 @@ describe('the recording path', () => {
     expect(a.toString()).toContain('M 5 5 L 6 6');
     const c = new RecordingPath2D(a);
     expect(c.toString()).toBe(a.toString());
+  });
+
+  it('builds the page registry from declarations alone: schemas and wrappers, no plugin code', () => {
+    const decl = {
+      id: 'stars', meta: { name: 'stars', api: 1 }, tools: [], checks: [],
+      nodes: [{ type: 'sky.moon', title: 'Moon', category: 'Shapes', props: { radius: { type: 'number', default: 10 } }, hasPath: true, hasHandles: true, hasExport: true }],
+      effects: [{ type: 'sky.glow', title: 'Glow', category: 'Finish', stage: 'finish' as const, props: {} }],
+      modifiers: [{ type: 'sky.wobble', title: 'Wobble', params: {} }],
+      tours: [{ id: 'stars.tour', steps: [] }],
+      messages: { fr: { 'sky.hello': 'bonjour' } },
+    };
+    const mod = declarationsModule(decl as never, 'stars');
+    const reg = new Registry().use(mod as never, 'stars');
+    const n = reg.node('sky.moon');
+    expect(n.props).toBeDefined();
+    expect(typeof (n.render as { canvas2d?: unknown }).canvas2d).toBe('function');
+    expect(typeof n.path).toBe('function');
+    expect(typeof n.handles).toBe('function');
+    expect(n.export).toBeDefined();
+    expect(n.simulate).toBeUndefined();
+    expect(reg.hasEffect('sky.glow')).toBe(true);
+    expect(reg.modifier('sky.wobble')).toBeDefined();
+    expect(mod.tours).toEqual([{ id: 'stars.tour', steps: [] }]);
+    expect(mod.messages).toEqual({ fr: { 'sky.hello': 'bonjour' } });
+    // the declarations the sandbox reported are remembered for the page
+    noteSandboxDeclaration(decl as never);
+    expect(sandboxDeclaration('stars')?.meta?.name).toBe('stars');
+    resetSandbox();
+    expect(sandboxDeclaration('stars')).toBeNull();
   });
 });
