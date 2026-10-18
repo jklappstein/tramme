@@ -157,10 +157,11 @@ export interface NodeType<P = any> {
     canvas2d?(ctx: CanvasRenderingContext2D, props: P, host: Host): void;
     /**
      * A WebGL2 service of the node's own: `g` is the node type's context, kept
-     * from frame to frame (uploaded meshes, compiled programs), sized to the
-     * area in canvas pixels (`area` in composition pixels, its top left at the
-     * origin of the layer's local space). What `g.canvas` holds is drawn into
-     * the layer after the call, over `area`.
+     * from frame to frame (uploaded meshes, compiled programs). The node draws
+     * `g.width` × `g.height` canvas pixels (viewport 0, 0 to them: the canvas,
+     * shared by the type's layers, may be larger); that picture is drawn into
+     * the layer after the call, over `area` (its bounds, in the layer's local
+     * space, composition pixels).
      */
     gl?(g: NodeGL, props: P, host: Host, area: Rect): void;
   };
@@ -174,6 +175,9 @@ export interface NodeType<P = any> {
 export interface NodeGL {
   canvas: HTMLCanvasElement | OffscreenCanvas;
   gl: WebGL2RenderingContext;
+  /** the picture to draw for this layer, in canvas pixels, from the bottom left (GL's origin) */
+  width: number;
+  height: number;
   /** a compiled program for this fragment (and vertex) source, made once */
   program(frag: string, vert?: string): WebGLProgram;
   /** a texture of a picture, linear, clamped; the node deletes it when done */

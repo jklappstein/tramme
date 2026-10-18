@@ -3,7 +3,7 @@
 // the model.3d layer that draws it, centred on the time asked.
 
 import { pointer, type ToolContext, type ToolType } from '@tramme/core';
-import { freshId } from './model.ts';
+import { freshId, mediaAssetsOf } from './model.ts';
 import { t } from './i18n/index.ts';
 
 export const MODEL_TOOLS: ToolType[] = [
@@ -22,7 +22,7 @@ export const MODEL_TOOLS: ToolType[] = [
     },
     run({ asset: wanted, at, duration, height }, ctx: ToolContext) {
       const assets = Object.entries(ctx.doc.assets).filter(([, a]) => a.type === 'model');
-      const id = wanted ?? assets.find(([aid]) => ctx.selection.includes(aid))?.[0] ?? assets.at(-1)?.[0];
+      const id = wanted ?? mediaAssetsOf(ctx.doc, ctx.compId, ctx.selection, ['model'])[0] ?? assets.at(-1)?.[0];
       if (!id) throw new Error('the project has no .glb asset: join one to a message (or bring one in) and run again');
       const c = ctx.doc.compositions[ctx.compId];
       const start = Math.max(0, Math.min(at ?? ctx.time, c.duration - 0.5));

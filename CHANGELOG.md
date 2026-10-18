@@ -37,12 +37,14 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 - The **adjustment layer**: it draws nothing of its own — its effects apply to everything under it in the stack (a grade over a scene, one blur for a set). A composition without one pays nothing.
 - The project's **versions**: the clock beside the save state keeps instants of the project (the document saved first, so a version says exactly what is on screen), each restorable from a list, each removable.
 - The home screen's **search**: from six films on, a field at the right of "Your films" filters the cards by name.
+- A **text over detail** check: once the free space tool has read a frame, the checks warn when a text sits on its busy cells (about a third of the text's area or more) and point at the clear rectangle the analysis found, so a title moves where the picture is quiet.
 
 ### Changed
 
 - The home screen's cards keep one thumbnail ratio (16/10, the film filling its box cropped): the rows stand as tall as each other whatever the film's format, where a vertical film used to stretch its whole row.
 - The lines between the atelier's panels show at rest instead of hiding in the gutters, each says what it does (the chat's: "drag: the chat grows or shrinks"), and the tours' "The tricks" has a step on them.
 - The tours' "The tricks" also tells the clips' thumbs and fades, the crossfade and the loop, the videos' speed, the markers at the keyboard and the versions.
+- Under the hood: the free space tool reads its video straight at the grid's size instead of decoding a full frame for a handful of cells, glTF meshes are parsed once per node (three reads before), a node's own WebGL canvas is capped at 2048 px (a zoomed node used to ask the GPU for a canvas as big as the frame), the transcript the tools read is picked in one shared helper, and document attachments tell the assistant their size.
 
 ### Fixed
 
@@ -50,6 +52,20 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 - The settings' section descriptions sat unstyled on the cards' top edge, half outside; the theme picker crushed its previews to pills and wrapped eight themes as six plus two.
 - The storyboard's play button turned into a bare disc when playing: its pause icon drew nothing (a stroke path forced into a filled button).
 - The examples' cards stood upright, their thumb a small centred picture: they are horizontal cards again (thumb beside the text), as designed.
+- **Lip sync**: a mouth holds its shape for the word instead of snapping shut between letters (each key now holds until the next), the mouth closes again after the last word, and the transcript's language drives the phonemes, so a French line is no longer mouthed as English.
+- The free space analysis measures its grid's border cells too (the frame's edges were read one cell off, held at nothing).
+- The recipes' hidden pieces do their work again: the logo reveal's iris and wipe really apply their mask (it was left out of the matte), the map journey's line is revealed by its rectangle, and a kit whose typeface cannot be fetched still applies its colours. The wipes and the timeline line grow from their starting edge, and the journey reveals from where it starts, whatever way it runs.
+- The **crossfade** fades the layer that ends first, whichever of the pair it is.
+- **Depth**: a depth video follows its source's trim and speed (it played the file from its start, ignoring the clip's start and rate), the layers the tool adds copy the source's playback settings, and photo 2.5D no longer grows the photo a little more every time it runs.
+- A **looped section** sounds and previews as it should: the mixes wrap what plays past the section back into it (the raw offset used to run on into the file's remainder), and the preview seeks inside the section at the clip's speed.
+- The tools that pick a media by default (logo reveal, split screen, background removal, 3D model) no longer take an asset a tool made beside it (a depth map, a cut-out) in its place.
+- The timeline's filmstrip no longer hangs the tab on a clip narrower than one thumb (it asked for thousands of canvas slots), and it reads a video layer's static start instead of breaking on it.
+- The **versions**: restoring one no longer meets the "unsaved changes" guard on reload, and a version pushed out by the thirty kept is deleted from the project instead of piling up unseen.
+- **3D models**: meshes without index buffers load (their vertices are read in order), the whole model's bounds follow each part's transform, so a rotated, scaled or offset part no longer falls outside the frame, the turntable spin turns the model about its own centre (one authored away from the origin used to orbit instead of spinning in place), and a replaced model file is read again.
+- The **simulated nodes**: the rope reaches its target from wherever its own layer sits (the target was read in the composition while the rope lives in its layer) and `length 0` keeps the distance it starts with instead of tracking the target's every move; the cloth's wind breathes at the period the field promises (it played as a frequency, too fast at the default).
+- **Background removal** places the cut-out over its source picture, with its position, scale, rotation, crop and span, instead of centred in the frame.
+- The keyboard: **M** and **1** to **9** answer only when no modifier is held, so the browser's own shortcuts keep working in the atelier.
+- Map-journey stops written "0.2, 0.3" (spaces after the commas) parse as pairs instead of being dropped, and the recipes no longer crash naming a layer whose asset has gone missing.
 
 ## [0.7.1] - 2026-10-18
 

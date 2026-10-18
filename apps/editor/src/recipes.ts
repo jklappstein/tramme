@@ -8,7 +8,7 @@
 import type { EaseSpec, KitType, Op, ToolContext, ToolType, TrammeDoc, Vec2 } from '@tramme/core';
 import { pointer } from '@tramme/core';
 import { adder } from './templates.ts';
-import { clip } from './model.ts';
+import { clip, isToolAsset, mediaAssetsOf } from './model.ts';
 
 // ── the look of the document ─────────────────────────────────
 type Bezier = [number, number, number, number];
@@ -51,6 +51,16 @@ export function counterWidth(doc: TrammeDoc, text: string, size: number, weight:
 }
 
 export const r = (x: number) => Math.round(x * 100) / 100;
+
+/**
+ * The opacity of an entrance from t0 to t1, held, then the shared fade out
+ * (the 0.35 s before end). When time is short (a slow kit, a brief piece) the
+ * entrance is squeezed before the fade: keys out of order are refused.
+ */
+export function enterThenOut(s: { enter: EaseSpec; exit: EaseSpec }, t0: number, t1: number, end: number) {
+  const out = r(end - 0.35), b = Math.min(r(t1), out), a = Math.min(r(t0), b);
+  return { $k: [{ t: a, v: 0, ease: s.enter }, { t: b, v: 1 }, { t: out, v: 1, ease: s.exit }, { t: end, v: 0 }] };
+}
 export const compOf = (ctx: ToolContext) => ctx.doc.compositions[ctx.compId];
 const atOf = (ctx: ToolContext, at?: number) => r(at ?? ctx.time);
 
@@ -199,7 +209,7 @@ const stat: ToolType<StatArgs> = {
     const u = Math.min(c.width, c.height), size = Math.round(u * 0.22), y = a.place === 'top' ? c.height * 0.3 : a.place === 'bottom' ? c.height * 0.66 : c.height * 0.46;
     const roll = r(Math.max(0.9, s.pace * 2.2));
     const { add, done } = adder(doc, ctx.compId);
-    const fade = (t0: number) => ({ $k: [{ t: t0, v: 0, ease: s.enter }, { t: r(t0 + s.pace * 0.6), v: 1 }, { t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] });
+    const fade = (t0: number) => enterThenOut(s, t0, t0 + s.pace * 0.6, end);
     add('stat-value', { type: 'text.counter', name: a.value, in: at, out: end, transform: { position: { $k: [{ t: at, v: [r(c.width / 2), r(y + size * 0.15)], ease: s.enter }, { t: r(at + s.pace), v: [r(c.width / 2), r(y)] }] }, opacity: fade(at) }, props: { from: a.value.replace(/\d/g, '0'), to: a.value, progress: { $k: [{ t: at, v: 0, ease: s.enter }, { t: r(at + roll), v: 1 }] }, turns: 1, size, weight: 900, align: 'center', color: s.accent, ...(s.font ? { font: s.font } : {}) } });
     if (a.label) add('stat-label', { type: 'text', name: a.label, in: at, out: end, transform: { position: { $k: [{ t: r(at + roll * 0.6), v: [r(c.width / 2), r(y + size * 0.42)], ease: s.enter }, { t: r(at + roll * 0.6 + s.pace), v: [r(c.width / 2), r(y + size * 0.36)] }] }, opacity: fade(r(at + roll * 0.6)) }, props: { text: a.label, size: Math.round(u * 0.05), weight: 600, align: 'center', baseline: 'top', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
     return { ops: done(), label: `Key figure ${a.value}`, text: `Key figure ${a.value} rolling up from ${at} s for ${roll} s, on screen until ${end} s.` };
@@ -320,7 +330,7 @@ const logoReveal: ToolType<{ logo?: string; name?: string; style?: 'iris' | 'wip
     const doc = ctx.doc, c = compOf(ctx), s = style(doc), at = atOf(ctx, a.at), end = r(at + (a.duration ?? 3));
     const u = Math.min(c.width, c.height);
     const images = Object.entries(doc.assets).filter(([, x]) => x.type === 'image');
-    const id = a.logo ?? images.find(([aid]) => ctx.selection.includes(aid))?.[0] ?? images.at(-1)?.[0];
+    const id = a.logo ?? mediaAssetsOf(doc, ctx.compId, ctx.selection, ['image'])[0] ?? images.filter(([aid, x]) => !isToolAsset(aid, x)).at(-1)?.[0];
     if (!id) throw new Error('logo-reveal: the project has no picture for the logo: join one to a message and run again');
     const { add, done } = adder(doc, ctx.compId);
     const box = u * 0.34, y = a.name ? c.height * 0.44 : c.height * 0.48, kind = a.style ?? 'iris';
@@ -328,17 +338,18 @@ const logoReveal: ToolType<{ logo?: string; name?: string; style?: 'iris' | 'wip
     const transform: Record<string, unknown> = { position: [r(c.width / 2), r(y)], opacity: hold };
     const effects: unknown[] = [];
     if (kind === 'iris') {
-      add('logo-mask', { type: 'shape.ellipse', name: 'Logo · iris', visible: false, in: at, out: end, transform: { position: [r(c.width / 2), r(y)], scale: { $k: [{ t: at, v: [0, 0], ease: s.emphasized }, { t: r(at + s.pace * 1.6), v: [1, 1] }] } }, props: { size: [r(box * 1.6), r(box * 1.6)], fill: '#FFFFFF' } });
-      effects.push({ id: 'reveal', type: 'fx.matte', props: { source: 'logo-mask', mode: 'alpha' } });
+      const mask = add('logo-mask', { type: 'shape.ellipse', name: 'Logo · iris', visible: false, in: at, out: end, transform: { position: [r(c.width / 2), r(y)], scale: { $k: [{ t: at, v: [0, 0], ease: s.emphasized }, { t: r(at + s.pace * 1.6), v: [1, 1] }] } }, props: { size: [r(box * 1.6), r(box * 1.6)], fill: '#FFFFFF' } });
+      effects.push({ id: 'reveal', type: 'fx.matte', props: { source: mask, mode: 'alpha' } });
     } else if (kind === 'wipe') {
-      add('logo-mask', { type: 'shape.rect', name: 'Logo · wipe', visible: false, in: at, out: end, transform: { anchor: [0, r(box / 2)], position: [r(c.width / 2 - box / 2), r(y)], scale: { $k: [{ t: at, v: [0, 1], ease: s.emphasized }, { t: r(at + s.pace * 1.6), v: [1, 1] }] } }, props: { size: [r(box), r(box)], fill: '#FFFFFF' } });
-      effects.push({ id: 'reveal', type: 'fx.matte', props: { source: 'logo-mask', mode: 'alpha' } });
+      // the rect is drawn centred on its origin: the anchor sits on its left edge, so the wipe grows from there
+      const mask = add('logo-mask', { type: 'shape.rect', name: 'Logo · wipe', visible: false, in: at, out: end, transform: { anchor: [-r(box / 2), 0], position: [r(c.width / 2 - box / 2), r(y)], scale: { $k: [{ t: at, v: [0, 1], ease: s.emphasized }, { t: r(at + s.pace * 1.6), v: [1, 1] }] } }, props: { size: [r(box), r(box)], fill: '#FFFFFF' } });
+      effects.push({ id: 'reveal', type: 'fx.matte', props: { source: mask, mode: 'alpha' } });
     } else {
       transform.position = { $k: [{ t: at, v: [r(c.width / 2), r(y + u * 0.05)], ease: s.enter }, { t: r(at + s.pace * 1.4), v: [r(c.width / 2), r(y)] }] };
-      transform.opacity = { $k: [{ t: at, v: 0, ease: s.enter }, { t: r(at + s.pace), v: 1 }, { t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] };
+      transform.opacity = enterThenOut(s, at, at + s.pace, end);
     }
-    add('logo', { type: 'image', name: doc.assets[id].name ?? id, in: at, out: end, ...(effects.length ? { effects } : {}), transform, props: { image: id, size: [r(box), r(box)], fit: 'contain' } });
-    if (a.name) add('logo-name', { type: 'text', name: a.name, in: at, out: end, transform: { position: [r(c.width / 2), r(y + box * 0.72)], opacity: { $k: [{ t: r(at + s.pace * 0.8), v: 0, ease: s.enter }, { t: r(at + s.pace * 1.5), v: 1 }, { t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] } }, props: { text: a.name, size: Math.round(u * 0.035), weight: 600, align: 'center', baseline: 'top', tracking: 0.18, color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+    add('logo', { type: 'image', name: doc.assets[id]?.name ?? id, in: at, out: end, ...(effects.length ? { effects } : {}), transform, props: { image: id, size: [r(box), r(box)], fit: 'contain' } });
+    if (a.name) add('logo-name', { type: 'text', name: a.name, in: at, out: end, transform: { position: [r(c.width / 2), r(y + box * 0.72)], opacity: enterThenOut(s, at + s.pace * 0.8, at + s.pace * 1.5, end) }, props: { text: a.name, size: Math.round(u * 0.035), weight: 600, align: 'center', baseline: 'top', tracking: 0.18, color: s.ink, ...(s.font ? { font: s.font } : {}) } });
     return { ops: done(), label: `Logo reveal (${kind})`, text: `Logo "${id}" revealed with an ${kind === 'iris' ? 'iris' : kind} from ${at} s, holding until ${end} s${a.name ? `, with the name under it` : ''}.` };
   },
 };
@@ -369,7 +380,7 @@ const listRecipe: ToolType<{ items: string; title?: string; marker?: 'check' | '
     const blockW = mw * 1.9 + maxText, top = c.height * (a.title ? 0.4 : 0.44) - ((items.length - 1) * lh) / 2;
     const { add, done } = adder(doc, ctx.compId);
     const fadeOut = { $k: [{ t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] };
-    if (a.title) add('list-title', { type: 'text', name: a.title, in: at, out: end, transform: { position: [r(c.width / 2), r(top - lh * 0.9)], opacity: { $k: [{ t: at, v: 0, ease: s.enter }, { t: r(at + s.pace), v: 1 }, ...fadeOut.$k] } }, props: { text: a.title, size: Math.round(u * 0.06), weight: 800, align: 'center', baseline: 'middle', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+    if (a.title) add('list-title', { type: 'text', name: a.title, in: at, out: end, transform: { position: [r(c.width / 2), r(top - lh * 0.9)], opacity: enterThenOut(s, at, at + s.pace, end) }, props: { text: a.title, size: Math.round(u * 0.06), weight: 800, align: 'center', baseline: 'middle', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
     const children: string[] = [];
     items.forEach((item, i) => {
       const t0 = r(at + 0.2 + i * step), y = r(i * lh), x0 = -blockW / 2;
@@ -419,13 +430,14 @@ const timeline: ToolType<{ data: string; title?: string; at?: number; duration?:
     const labelSize = Math.round(u * 0.036), textSize = Math.round(u * 0.03);
     const { add, done } = adder(doc, ctx.compId);
     const fadeOut = { $k: [{ t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] };
-    if (a.title) add('timeline-title', { type: 'text', name: a.title, in: at, out: end, transform: { position: [r(c.width / 2), r(lineY - u * 0.22)], opacity: { $k: [{ t: at, v: 0, ease: s.enter }, { t: r(at + s.pace), v: 1 }, ...fadeOut.$k] } }, props: { text: a.title, size: Math.round(u * 0.06), weight: 800, align: 'center', baseline: 'middle', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
-    add('timeline-line', { type: 'shape.rect', name: 'Line', in: at, out: end, transform: { anchor: [0, r(Math.max(2, u * 0.004) / 2)], position: [r(c.width * 0.11), r(lineY)], scale: { $k: [{ t: at, v: [0, 1], ease: s.enter }, { t: r(at + s.pace * 2), v: [1, 1] }] }, opacity: fadeOut }, props: { size: [r(span), r(Math.max(2, u * 0.004))], fill: s.ink } });
+    if (a.title) add('timeline-title', { type: 'text', name: a.title, in: at, out: end, transform: { position: [r(c.width / 2), r(lineY - u * 0.22)], opacity: enterThenOut(s, at, at + s.pace, end) }, props: { text: a.title, size: Math.round(u * 0.06), weight: 800, align: 'center', baseline: 'middle', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+    // the rect is drawn centred on its origin: the anchor sits on the middle of its left edge, so the line grows from x 0.11 toward 0.89, centred on the dots
+    add('timeline-line', { type: 'shape.rect', name: 'Line', in: at, out: end, transform: { anchor: [-r(span / 2), 0], position: [r(c.width * 0.11), r(lineY)], scale: { $k: [{ t: at, v: [0, 1], ease: s.enter }, { t: r(at + s.pace * 2), v: [1, 1] }] }, opacity: fadeOut }, props: { size: [r(span), r(Math.max(2, u * 0.004))], fill: s.ink } });
     events.forEach((ev, i) => {
       const t0 = r(at + 0.25 + (i * s.pace * 1.6)), x = r(c.width * 0.11 + (span * (i + 0.5)) / events.length), above = i % 2 === 0;
       add(`timeline-dot-${i + 1}`, { type: 'shape.ellipse', name: ev.label, in: at, out: end, transform: { position: [x, r(lineY)], scale: { $k: [{ t: t0, v: [0, 0], ease: POP }, { t: r(t0 + s.pace * 0.6), v: [1, 1] }] }, opacity: fadeOut }, props: { size: [r(u * 0.03), r(u * 0.03)], fill: i === events.length - 1 ? s.accent : s.ink } });
-      add(`timeline-label-${i + 1}`, { type: 'text', name: `${ev.label} · label`, in: at, out: end, transform: { position: [x, r(lineY + (above ? -u * 0.05 : u * 0.05))], opacity: { $k: [{ t: t0, v: 0, ease: s.enter }, { t: r(t0 + s.pace * 0.7), v: 1 }, ...fadeOut.$k] } }, props: { text: ev.label, size: labelSize, weight: 800, align: 'center', baseline: above ? 'bottom' : 'top', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
-      if (ev.text) add(`timeline-text-${i + 1}`, { type: 'text', name: ev.text, in: at, out: end, transform: { position: [x, r(lineY + (above ? -u * 0.05 - labelSize * 1.35 : u * 0.05 + labelSize * 1.35))], opacity: { $k: [{ t: r(t0 + s.pace * 0.3), v: 0, ease: s.enter }, { t: r(t0 + s.pace * 0.9), v: 1 }, ...fadeOut.$k] } }, props: { text: ev.text, size: textSize, weight: 500, align: 'center', baseline: above ? 'bottom' : 'top', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+      add(`timeline-label-${i + 1}`, { type: 'text', name: `${ev.label} · label`, in: at, out: end, transform: { position: [x, r(lineY + (above ? -u * 0.05 : u * 0.05))], opacity: enterThenOut(s, t0, t0 + s.pace * 0.7, end) }, props: { text: ev.label, size: labelSize, weight: 800, align: 'center', baseline: above ? 'bottom' : 'top', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+      if (ev.text) add(`timeline-text-${i + 1}`, { type: 'text', name: ev.text, in: at, out: end, transform: { position: [x, r(lineY + (above ? -u * 0.05 - labelSize * 1.35 : u * 0.05 + labelSize * 1.35))], opacity: enterThenOut(s, t0 + s.pace * 0.3, t0 + s.pace * 0.9, end) }, props: { text: ev.text, size: textSize, weight: 500, align: 'center', baseline: above ? 'bottom' : 'top', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
     });
     return { ops: done(), label: `Timeline of ${events.length} event(s)`, text: `Timeline of ${events.length} event(s), the line drawn from ${at} to ${r(at + s.pace * 2)} s, one dot every ${r(s.pace * 1.6)} s, on screen until ${end} s.` };
   },
@@ -448,7 +460,9 @@ const splitScreen: ToolType<{ assets?: string[]; layout?: 'half' | 'thirds'; gap
   run(a, ctx) {
     const doc = ctx.doc, c = compOf(ctx), s = style(doc), at = atOf(ctx, a.at), end = r(Math.min(at + (a.duration ?? c.duration - at), c.duration));
     const media = Object.entries(doc.assets).filter(([, x]) => x.type === 'image' || x.type === 'video');
-    const picked = a.assets?.length ? a.assets : [...ctx.selection.filter((id) => media.some(([mid]) => mid === id)), ...media.map(([mid]) => mid)].filter((id, i, all) => all.indexOf(id) === i);
+    // the selection holds layer ids: their own media come first, and the tools' own files (depth maps, cut-outs) are never picked
+    const usable = media.filter(([mid, x]) => !isToolAsset(mid, x));
+    const picked = a.assets?.length ? a.assets : [...mediaAssetsOf(doc, ctx.compId, ctx.selection, ['image', 'video']), ...usable.map(([mid]) => mid)].filter((id, i, all) => all.indexOf(id) === i);
     const n = a.layout === 'thirds' ? 3 : 2;
     const ids = picked.slice(0, n);
     if (ids.length !== n) throw new Error(`split-screen: ${n} media are needed (${ids.length} found)`);
@@ -457,23 +471,20 @@ const splitScreen: ToolType<{ assets?: string[]; layout?: 'half' | 'thirds'; gap
     const { add, done } = adder(doc, ctx.compId);
     add('split-bg', { type: 'shape.rect', name: 'Split · background', in: at, out: end, transform: { position: [r(c.width / 2), r(c.height / 2)] }, props: { size: [c.width, c.height], fill: doc.tokens?.plate?.type === 'color' ? '@plate' : '#000000' } });
     ids.forEach((id, i) => {
-      const kind = doc.assets[id].type as 'image' | 'video';
+      const kind = (doc.assets[id]?.type ?? 'image') as 'image' | 'video';
       const x0 = r(cellW * (i + 0.5) + gap * i), t0 = r(at + i * Math.max(s.stagger * 2, 0.12));
       const from: Vec2 = x0 < c.width / 2 ? [r(x0 - c.width), r(c.height / 2)] : [r(x0 + c.width), r(c.height / 2)];
       const props: Record<string, unknown> = kind === 'image' ? { image: id, size: [r(cellW), c.height], fit: 'cover' } : { video: id, size: [r(cellW), c.height], fit: 'cover', muted: i > 0 };
-      add(`split-panel-${i + 1}`, { type: kind, name: doc.assets[id].name ?? id, in: at, out: end, transform: { position: { $k: [{ t: t0, v: from, ease: s.emphasized }, { t: r(t0 + s.pace * 1.8), v: [x0, r(c.height / 2)] }] } }, props });
+      add(`split-panel-${i + 1}`, { type: kind, name: doc.assets[id]?.name ?? id, in: at, out: end, transform: { position: { $k: [{ t: t0, v: from, ease: s.emphasized }, { t: r(t0 + s.pace * 1.8), v: [x0, r(c.height / 2)] }] } }, props });
     });
     return { ops: done(), label: `Split screen (${n} panels)`, text: `Split screen of ${n} panel(s) (${ids.join(', ')}), sliding in from ${at} s every ${r(Math.max(s.stagger * 2, 0.12))} s, until ${end} s. The first panel keeps its sound, the others are muted.` };
   },
 };
 
 // ── a journey on a map ───────────────────────────────────────
-/** "0.2,0.3 0.5,0.6 0.8,0.4": the stops as fractions of the frame, in order */
+/** "0.2,0.3 0.5,0.6 0.8,0.4": the stops as fractions of the frame, in order (written with or without spaces after the commas) */
 export function parseStops(stops: string): Vec2[] {
-  return stops.split(/\s+/).filter(Boolean).map((pair) => {
-    const m = /^\s*([0-9.]+)\s*[,;]\s*([0-9.]+)\s*$/.exec(pair);
-    return m ? [Number(m[1]), Number(m[2])] as Vec2 : null;
-  }).filter((x): x is Vec2 => !!x && x.every((v) => Number.isFinite(v)));
+  return [...stops.matchAll(/([0-9.]+)\s*[,;]\s*([0-9.]+)/g)].map((m) => [Number(m[1]), Number(m[2])] as Vec2).filter((v) => v.every((x) => Number.isFinite(x)));
 }
 
 const mapJourney: ToolType<{ stops: string; names?: string; map?: string; at?: number; duration?: number }> = {
@@ -503,7 +514,8 @@ const mapJourney: ToolType<{ stops: string; names?: string; map?: string; at?: n
     const start = r(at + 0.3), totalLen = Math.max(lens.reduce((t, l) => t + l, 0), 1e-9), travel = Math.max(1.2, s.pace * 1.8 * (pts.length - 1));
     const arriveAt = [start];
     let t = start;
-    const dotKeys: Record<string, unknown>[] = [{ t: start, v: pts[0] }];
+    // a key's ease shapes the leg that leaves it: every leg eased, the first one too
+    const dotKeys: Record<string, unknown>[] = [{ t: start, v: pts[0], ease: s.enter }];
     pts.slice(1).forEach((p, i) => {
       t = r(t + travel * (lens[i] / totalLen));
       arriveAt.push(t);
@@ -513,16 +525,25 @@ const mapJourney: ToolType<{ stops: string; names?: string; map?: string; at?: n
     const end = r(Math.max(at + (a.duration ?? 5), t + 0.8));
     const { add, done } = adder(doc, ctx.compId);
     const fadeOut = { $k: [{ t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] };
-    if (a.map) add('journey-map', { type: 'image', name: doc.assets[a.map].name ?? a.map, in: at, out: end, transform: { position: [r(c.width / 2), r(c.height / 2)], scale: { $k: [{ t: at, v: [1, 1], ease: s.standard }, { t: end, v: [1.05, 1.05] }] }, opacity: fadeOut }, props: { image: a.map, size: [c.width, c.height], fit: 'cover' } });
+    if (a.map) add('journey-map', { type: 'image', name: doc.assets[a.map]?.name ?? a.map, in: at, out: end, transform: { position: [r(c.width / 2), r(c.height / 2)], scale: { $k: [{ t: at, v: [1, 1], ease: s.standard }, { t: end, v: [1.05, 1.05] }] }, opacity: fadeOut }, props: { image: a.map, size: [c.width, c.height], fit: 'cover' } });
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), pad = u * 0.06;
     const bx = Math.min(...xs) - pad, by = Math.min(...ys) - pad, bw = Math.max(...xs) - bx + pad, bh = Math.max(...ys) - by + pad;
-    // the line is revealed by a hidden rectangle that grows across its bounds, in step with the dot
-    add('journey-reveal', { type: 'shape.rect', name: 'Journey · reveal', visible: false, in: at, out: end, transform: { anchor: [0, r(bh / 2)], position: [r(bx), r(by + bh / 2)], scale: { $k: [{ t: start, v: [0, 1], ease: s.standard }, { t, v: [1, 1] }] } }, props: { size: [r(bw), r(bh)], fill: '#FFFFFF' } });
-    add('journey-path', { type: 'shape.path', name: 'Journey · route', in: at, out: end, transform: { position: [0, 0], opacity: fadeOut }, effects: [{ id: 'reveal', type: 'fx.matte', props: { source: 'journey-reveal', mode: 'alpha' } }], props: { path: { v: pts, closed: false }, stroke: s.accent, strokeWidth: r(Math.max(3, u * 0.012)), lineCap: 'round', lineJoin: 'round' } });
+    // the line is revealed by a hidden rectangle that grows from the first stop's side, in step with the dot (the rect is drawn centred on its origin: its anchor sits on the starting edge)
+    const ltr = pts[0][0] <= pts[pts.length - 1][0];
+    const reach = (x: number) => Math.min(1, Math.max(0, Math.abs(x - (ltr ? bx : bx + bw)) / bw));
+    // stop i + 1 is reached at arriveAt[i + 1] (arriveAt[0] is the start, the first key's); each leg eased like the dot's
+    const revealKeys: Record<string, unknown>[] = [{ t: start, v: [reach(pts[0][0]), 1], ease: s.enter }];
+    pts.slice(1).forEach((p, i) => {
+      const v = reach(p[0]), prev = (revealKeys[revealKeys.length - 1].v as Vec2)[0];
+      revealKeys.push({ t: arriveAt[i + 1], v: [ltr ? Math.max(prev, v) : Math.min(prev, v), 1], ease: s.enter });
+    });
+    // the anchor sits on the middle of the starting edge, the position at the middle height of the bounds: the rect covers them top to bottom
+    const reveal = add('journey-reveal', { type: 'shape.rect', name: 'Journey · reveal', visible: false, in: at, out: end, transform: { anchor: [ltr ? -r(bw / 2) : r(bw / 2), 0], position: [r(ltr ? bx : bx + bw), r(by + bh / 2)], scale: { $k: revealKeys } }, props: { size: [r(bw), r(bh)], fill: '#FFFFFF' } });
+    add('journey-path', { type: 'shape.path', name: 'Journey · route', in: at, out: end, transform: { position: [0, 0], opacity: fadeOut }, effects: [{ id: 'reveal', type: 'fx.matte', props: { source: reveal, mode: 'alpha' } }], props: { path: { v: pts, closed: false }, stroke: s.accent, strokeWidth: r(Math.max(3, u * 0.012)), lineCap: 'round', lineJoin: 'round' } });
     add('journey-dot', { type: 'shape.ellipse', name: 'Journey · dot', in: at, out: end, transform: { position: { $k: dotKeys }, opacity: fadeOut }, props: { size: [r(u * 0.03), r(u * 0.03)], fill: s.accent2 } });
     pts.forEach(([x, y], i) => {
       add(`journey-stop-${i + 1}`, { type: 'shape.ellipse', name: `Stop ${i + 1}`, in: at, out: end, transform: { position: [x, y], scale: { $k: [{ t: r(arriveAt[i] - 0.15), v: [0, 0], ease: POP }, { t: r(arriveAt[i] + s.pace * 0.5), v: [1, 1] }] }, opacity: fadeOut }, props: { size: [r(u * 0.022), r(u * 0.022)], fill: plate } });
-      if (names[i]) add(`journey-name-${i + 1}`, { type: 'text', name: names[i], in: at, out: end, transform: { position: [x, r(y + u * 0.035)], opacity: { $k: [{ t: r(arriveAt[i]), v: 0, ease: s.enter }, { t: r(arriveAt[i] + s.pace * 0.6), v: 1 }, ...fadeOut.$k] } }, props: { text: names[i], size: Math.round(u * 0.032), weight: 700, align: 'center', baseline: 'top', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+      if (names[i]) add(`journey-name-${i + 1}`, { type: 'text', name: names[i], in: at, out: end, transform: { position: [x, r(y + u * 0.035)], opacity: enterThenOut(s, arriveAt[i], arriveAt[i] + s.pace * 0.6, end) }, props: { text: names[i], size: Math.round(u * 0.032), weight: 700, align: 'center', baseline: 'top', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
     });
     return { ops: done(), label: `Map journey (${stops.length} stops)`, text: `Map journey of ${stops.length} stop(s)${names.length ? ` (${names.join(', ')})` : ''}, the line drawn from ${start} s, on screen until ${end} s${a.map ? `, over "${a.map}"` : ''}.` };
   },
@@ -532,12 +553,13 @@ const mapJourney: ToolType<{ stops: string; names?: string; map?: string; at?: n
 // ── style kits ───────────────────────────────────────────────
 const tok = (type: 'color' | 'ease' | 'number', value: unknown, description?: string) => ({ type, value, ...(description ? { description } : {}) });
 
+// the kits' fonts: Fontsource files at a pinned version (the same file for every film), the variable ones under "<id>:vf"
 export const BUILTIN_KITS: KitType[] = [
-  { name: 'editorial', title: 'Editorial', description: 'paper and ink, a burnt orange accent, unhurried curves', font: { family: 'Newsreader', url: 'https://cdn.jsdelivr.net/fontsource/fonts/newsreader@latest/latin-wght-normal.woff2', weight: '200 800' }, tokens: { plate: tok('color', '#F4EFE6'), ink: tok('color', '#1B1A17'), accent: tok('color', '#C2410C'), accent2: tok('color', '#1E3A8A'), enter: tok('ease', [0.22, 1, 0.36, 1]), exit: tok('ease', [0.64, 0, 0.78, 0]), standard: tok('ease', [0.42, 0, 0.24, 1]), emphasized: tok('ease', [0.2, 0.8, 0.16, 1]), pace: tok('number', 0.7, 'seconds of an entrance'), stagger: tok('number', 0.07, 'seconds between siblings') } },
-  { name: 'hairline', title: 'Hairline', description: 'technical line drawings on paper: thin strokes, one accent, figures that answer the pointer', font: { family: 'IBM Plex Mono', url: 'https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-400-normal.woff2' }, tokens: { plate: tok('color', '#F7F5F0'), ink: tok('color', '#24241F'), accent: tok('color', '#0F62FE'), accent2: tok('color', '#9A968C'), enter: tok('ease', [0.16, 1, 0.3, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.4, 0, 0.2, 1]), emphasized: tok('ease', [0.2, 0, 0, 1]), pace: tok('number', 0.5, 'seconds of an entrance'), stagger: tok('number', 0.05, 'seconds between siblings') } },
-  { name: 'punchy', title: 'Punchy', description: 'black and white with a yellow accent, fast entrances that overshoot', font: { family: 'Archivo Black', url: 'https://cdn.jsdelivr.net/fontsource/fonts/archivo-black@latest/latin-400-normal.woff2' }, tokens: { plate: tok('color', '#0E0E10'), ink: tok('color', '#FFFFFF'), accent: tok('color', '#FFD400'), accent2: tok('color', '#FF4D6D'), enter: tok('ease', [0.34, 1.56, 0.64, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.3, 0, 0.15, 1]), emphasized: tok('ease', [0.34, 1.3, 0.5, 1]), pace: tok('number', 0.4, 'seconds of an entrance'), stagger: tok('number', 0.04, 'seconds between siblings') } },
-  { name: 'calm', title: 'Calm', description: 'soft blue-grey, slow and smooth movements', font: { family: 'Karla', url: 'https://cdn.jsdelivr.net/fontsource/fonts/karla@latest/latin-wght-normal.woff2', weight: '200 800' }, tokens: { plate: tok('color', '#E8EEF2'), ink: tok('color', '#23313B'), accent: tok('color', '#5B8DB8'), accent2: tok('color', '#8FB89A'), enter: tok('ease', [0.45, 0, 0.2, 1]), exit: tok('ease', [0.55, 0, 0.55, 1]), standard: tok('ease', [0.45, 0, 0.25, 1]), emphasized: tok('ease', [0.25, 0.3, 0.2, 1]), pace: tok('number', 1, 'seconds of an entrance'), stagger: tok('number', 0.1, 'seconds between siblings') } },
-  { name: 'neon', title: 'Neon', description: 'a night plate, cyan and pink accents, sharp curves', font: { family: 'Space Grotesk', url: 'https://cdn.jsdelivr.net/fontsource/fonts/space-grotesk@latest/latin-wght-normal.woff2', weight: '300 700' }, tokens: { plate: tok('color', '#07060F'), ink: tok('color', '#F2F0FF'), accent: tok('color', '#22D3EE'), accent2: tok('color', '#F0ABFC'), enter: tok('ease', [0.16, 1, 0.3, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.3, 0, 0.1, 1]), emphasized: tok('ease', [0.18, 0.9, 0.2, 1]), pace: tok('number', 0.5, 'seconds of an entrance'), stagger: tok('number', 0.05, 'seconds between siblings') } },
+  { name: 'editorial', title: 'Editorial', description: 'paper and ink, a burnt orange accent, unhurried curves', font: { family: 'Newsreader', url: 'https://cdn.jsdelivr.net/fontsource/fonts/newsreader:vf@5.3.0/latin-wght-normal.woff2', weight: '200 800' }, tokens: { plate: tok('color', '#F4EFE6'), ink: tok('color', '#1B1A17'), accent: tok('color', '#C2410C'), accent2: tok('color', '#1E3A8A'), enter: tok('ease', [0.22, 1, 0.36, 1]), exit: tok('ease', [0.64, 0, 0.78, 0]), standard: tok('ease', [0.42, 0, 0.24, 1]), emphasized: tok('ease', [0.2, 0.8, 0.16, 1]), pace: tok('number', 0.7, 'seconds of an entrance'), stagger: tok('number', 0.07, 'seconds between siblings') } },
+  { name: 'hairline', title: 'Hairline', description: 'technical line drawings on paper: thin strokes, one accent, figures that answer the pointer', font: { family: 'IBM Plex Mono', url: 'https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@5.3.0/latin-400-normal.woff2' }, tokens: { plate: tok('color', '#F7F5F0'), ink: tok('color', '#24241F'), accent: tok('color', '#0F62FE'), accent2: tok('color', '#9A968C'), enter: tok('ease', [0.16, 1, 0.3, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.4, 0, 0.2, 1]), emphasized: tok('ease', [0.2, 0, 0, 1]), pace: tok('number', 0.5, 'seconds of an entrance'), stagger: tok('number', 0.05, 'seconds between siblings') } },
+  { name: 'punchy', title: 'Punchy', description: 'black and white with a yellow accent, fast entrances that overshoot', font: { family: 'Archivo Black', url: 'https://cdn.jsdelivr.net/fontsource/fonts/archivo-black@5.3.0/latin-400-normal.woff2' }, tokens: { plate: tok('color', '#0E0E10'), ink: tok('color', '#FFFFFF'), accent: tok('color', '#FFD400'), accent2: tok('color', '#FF4D6D'), enter: tok('ease', [0.34, 1.56, 0.64, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.3, 0, 0.15, 1]), emphasized: tok('ease', [0.34, 1.3, 0.5, 1]), pace: tok('number', 0.4, 'seconds of an entrance'), stagger: tok('number', 0.04, 'seconds between siblings') } },
+  { name: 'calm', title: 'Calm', description: 'soft blue-grey, slow and smooth movements', font: { family: 'Karla', url: 'https://cdn.jsdelivr.net/fontsource/fonts/karla:vf@5.3.0/latin-wght-normal.woff2', weight: '200 800' }, tokens: { plate: tok('color', '#E8EEF2'), ink: tok('color', '#23313B'), accent: tok('color', '#5B8DB8'), accent2: tok('color', '#8FB89A'), enter: tok('ease', [0.45, 0, 0.2, 1]), exit: tok('ease', [0.55, 0, 0.55, 1]), standard: tok('ease', [0.45, 0, 0.25, 1]), emphasized: tok('ease', [0.25, 0.3, 0.2, 1]), pace: tok('number', 1, 'seconds of an entrance'), stagger: tok('number', 0.1, 'seconds between siblings') } },
+  { name: 'neon', title: 'Neon', description: 'a night plate, cyan and pink accents, sharp curves', font: { family: 'Space Grotesk', url: 'https://cdn.jsdelivr.net/fontsource/fonts/space-grotesk:vf@5.3.0/latin-wght-normal.woff2', weight: '300 700' }, tokens: { plate: tok('color', '#07060F'), ink: tok('color', '#F2F0FF'), accent: tok('color', '#22D3EE'), accent2: tok('color', '#F0ABFC'), enter: tok('ease', [0.16, 1, 0.3, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.3, 0, 0.1, 1]), emphasized: tok('ease', [0.18, 0.9, 0.2, 1]), pace: tok('number', 0.5, 'seconds of an entrance'), stagger: tok('number', 0.05, 'seconds between siblings') } },
 ];
 
 const kit: ToolType<{ kit: string; background?: boolean; font?: boolean }> = {
@@ -564,11 +586,16 @@ const kit: ToolType<{ kit: string; background?: boolean; font?: boolean }> = {
     if (has) return done('. The project already has a font: it stays; remove it first to take the kit\'s');
     return (async () => {
       const slug = f.family.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      const r = await fetch(f.url);
-      if (!r.ok) throw new Error(`the kit's font ${f.family} could not be fetched (HTTP ${r.status})`);
-      const src = await ctx.writeFile(`assets/fonts/${slug}.woff2`, await r.blob());
-      ops.push({ op: 'add', path: pointer('assets', `font-${slug}`), value: { type: 'font', src, family: f.family, name: f.family, ...(f.weight ? { weight: f.weight } : {}) } });
-      return done(`, its font ${f.family} brought in as a font asset (recipes and dressings now write in it)`);
+      try {
+        const r = await fetch(f.url);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const src = await ctx.writeFile(`assets/fonts/${slug}.woff2`, await r.blob());
+        ops.push({ op: 'add', path: pointer('assets', `font-${slug}`), value: { type: 'font', src, family: f.family, name: f.family, ...(f.weight ? { weight: f.weight } : {}) } });
+        return done(`, its font ${f.family} brought in as a font asset (recipes and dressings now write in it)`);
+      } catch (e) {
+        // a font the network refuses must not lose the kit: its tokens are applied all the same
+        return done(`, but its font ${f.family} could not be brought in (${(e as Error).message}): the tokens are set, the texts keep the project's font`);
+      }
     })();
   },
 };

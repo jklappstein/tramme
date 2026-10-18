@@ -57,8 +57,11 @@ function VersionsPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => 
       const id = S.project.peek().id, now = new Date();
       const file = `versions/${now.toISOString().replace(/[:.]/g, '-')}.json`;
       await api.write(id, file, stringifyDoc(S.doc.peek() as TrammeDoc), { type: 'application/json' });
-      const next = [{ file, label: now.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }), at: now.toISOString() }, ...(await listVersions())].slice(0, 30);
+      const prev = await listVersions();
+      const next = [{ file, label: now.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }), at: now.toISOString() }, ...prev].slice(0, 30);
       await api.write(id, VERSIONS_INDEX, JSON.stringify({ versions: next }), { type: 'application/json' });
+      // a version pushed out by the cap is deleted with its index row: the file would otherwise stay forever
+      await Promise.all(prev.filter((v) => !next.some((n) => n.file === v.file)).map((v) => api.removeFile(id, v.file).catch(() => {})));
       setList(next);
       toast(t('topbar.versionAdded'));
     } catch (e) { toast(t('common.couldNotSaveError', { error: (e as Error).message }), 'error'); }
@@ -73,6 +76,8 @@ function VersionsPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => 
       if (!r) throw new Error(`${v.file}: missing`);
       JSON.parse(r.text) as TrammeDoc;
       await api.write(id, DOCUMENT, r.text, { type: 'application/json' });
+      // the reloaded page must not be asked to save what it is only starting to read: the write above is the state of record
+      S.save.value = 'saved';
       location.reload();
     } catch (e) { toast((e as Error).message, 'error'); setBusy(false); }
   };

@@ -23,9 +23,8 @@
 .resizer.v::before { left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; }
 .resizer.h::before { top: 50%; left: 0; right: 0; height: 2px; margin-top: -1px; }
 .resizer:hover::before, .resizer.dragging::before { background: var(--accent-line); }
-/* the lines between the panels show at rest: a grip is only a grip when it is seen */
+/* the lines between the panels show at rest: a grip is only a grip when it is seen (hover keeps its accent: the :hover rule above is more specific) */
 .resizer::before { background: var(--line-soft); }
-.resizer:hover::before, .resizer.dragging::before { background: var(--accent-line); }
 
 /* ── top bar (shared with the studio, TopBar.tsx) ──────────── */
 .topbar {

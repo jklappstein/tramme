@@ -212,8 +212,8 @@ export function splitLayerOps(doc: TrammeDoc, compId: string, id: string, at: nu
 /**
  * A cross-fade between a layer and the closest one under it: opacity keys on
  * both, over the time they share (half of it at most, `d` seconds around its
- * centre). Null when nothing to fade into (no other layer, or an opacity
- * already animated — it is never touched).
+ * centre). Null when nothing to fade into (no other layer, one that holds the
+ * other in time, or an opacity already animated — it is never touched).
  */
 export function crossfadeOps(doc: TrammeDoc, compId: string, id: string, d: number): { ops: Op[]; under: string } | null {
   const c = doc.compositions[compId], l = c.layers[id];
@@ -242,13 +242,53 @@ export function crossfadeOps(doc: TrammeDoc, compId: string, id: string, d: numb
   if (overlap <= half) return null;
   const w = Math.min(d * 2, overlap) / 2, m = (Math.max(tin, oin) + Math.min(tout, oout)) / 2;
   const a0 = r4(snap(m - w, c.fps)), a1 = r4(snap(m + w, c.fps));
-  const lp = pointer('compositions', compId, 'layers', id, 'transform', 'opacity');
-  const lo = pointer('compositions', compId, 'layers', under, 'transform', 'opacity');
+  const top = typeof topV === 'number' ? topV : 1, low = typeof underV === 'number' ? underV : 1;
+  // the one that starts and ends first gives way: it fades out while the other fades in; when one holds the
+  // other, either would vanish for the part it plays alone (hidden before the fade in, or after the fade out)
+  const topLeaves = tin <= oin && tout <= oout, underLeaves = oin <= tin && oout <= tout;
+  if (!topLeaves && !underLeaves) return null;
   const ops: Op[] = [
-    { op: 'add', path: lp, value: { $k: [{ t: a0, v: typeof topV === 'number' ? topV : 1 }, { t: a1, v: 0 }] } },
-    { op: 'add', path: lo, value: { $k: [{ t: a0, v: 0 }, { t: a1, v: typeof underV === 'number' ? underV : 1 }] } },
+    transformOp(compId, id, l, 'opacity', { $k: topLeaves ? [{ t: a0, v: top }, { t: a1, v: 0 }] : [{ t: a0, v: 0 }, { t: a1, v: top }] }),
+    transformOp(compId, under, o, 'opacity', { $k: topLeaves ? [{ t: a0, v: 0 }, { t: a1, v: low }] : [{ t: a0, v: low }, { t: a1, v: 0 }] }),
   ];
   return { ops, under };
+}
+
+/** a transform that follows another layer's, property by property (its depth too when it has one): a map or a cut-out stays exactly over its source */
+export function linkedTransform(source: string, l: Layer): Record<string, { $link: string }> {
+  return Object.fromEntries(['anchor', 'position', 'scale', 'rotation', 'opacity', ...(l.transform?.depth !== undefined ? ['depth'] : [])].map((k) => [k, { $link: `${source}.transform.${k}` }]));
+}
+
+/** sets one transform property of a layer: the transform written whole when the layer has none yet (an add under it would find no path) */
+export function transformOp(compId: string, id: string, l: Layer, key: string, value: unknown): Op {
+  return l.transform === undefined
+    ? { op: 'add', path: pointer('compositions', compId, 'layers', id, 'transform'), value: { [key]: value } }
+    : { op: 'add', path: pointer('compositions', compId, 'layers', id, 'transform', key), value };
+}
+
+/** an asset a tool made beside a media (a depth map, a cut-out mask or picture): never a default pick; its file says so even when its id was cut to 64 characters */
+export const isToolAsset = (id: string, a?: { src?: string }): boolean =>
+  /^(depth|cutout)-/.test(id) || /-cut$/.test(id) || /^assets\/(depth|cutout)\//.test(a?.src ?? '');
+
+/** the prop that holds a media layer's own asset */
+const MEDIA_PROP: Record<string, string> = { video: 'video', audio: 'audio', image: 'image', 'model.3d': 'source' };
+
+/** the transcript asset the tools read: the edit's one when there is one */
+export function transcriptOfDoc(doc: TrammeDoc): string | undefined {
+  const ids = Object.keys(doc.assets).filter((id) => doc.assets[id].type === 'json' && id.startsWith('transcription-'));
+  return ids.find((id) => id.endsWith('-edit')) ?? ids[0];
+}
+
+/** the media assets of the selected layers (the layer's own picture, video, sound or model): a selection is a choice, a tool's own file included */
+export function mediaAssetsOf(doc: TrammeDoc, compId: string, selection: readonly string[], kinds: readonly string[]): string[] {
+  const c = doc.compositions[compId], out: string[] = [];
+  for (const id of selection) {
+    const l = c.layers[id], prop = l && MEDIA_PROP[l.type];
+    if (!prop) continue;
+    const a = staticValue(l.props?.[prop]);
+    if (typeof a === 'string' && doc.assets[a] && kinds.includes(doc.assets[a].type) && !out.includes(a)) out.push(a);
+  }
+  return out;
 }
 
 /** a fresh id: base, base2, base3... */

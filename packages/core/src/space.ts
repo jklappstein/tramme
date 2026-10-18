@@ -41,19 +41,25 @@ export function largestFree(g: SpaceGrid, busy = 0.45): { x: number; y: number; 
   return { x: best.x / g.cols, y: best.y / g.rows, w: best.w / g.cols, h: best.h / g.rows };
 }
 
-/** how far into the frame the clear margins reach on each side, in fractions (0: nothing free) */
-export function clearMargins(g: SpaceGrid, busy = 0.45): { left: number; right: number; top: number; bottom: number } {
-  const strip = (cells: number[], from: (i: number) => number) => {
-    let n = 0;
-    while (n < cells.length && cells[from(n)] < busy) n++;
-    return n;
-  };
+/**
+ * How far into the frame the clear margins reach on each side, in fractions
+ * of the frame (0: nothing free): the columns (or rows) from that edge inward
+ * that stay clear, a line counting as clear when `share` of its cells are.
+ */
+export function clearMargins(g: SpaceGrid, busy = 0.45, share = 0.9): { left: number; right: number; top: number; bottom: number } {
+  const clear = (cells: number[]) => cells.filter((v) => v < busy).length >= share * cells.length;
   const col = (c: number) => Array.from({ length: g.rows }, (_, r) => g.busy[r * g.cols + c]);
   const row = (r: number) => Array.from({ length: g.cols }, (_, c) => g.busy[r * g.cols + c]);
+  /** the clear lines from an edge inward, until the first busy one */
+  const depth = (n: number, line: (i: number) => number[]) => {
+    let i = 0;
+    while (i < n && clear(line(i))) i++;
+    return i / n;
+  };
   return {
-    left: strip(col(0), (i) => i) / g.rows,
-    right: strip(col(g.cols - 1), (i) => i) / g.rows,
-    top: strip(row(0), (i) => i) / g.cols,
-    bottom: strip(row(g.rows - 1), (i) => i) / g.cols,
+    left: depth(g.cols, (i) => col(i)),
+    right: depth(g.cols, (i) => col(g.cols - 1 - i)),
+    top: depth(g.rows, (i) => row(i)),
+    bottom: depth(g.rows, (i) => row(g.rows - 1 - i)),
   };
 }

@@ -122,7 +122,6 @@ export function kindIcon(type: string): IconName {
   if (type === 'comp' || type === 'adjust') return 'comp';
   if (type === 'code') return 'code';
   if (type === 'audio') return 'audio';
-  if (type === 'comp') return 'comp';
   if (type.startsWith('particles')) return 'particles';
   if (type.startsWith('shader')) return 'shader';
   return 'box';

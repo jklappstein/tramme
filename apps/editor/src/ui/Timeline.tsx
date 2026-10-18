@@ -286,7 +286,8 @@ export function Timeline() {
     // a cross-fade with the layer under it, when their times meet and neither opacity is animated
     const fade = crossfadeOps(d0, compId, id, 0.5);
     const media = l.type === 'video' || l.type === 'audio';
-    const start0 = typeof staticValue(l.props?.start) === 'number' ? (staticValue(l.props?.start) as number) : null;
+    // no start written means the file plays from its beginning: the loop stays offered
+    const start0 = l.props?.start === undefined ? 0 : typeof staticValue(l.props.start) === 'number' ? (staticValue(l.props.start) as number) : null;
     const rate = typeof staticValue(l.props?.rate) === 'number' ? (staticValue(l.props?.rate) as number) : 1;
     const looping = staticValue(l.props?.loop) === true;
     openLayerMenu(e, id, {
@@ -490,26 +491,28 @@ function ClipFilm({ layer, from, seconds, width }: { layer: Layer; from: number;
   void filmVersion.value;
   const canvas = useRef<HTMLCanvasElement>(null);
   const asset = staticValue(layer.props?.video);
-  if (typeof asset !== 'string' || width < 60) return null;
   const rate = Number(staticValue(layer.props?.rate) ?? 1) || 1;
   const start = Math.max(0, Number(staticValue(layer.props?.start) ?? 0) || 0);
   const looping = staticValue(layer.props?.loop) === true, loopEnd = Number(staticValue(layer.props?.loopEnd) ?? 0);
+  // at most 128 slots: the canvas never passes what a browser takes (8192 px) and the CSS stretches it over the clip
+  const slots = Math.min(Math.ceil(width / FILM_W), Math.floor(8192 / FILM_W));
+  const ok = typeof asset === 'string' && width >= 60 && slots > 0;
   useLayoutEffect(() => {
     const c = canvas.current;
-    if (!c) return;
+    if (!c || !ok || typeof asset !== 'string') return;
     const g = c.getContext('2d')!;
     g.clearRect(0, 0, c.width, c.height);
-    const n = Math.ceil(width / FILM_W);
     const len = (looping ? loopEnd : 0) - start;
-    for (let i = 0; i < n; i++) {
-      const mid = from + ((i + 0.5) * seconds) / n;
+    for (let i = 0; i < slots; i++) {
+      const mid = from + ((i + 0.5) * seconds) / slots;
       let src = start + (mid - (layer.in ?? 0)) * rate;
       if (looping && len > 0.001) src = start + (((src - start) % len) + len) % len;
       const th = filmThumb(asset, src);
       if (th) g.drawImage(th, i * FILM_W, 0, FILM_W, FILM_H);
     }
   });
-  return <canvas ref={canvas} class="film" width={Math.ceil(width)} height={FILM_H} aria-hidden="true" />;
+  if (!ok) return null;
+  return <canvas ref={canvas} class="film" width={slots * FILM_W} height={FILM_H} aria-hidden="true" />;
 }
 
 /** the fades of a clip as two handles at its top corners: drag one, the gain follows */

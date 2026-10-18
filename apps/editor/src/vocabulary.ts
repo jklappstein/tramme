@@ -25,6 +25,7 @@ import { SHORTS_TOOLS } from './shorts.ts';
 import { SOURCE_TOOLS } from './sources.ts';
 import { SOUND_TOOLS } from './sound.ts';
 import { MIXING_TOOLS } from './mixing.ts';
+import { transcriptOfDoc } from './model.ts';
 import { TRACKING_TOOLS } from './tracking.ts';
 import { TEMPLATES, type TemplateArgs } from './templates.ts';
 
@@ -32,19 +33,13 @@ const at = { type: 'number', minimum: 0, title: 'Start (s)', description: 'compo
 const duration = { type: 'number', minimum: 0.1, title: 'Duration (s)' };
 const place = { enum: ['top', 'center', 'bottom'], title: 'Place' };
 
-/** the transcript the captions read: the one of the edit when there is one */
-function transcriptOf(ctx: ToolContext): string | undefined {
-  const ids = Object.entries(ctx.doc.assets).filter(([id, a]) => a.type === 'json' && id.startsWith('transcription-')).map(([id]) => id);
-  return ids.find((id) => id.endsWith('-edit')) ?? ids[0];
-}
-
 function templateTool(name: string, properties: Record<string, unknown>, required: string[] = []): ToolType<Partial<TemplateArgs>> {
   const tpl = TEMPLATES[name];
   return {
     name, title: tpl.title, description: tpl.description,
     input: { type: 'object', properties, required },
     run(input, ctx) {
-      const transcript = name === 'captions' ? input.transcript ?? transcriptOf(ctx) : input.transcript;
+      const transcript = name === 'captions' ? input.transcript ?? transcriptOfDoc(ctx.doc) : input.transcript;
       return tpl.build(ctx.doc, ctx.compId, { ...input, at: input.at ?? ctx.time, transcript });
     },
   };

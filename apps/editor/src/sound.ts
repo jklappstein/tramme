@@ -11,7 +11,7 @@ import { audioClips, Evaluator, isAudioAnalysis, pointer, searchSounds, soundCue
 import { encodeWav, renderSynth, SYNTH_MAX } from '@tramme/render';
 import { api } from './api.ts';
 import { payFor } from './confirm.ts';
-import { clip, freshId, SOUND_GROUP, soundGroupOf } from './model.ts';
+import { clip, freshId, SOUND_GROUP, soundGroupOf, transcriptOfDoc } from './model.ts';
 import { prefs } from './settings.ts';
 import { analyses } from './perception.ts';
 import { SOUND_PRESETS } from './sound-presets.ts';
@@ -510,8 +510,7 @@ const duck: ToolType<{ layers?: unknown; under?: string; depth?: number; attack?
   ai: { when: 'music or an ambience plays under someone speaking: always, so the voice stays clear' },
   async run({ layers, under, depth = prefs.peek().duckDb, attack = 0.15, release = 0.5 }, ctx) {
     const c = ctx.doc.compositions[ctx.compId];
-    const transcripts = Object.entries(ctx.doc.assets).filter(([id, a]) => a.type === 'json' && id.startsWith('transcription-')).map(([id]) => id);
-    const voiceId = under ?? transcripts.find((id) => id.endsWith('-edit')) ?? transcripts[0];
+    const voiceId = under ?? transcriptOfDoc(ctx.doc);
     if (!voiceId) throw new Error('no transcript of a voice: read one first (get_transcript), or give under');
     const tr = await ctx.transcript(voiceId);
     // composition times of the speech: the edit's transcript is in composition time, a file's goes through its layers

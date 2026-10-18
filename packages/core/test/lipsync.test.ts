@@ -22,19 +22,26 @@ describe('the mouth keys of a transcript', () => {
     { w: 'on', s: 1.7, e: 2 },
   ];
 
-  it('share the word’s time over its shapes and close between the words', () => {
+  it('share the word’s time over its shapes, close between the words and after the last one', () => {
     const keys = mouthKeys(words);
-    expect(keys[0]).toEqual({ t: 1, v: 'mbp' });
-    expect(keys[keys.length - 1].v).toBe('d');
+    expect(keys[0]).toEqual({ t: 1, v: 'mbp', ease: 'hold' });
+    expect(keys[keys.length - 1]).toEqual({ t: 2.03, v: 'closed', ease: 'hold' });
     const closed = keys.filter((k) => k.v === 'closed');
-    expect(closed).toHaveLength(1);
+    expect(closed).toHaveLength(2);
     expect(closed[0].t).toBeGreaterThan(1.4);
     expect(closed[0].t).toBeLessThan(1.7);
     expect(keys.map((k) => k.t)).toEqual([...keys.map((k) => k.t)].sort((a, b) => a - b));
+    for (const k of keys) expect(k.ease).toBe('hold');
   });
 
-  it('keeps a short word readable', () => {
+  it('keeps a short word readable and closes after it', () => {
     const keys = mouthKeys([{ w: 'a', s: 5, e: 5.01 }]);
-    expect(keys).toEqual([{ t: 5, v: 'ai' }]);
+    expect(keys[0]).toEqual({ t: 5, v: 'ai', ease: 'hold' });
+    expect(keys.at(-1)!.v).toBe('closed');
+  });
+
+  it('reads a language for the silent letters', () => {
+    const keys = mouthKeys([{ w: 'table', s: 1, e: 1.5 }], { language: 'fr' });
+    expect(keys.some((k) => k.v === 'e')).toBe(false);
   });
 });

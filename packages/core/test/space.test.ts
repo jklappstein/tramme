@@ -31,4 +31,15 @@ describe('the free space of a frame', () => {
     expect(clearMargins(full).left).toBe(0);
     expect(clearMargins(all).left).toBe(1);
   });
+
+  it('measures the clear margins inward from each edge', () => {
+    // a subject on the right third: the left two thirds clear, nothing free on the right
+    const busy = Array.from({ length: 9 * 5 }, (_, i) => (i % 9 >= 6 ? 0.9 : 0.1));
+    const m = clearMargins(grid(9, 5, busy));
+    expect(m.left).toBeCloseTo(6 / 9);
+    expect(m.right).toBe(0);
+    // every row holds the subject: no clear band at the top or the bottom
+    expect(m.top).toBe(0);
+    expect(m.bottom).toBe(0);
+  });
 });

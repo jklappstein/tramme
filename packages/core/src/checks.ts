@@ -261,12 +261,20 @@ export interface Subjects {
 }
 export const isSubjects = (x: unknown): x is Subjects => !!x && typeof x === 'object' && (x as Subjects).kind === 'subjects' && Array.isArray((x as Subjects).frames);
 
+/** the time in its file a media layer shows at composition time t: its start, its pace and its loop, like the video node's clock (a picture: 0) */
+function fileTime(p: PlacedLayer, t: number): number {
+  if (p.node.type !== 'video') return 0;
+  const start = Number(p.props.start) || 0, rate = Number(p.props.rate) || 1;
+  const s = start + (t - (p.layer.in ?? 0)) * rate, len = (Number(p.props.loopEnd) || 0) - start;
+  return p.props.loop === true && len > 0.001 ? start + (((s - start) % len) + len) % len : Math.max(0, s);
+}
+
 /** the people of a media layer at one instant, in composition space: their box and their head (the top quarter) */
 export function subjectsOn(p: PlacedLayer, t: number, data: (id: string) => unknown): { box: Rect; head: Rect }[] {
   if ((p.node.type !== 'video' && p.node.type !== 'image') || !p.box) return [];
   const asset = String(p.props[p.node.type] ?? ''), s = data(`subjects-${asset}`.slice(0, 64));
   if (!isSubjects(s) || !s.frames.length) return [];
-  const ft = p.node.type === 'video' ? t - (p.layer.in ?? 0) + (Number(p.props.start) || 0) : 0;
+  const ft = fileTime(p, t);
   const frame = s.frames.reduce((a, b) => (Math.abs(b.t - ft) < Math.abs(a.t - ft) ? b : a));
   // the picture in its frame: cover crops, contain fits, fill stretches (focus and zoom left aside)
   const f = p.box, r = pictureRect(String(p.props.fit ?? 'cover'), f.w, f.h, s.width, s.height);
@@ -275,6 +283,40 @@ export function subjectsOn(p: PlacedLayer, t: number, data: (id: string) => unkn
     const box = { x: ox + b.x * sx, y: oy + b.y * sy, w: b.w * sx, h: b.h * sy };
     return { box, head: { x: box.x + box.w * 0.15, y: box.y, w: box.w * 0.7, h: Math.min(box.h, box.w * 1.1) * 0.9 } };
   });
+}
+
+/** the free space of a media's frame (the space tool): a grid of how busy each cell is, 0 clear to 1 crowded */
+export interface Space {
+  version: 1;
+  kind: 'space';
+  source?: string;
+  /** the frame the grid was read at (s, in the media's own time) */
+  t: number;
+  /** the media's own pixel size, so the grid maps onto a layer's picture */
+  width?: number;
+  height?: number;
+  cols: number;
+  rows: number;
+  busy: number[];
+  /** fractions of the frame: the clear sides and the largest clear rectangle */
+  sides?: { left: number; right: number; top: number; bottom: number };
+  rect?: Rect;
+}
+export const isSpace = (x: unknown): x is Space => !!x && typeof x === 'object' && (x as Space).kind === 'space' && typeof (x as Space).cols === 'number' && Array.isArray((x as Space).busy);
+
+/** the busy cells of a media layer's free-space grid, in composition space (the picture only: cover crops, contain fits, fill stretches) */
+export function spaceOn(p: PlacedLayer, t: number, data: (id: string) => unknown): { busy: number; box: Rect }[] {
+  if ((p.node.type !== 'video' && p.node.type !== 'image') || !p.box) return [];
+  const asset = String(p.props[p.node.type] ?? ''), s = data(`space-${asset}`.slice(0, 64));
+  if (!isSpace(s) || !s.busy.length || !s.width || !s.height) return [];
+  const ft = fileTime(p, t);
+  // one frame was read: too far from this one, the grid would describe another shot
+  if (p.node.type === 'video' && Math.abs(s.t - ft) > 0.6) return [];
+  const f = p.box, r = pictureRect(String(p.props.fit ?? 'cover'), f.w, f.h, s.width, s.height);
+  const cw = r.w / s.cols, ch = r.h / s.rows, ox = f.x + f.w / 2 + r.x, oy = f.y + f.h / 2 + r.y;
+  const cells: { busy: number; box: Rect }[] = [];
+  for (let i = 0; i < s.busy.length; i++) if (s.busy[i] >= 0.6) cells.push({ busy: s.busy[i], box: { x: ox + (i % s.cols) * cw, y: oy + Math.floor(i / s.cols) * ch, w: cw, h: ch } });
+  return cells;
 }
 
 const overlapArea = (a: Rect, b: Rect) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
@@ -297,6 +339,40 @@ const overSubject: CheckType = {
           check: 'text-over-subject', severity: face ? 'warning' : 'info', t: s.t, layers: [p.id],
           message: face ? `"${name(p)}" covers a face at ${s2(s.t)} s: move it above or below the head, or to the free side of the frame.` : `"${name(p)}" covers someone at ${s2(s.t)} s: the free side of the frame would read better.`,
           say: { text: face ? '"{name}" covers a face at {t} s' : '"{name}" covers someone at {t} s', params: { name: name(p), t: s2(s.t) } },
+        });
+      }
+    }
+    return [...out.values()];
+  },
+};
+
+const overDetail: CheckType = {
+  name: 'text-over-detail', title: 'Text over detail', description: 'text landing where the picture is busy (after the space tool)',
+  texts: ['"{name}" sits on a busy part of the footage at {t} s: the free-space analysis points at clearer ground'],
+  run({ samples, data }) {
+    const out = new Map<string, QualityIssue>();
+    for (const s of samples) {
+      // the busy cells of each picture on screen (like the people of text-over-subject): the texts are tested against them
+      const pictures = s.layers.map((q) => ({ q, cells: spaceOn(q, s.t, data) })).filter((m) => m.cells.length);
+      if (!pictures.length) continue;
+      for (const p of s.layers) {
+        if (!p.box || p.textSize === undefined || p.opacity < 0.5 || !p.text?.trim() || out.has(p.id)) continue;
+        const tb = p.box, area = tb.w * tb.h || 1;
+        // within one picture the cells do not overlap, so the clipped areas add up: the share of the text on its busiest picture
+        let hit = 0, under: PlacedLayer | null = null;
+        for (const m of pictures) {
+          let h = 0;
+          for (const c of m.cells) h += overlapArea(tb, c.box);
+          if (h > hit) { hit = h; under = m.q; }
+        }
+        if (!under || hit < 0.35 * area) continue;
+        const pct = (x: number) => `${Math.round(x * 100)} %`;
+        const sp = data(`space-${String(under.props[under.node.type] ?? '')}`.slice(0, 64));
+        const rect = isSpace(sp) && sp.rect ? ` The analysis points at clearer ground at x ${pct(sp.rect.x)}–${pct(sp.rect.x + sp.rect.w)}, y ${pct(sp.rect.y)}–${pct(sp.rect.y + sp.rect.h)} of the frame.` : ' The analysis points at clearer ground.';
+        out.set(p.id, {
+          check: 'text-over-detail', severity: 'warning', t: s.t, layers: [p.id],
+          message: `"${name(p)}" sits on a busy part of the footage at ${s2(s.t)} s (about ${Math.round((100 * hit) / area)} % of its area).${rect}`,
+          say: { text: '"{name}" sits on a busy part of the footage at {t} s: the free-space analysis points at clearer ground', params: { name: name(p), t: s2(s.t) } },
         });
       }
     }
@@ -540,7 +616,7 @@ const uniformStagger: CheckType = {
   },
 };
 
-export const BUILTIN_CHECKS: CheckType[] = [textSize, textTime, safeZone, overlap, crossing, overSubject, crowd, stillness, linearTravel, springSettle, twinMotion, abruptEntrance, straightTravel, uniformStagger];
+export const BUILTIN_CHECKS: CheckType[] = [textSize, textTime, safeZone, overlap, crossing, overSubject, overDetail, crowd, stillness, linearTravel, springSettle, twinMotion, abruptEntrance, straightTravel, uniformStagger];
 
 /** every check of the registry on one composition, the failures of a check reported as issues */
 export async function runChecks(doc: TrammeDoc, registry: Registry, compId = doc.root, { step = 0.25, only, data = () => undefined }: { step?: number; only?: string[]; data?: (assetId: string) => unknown } = {}): Promise<QualityIssue[]> {

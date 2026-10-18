@@ -77,7 +77,7 @@ export async function readJson(ctx: ToolContext, id: string): Promise<unknown> {
 /** the analyses of the project (the JSON assets these tools save) and its event lists, loaded for the checks, the sounds' moments and the expressions that read them */
 export async function analyses(ctx: ToolContext): Promise<(id: string) => unknown> {
   const loaded = new Map<string, unknown>();
-  await Promise.all(Object.entries(ctx.doc.assets).filter(([id, a]) => a.type === 'json' && /^(analysis|subjects|shots|events)-/.test(id)).map(async ([id]) => {
+  await Promise.all(Object.entries(ctx.doc.assets).filter(([id, a]) => a.type === 'json' && /^(analysis|subjects|shots|events|space)-/.test(id)).map(async ([id]) => {
     try { loaded.set(id, await readJson(ctx, id)); } catch { /* unreadable: left out */ }
   }));
   return (id) => loaded.get(id);
@@ -363,12 +363,14 @@ function busyGrid(g: CanvasRenderingContext2D, w: number, h: number): number[] {
   const px = g.getImageData(0, 0, w, h).data;
   const luma = new Float32Array(w * h);
   for (let i = 0; i < luma.length; i++) luma[i] = (0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]) / 255;
+  /** the luminance at x, y, held at the edges so the border cells are measured too */
+  const at = (x: number, y: number) => luma[Math.min(h - 1, Math.max(0, y)) * w + Math.min(w - 1, Math.max(0, x))];
   const energy = new Float32Array(w * h);
   let max = 0;
-  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x;
-    const dx = Math.abs(luma[i + 1] - luma[i - 1]) + Math.abs(luma[i + w + 1] - luma[i + w - 1]);
-    const dy = Math.abs(luma[i + w] - luma[i - w]) + Math.abs(luma[i + w + 1] - luma[i - w + 1]);
+    const dx = Math.abs(at(x + 1, y) - at(x - 1, y)) + Math.abs(at(x + 1, y + 1) - at(x - 1, y + 1));
+    const dy = Math.abs(at(x, y + 1) - at(x, y - 1)) + Math.abs(at(x + 1, y + 1) - at(x + 1, y - 1));
     const e = dx + dy + (1 - Math.abs(luma[i] * 2 - 1)) * 0.12; // edges, and a little for flat brightness (text lands there well anyway)
     energy[i] = e;
     if (e > max) max = e;
@@ -402,7 +404,8 @@ const space: ToolType<{ asset?: string; t?: number }> = {
         const track = await input.getPrimaryVideoTrack();
         if (!track) throw new Error('this file has no picture');
         w = track.displayWidth; h = track.displayHeight;
-        const f = await new CanvasSink(track, { width: w, height: h, fit: 'fill' }).getCanvas(at);
+        // the frame is read straight at the grid's size: a 4K video is not decoded full width for 48 cells
+        const f = await new CanvasSink(track, { width: w >= h ? 48 : 27, height: w >= h ? 27 : 48, fit: 'fill' }).getCanvas(at);
         if (!f) throw new Error(`no frame at ${at} s`);
         source = f.canvas as CanvasImageSource;
       } finally { input.dispose(); }
@@ -413,7 +416,7 @@ const space: ToolType<{ asset?: string; t?: number }> = {
     const busy = busyGrid(g, gw, gh);
     const grid = { cols: gw, rows: gh, busy };
     const sides = freeSides(grid), rect = largestFree(grid), margins = clearMargins(grid);
-    const data = { version: 1, kind: 'space', source: asset, t: at, cols: gw, rows: gh, busy, sides, rect, margins };
+    const data = { version: 1, kind: 'space', source: asset, t: at, width: w, height: h, cols: gw, rows: gh, busy, sides, rect, margins };
     const { id, ops, reload } = await save(ctx, asset, 'space', data, `Free space · ${a.name ?? asset}`);
     const pct = (x: number) => `${Math.round(x * 100)} %`;
     return {
@@ -421,6 +424,7 @@ const space: ToolType<{ asset?: string; t?: number }> = {
       text: [
         `Free space of "${asset}"${a.type === 'video' ? ` at ${at} s` : ''}, saved as asset "${id}" (a ${gw}×${gh} grid of how busy each cell is, plus the sides and the largest clear rectangle, all in fractions of the frame).`,
         `Clear edges: left ${pct(sides.left)}, right ${pct(sides.right)}, top ${pct(sides.top)}, bottom ${pct(sides.bottom)}.`,
+        `Clear bands inward from each edge: left ${pct(margins.left)}, right ${pct(margins.right)}, top ${pct(margins.top)}, bottom ${pct(margins.bottom)} of the frame.`,
         `The largest clear rectangle holds at x ${pct(rect.x)}–${pct(rect.x + rect.w)}, y ${pct(rect.y)}–${pct(rect.y + rect.h)}: that is where a title or a caption block fits without covering what matters.`,
         'The check tool reads the same data: it warns when text lands on a busy cell.',
       ].join('\n'),

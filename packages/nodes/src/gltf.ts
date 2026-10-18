@@ -97,7 +97,10 @@ function meshOf(gltf: any, bin: ArrayBuffer, meshIndex: number): { prims: GltfPr
     if (prim.attributes.POSITION === undefined) throw new Error('a glTF primitive has no POSITION');
     const positions = asFloat(readAccessor(gltf, bin, prim.attributes.POSITION), 'POSITION');
     const normals = prim.attributes.NORMAL === undefined ? null : asFloat(readAccessor(gltf, bin, prim.attributes.NORMAL), 'NORMAL');
-    const indices = Uint32Array.from(readAccessor(gltf, bin, prim.indices));
+    // glTF makes the indices optional: without any, the vertices are read in order
+    const indices = prim.indices === undefined
+      ? Uint32Array.from({ length: positions.length / 3 }, (_, i) => i)
+      : Uint32Array.from(readAccessor(gltf, bin, prim.indices));
     prims.push({ positions, normals, indices, color: colorOf(gltf, prim) });
     for (let i = 0; i < positions.length; i += 3) for (let d = 0; d < 3; d++) {
       if (positions[i + d] < min[d]) min[d] = positions[i + d];
@@ -119,16 +122,17 @@ function meshOf(gltf: any, bin: ArrayBuffer, meshIndex: number): { prims: GltfPr
 
 function nodeOf(gltf: any, bin: ArrayBuffer, index: number, duration: { n: number }): GltfNode {
   const n = gltf.nodes[index];
+  const mesh = n.mesh === undefined ? null : meshOf(gltf, bin, n.mesh);
   const made: GltfNode = {
     name: n.name ?? `node ${index}`,
-    prims: n.mesh === undefined ? [] : meshOf(gltf, bin, n.mesh).prims,
+    prims: mesh?.prims ?? [],
     children: (n.children ?? []).map((c: number) => nodeOf(gltf, bin, c, duration)),
     translation: n.translation ?? [0, 0, 0],
     rotation: n.rotation ?? [0, 0, 0, 1],
     scale: n.scale ?? [1, 1, 1],
     channels: [],
-    center: n.mesh === undefined ? [0, 0, 0] : meshOf(gltf, bin, n.mesh).center,
-    radius: n.mesh === undefined ? 0 : meshOf(gltf, bin, n.mesh).radius,
+    center: mesh?.center ?? [0, 0, 0],
+    radius: mesh?.radius ?? 0,
   };
   if (n.matrix) throw new Error('glTF node matrices are not supported (use translation, rotation, scale)');
   // its animation tracks
@@ -158,6 +162,20 @@ function embeddedJsonBuffer(gltf: any): ArrayBuffer {
   return out.buffer;
 }
 
+/** a vector turned by a quaternion */
+const turned = (q: Quat, v: Vec3): Vec3 => {
+  const tx = 2 * (q[1] * v[2] - q[2] * v[1]), ty = 2 * (q[2] * v[0] - q[0] * v[2]), tz = 2 * (q[0] * v[1] - q[1] * v[0]);
+  return [v[0] + q[3] * tx + (q[1] * tz - q[2] * ty), v[1] + q[3] * ty + (q[2] * tx - q[0] * tz), v[2] + q[3] * tz + (q[0] * ty - q[1] * tx)];
+};
+
+/** the quaternion a then b, applied in that order */
+const both = (a: Quat, b: Quat): Quat => [
+  a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+  a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+  a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+  a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+];
+
 /** parses a .glb (chunks) or an embedded .gltf into the model's plain arrays */
 export function parseGltf(data: ArrayBuffer): GltfModel {
   let gltf: any, bin: ArrayBuffer;
@@ -185,16 +203,22 @@ export function parseGltf(data: ArrayBuffer): GltfModel {
   const scene = gltf.scenes?.[gltf.scene ?? 0] ?? { nodes: gltf.nodes?.map((_: unknown, i: number) => i) ?? [] };
   const roots = (scene.nodes ?? []).map((i: number) => nodeOf(gltf, bin, i, duration));
   const bounds = { center: [0, 0, 0] as Vec3, radius: 0 };
-  // the whole model's sphere: the roots' spheres are in local space, the roots are usually at the origin
+  // the whole model's sphere: every node's own sphere through its full transform (its parents' translation, rotation and scale too; the radius takes the biggest scale, a safe wrap of a stretched sphere)
   let min: Vec3 = [Infinity, Infinity, Infinity], max: Vec3 = [-Infinity, -Infinity, -Infinity];
-  const sweep = (n: GltfNode) => {
+  const sweep = (n: GltfNode, t: Vec3, q: Quat, s: number) => {
+    const ls = Math.max(Math.abs(n.scale[0]), Math.abs(n.scale[1]), Math.abs(n.scale[2]));
+    const c = turned(n.rotation, [n.center[0] * n.scale[0], n.center[1] * n.scale[1], n.center[2] * n.scale[2]]).map((v, d) => v + n.translation[d]) as Vec3;
+    const cw = turned(q, [c[0] * s, c[1] * s, c[2] * s]).map((v, d) => v + t[d]) as Vec3;
+    const r = n.radius * ls * s;
     for (let d = 0; d < 3; d++) {
-      if (n.center[d] - n.radius < min[d]) min[d] = n.center[d] - n.radius;
-      if (n.center[d] + n.radius > max[d]) max[d] = n.center[d] + n.radius;
+      if (cw[d] - r < min[d]) min[d] = cw[d] - r;
+      if (cw[d] + r > max[d]) max[d] = cw[d] + r;
     }
-    n.children.forEach(sweep);
+    const nt = turned(q, [n.translation[0] * s, n.translation[1] * s, n.translation[2] * s]).map((v, d) => v + t[d]) as Vec3;
+    const nq = both(q, n.rotation), ns = s * ls;
+    n.children.forEach((ch: GltfNode) => sweep(ch, nt, nq, ns));
   };
-  roots.forEach(sweep);
+  roots.forEach((n: GltfNode) => sweep(n, [0, 0, 0], [0, 0, 0, 1], 1));
   for (let d = 0; d < 3; d++) bounds.center[d] = (min[d] + max[d]) / 2;
   bounds.radius = Math.max(1, ...[0, 1, 2].map((d) => max[d] - bounds.center[d]), ...[0, 1, 2].map((d) => min[d] - bounds.center[d]).map(Math.abs));
   return { roots, center: bounds.center, radius: bounds.radius, duration: duration.n };

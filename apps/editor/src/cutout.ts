@@ -11,7 +11,7 @@ import { ALL_FORMATS, BufferTarget, CanvasSink, CanvasSource, getFirstEncodableV
 import { pointer, type Op, type ToolType, type TrammeDoc } from '@tramme/core';
 import { AVC_FROM_STREAM } from './avc.ts';
 import { t } from './i18n/index.ts';
-import { freshId, siblingsOf } from './model.ts';
+import { freshId, linkedTransform, siblingsOf } from './model.ts';
 import { canvas, CUT, distance, histogram, onDemand, peopleIn } from './perception.ts';
 
 /** long side of the pictures the mattes are made at */
@@ -153,7 +153,7 @@ export function cutoutLayers(doc: TrammeDoc, compId: string, source: string, mas
     matte = freshId(taken, `${source}-mask`);
     taken[matte] = 1;
     front = freshId(taken, `${source}-subject`);
-    const transform = Object.fromEntries(['anchor', 'position', 'scale', 'rotation', 'opacity', ...(l.transform?.depth !== undefined ? ['depth'] : [])].map((k) => [k, { $link: `${source}.transform.${k}` }]));
+    const transform = linkedTransform(source, l);
     const timing = { ...(l.in !== undefined ? { in: l.in } : {}), ...(l.out !== undefined ? { out: l.out } : {}) };
     // the mask is timed like the file: the same start, the same frame
     const frame = { start: l.props?.start ?? 0, size: { $link: `${source}.size` }, ...(l.props?.fit !== undefined ? { fit: l.props.fit } : {}), muted: true };

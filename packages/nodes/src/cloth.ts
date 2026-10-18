@@ -8,8 +8,6 @@ import type { NodeType, Vec2 } from '@tramme/core';
 interface ClothProps { columns: number; rows: number; width: number; height: number; gravity: number; wind: number; sway: number; stiffness: number; color: string; wireframe: boolean }
 interface ClothState { pts: Vec2[]; prev: Vec2[]; cols: number; rows: number }
 
-const ITERS = 4;
-
 export const cloth: NodeType<ClothProps> = {
   type: 'cloth', title: 'Cloth', category: 'Generative',
   description: 'a cloth pinned along its top edge, falling and catching the wind',
@@ -19,8 +17,8 @@ export const cloth: NodeType<ClothProps> = {
     width: { type: 'number', default: 480, min: 40, step: 10, unit: 'px', label: 'Width' },
     height: { type: 'number', default: 360, min: 40, step: 10, unit: 'px', label: 'Height' },
     gravity: { type: 'number', default: 900, min: 0, max: 6000, step: 50, label: 'Gravity', description: 'pixels per second squared' },
-    wind: { type: 'number', default: 240, min: -3000, max: 3000, step: 10, label: 'Wind', description: 'a wind that breathes at the sway frequency, pixels per second squared' },
-    sway: { type: 'number', default: 0.6, min: 0.05, max: 4, step: 0.05, label: 'Sway', description: 'how often the wind breathes, a period in seconds' },
+    wind: { type: 'number', default: 240, min: -3000, max: 3000, step: 10, label: 'Wind', description: 'a wind that breathes once per sway period, pixels per second squared' },
+    sway: { type: 'number', default: 1.6, min: 0.25, max: 10, step: 0.1, unit: 's', label: 'Sway', description: 'how often the wind breathes, a period in seconds' },
     stiffness: { type: 'number', default: 4, min: 1, max: 8, step: 1, animatable: false, label: 'Stiffness', description: 'constraint passes a frame: more holds the weave tighter' },
     color: { type: 'color', default: '#C24A3A', label: 'Color' },
     wireframe: { type: 'bool', default: false, label: 'Wireframe' },
@@ -38,7 +36,8 @@ export const cloth: NodeType<ClothProps> = {
     },
     step(s: ClothState, p, dt, host) {
       const local = host.t - (host.layerIn ?? 0);
-      const gust = p.wind * (0.75 + 0.25 * Math.sin(local * p.sway * Math.PI * 2));
+      // the sway is a period: the wind breathes once every p.sway seconds
+      const gust = p.wind * (0.75 + 0.25 * Math.sin((local / p.sway) * Math.PI * 2));
       const { cols, rows, pts, prev } = s;
       for (let i = cols; i < pts.length; i++) { // the pinned top row stays
         const [x, y] = pts[i], [px, py] = prev[i];
@@ -76,11 +75,13 @@ export const cloth: NodeType<ClothProps> = {
         return;
       }
       ctx.fillStyle = p.color;
+      // the rest width of one cell: a fold squeezes it, a stretch widens it
+      const cell = p.width / (cols - 1);
       for (let r = 0; r < rows - 1; r++) for (let c = 0; c < cols - 1; c++) {
         const i = r * cols + c;
         // shade by how the fold faces: a cheap light from the left, so folds read
         const nx = (pts[i + 1][0] - pts[i][0]) + (pts[i + cols + 1][0] - pts[i + cols][0]);
-        const lean = Math.max(0.35, Math.min(1, 0.85 - nx / (dx2(p, s) * 2)));
+        const lean = Math.max(0.35, Math.min(1, 0.85 - nx / (cell * 2)));
         ctx.globalAlpha = lean;
         ctx.beginPath();
         ctx.moveTo(pts[i][0], pts[i][1]); ctx.lineTo(pts[i + 1][0], pts[i + 1][1]);
@@ -102,5 +103,3 @@ function relax(pts: Vec2[], a: number, b: number, rest: number, pins: number) {
   pts[a] = [ax + (bx - ax) * off * wa, ay + (by - ay) * off * wa];
   pts[b] = [bx - (bx - ax) * off * wb, by - (by - ay) * off * wb];
 }
-
-const dx2 = (p: ClothProps, s: ClothState) => p.width / (s.cols - 1);

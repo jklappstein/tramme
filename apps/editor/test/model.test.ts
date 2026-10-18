@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Composition, TrammeDoc } from '@tramme/core';
 import { applyOps as apply } from '@tramme/core';
-import { carriedStart, contentEnd, describeOp, splitLayerOps, trimInOps } from '../src/model.ts';
+import { carriedStart, contentEnd, crossfadeOps, describeOp, isToolAsset, mediaAssetsOf, splitLayerOps, trimInOps } from '../src/model.ts';
 import { passes } from '../src/ai/server.ts';
 
 const comp = (layers: Composition['layers']): Composition => ({ name: 'Main', width: 1920, height: 1080, fps: 30, duration: 60, layers, order: Object.keys(layers) });
@@ -75,5 +75,33 @@ describe('a clip cut at the playhead', () => {
     expect(d.compositions.main.order).toEqual(['g']);
     expect(splitLayerOps(d0, 'main', 'a', 4)).toBeNull();
     expect(splitLayerOps(d0, 'main', 'g', 1)).toBeNull();
+  });
+  it('cross-fades two clips that meet: the earlier one gives way, whichever is asked', () => {
+    const keys = (d: TrammeDoc, id: string) => (d.compositions.main.layers[id].transform?.opacity as { $k: { t: number; v: number }[] }).$k.map((k) => [k.t, k.v]);
+    // a before b, overlapping from 4 to 6 s: a fades out, b fades in, around 5 s
+    const d0 = doc({ a: { type: 'video', in: 0, out: 6 }, b: { type: 'video', in: 4, out: 10 } });
+    const fromA = applyOps(d0, crossfadeOps(d0, 'main', 'a', 0.5)!.ops);
+    expect(keys(fromA, 'a')).toEqual([[4.5, 1], [5.5, 0]]);
+    expect(keys(fromA, 'b')).toEqual([[4.5, 0], [5.5, 1]]);
+    // the later clip lower in the stack: the same hand-over
+    const d1 = doc({ b: { type: 'video', in: 4, out: 10 }, a: { type: 'video', in: 0, out: 6 } });
+    const fromB = applyOps(d1, crossfadeOps(d1, 'main', 'b', 0.5)!.ops);
+    expect(keys(fromB, 'a')).toEqual([[4.5, 1], [5.5, 0]]);
+    expect(keys(fromB, 'b')).toEqual([[4.5, 0], [5.5, 1]]);
+  });
+  it('reads the media of the selected layers, a 3D model included, and tells the tools\' own files apart', () => {
+    const d0 = doc({ m: { type: 'model.3d', props: { source: 'beetle' } }, p: { type: 'image', props: { image: 'photo-cut' } }, t: { type: 'text' } });
+    d0.assets = { beetle: { type: 'model', src: 'assets/chat/beetle.glb' }, 'photo-cut': { type: 'image', src: 'assets/cutout/photo.png' } };
+    expect(mediaAssetsOf(d0, 'main', ['m', 't'], ['model'])).toEqual(['beetle']);
+    // a selected cut-out is a choice: it is read like any picture
+    expect(mediaAssetsOf(d0, 'main', ['p'], ['image'])).toEqual(['photo-cut']);
+    // a tool's file, by its name or by where it was written (an id cut to 64 characters loses its suffix)
+    expect(isToolAsset('depth-photo')).toBe(true);
+    expect(isToolAsset('a-very-long-name', { src: 'assets/cutout/a-very-long-name.png' })).toBe(true);
+    expect(isToolAsset('photo', { src: 'assets/photo.png' })).toBe(false);
+  });
+  it('refuses a cross-fade when one clip holds the other', () => {
+    expect(crossfadeOps(doc({ a: { type: 'video', in: 4, out: 6 }, b: { type: 'video', in: 0, out: 10 } }), 'main', 'a', 0.5)).toBeNull();
+    expect(crossfadeOps(doc({ a: { type: 'video', in: 0, out: 10 }, b: { type: 'video', in: 4, out: 6 } }), 'main', 'a', 0.5)).toBeNull();
   });
 });

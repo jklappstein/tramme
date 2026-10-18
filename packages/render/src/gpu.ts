@@ -117,7 +117,7 @@ function texture(gl: WebGL2RenderingContext, src: TexImageSource): WebGLTexture 
 
 // ── the nodes' WebGL2 service ────────────────────────────────
 
-interface GLState { canvas: OffscreenCanvas | HTMLCanvasElement; gl: WebGL2RenderingContext; programs: Map<string, WebGLProgram | Error>; program(frag: string, vert?: string): WebGLProgram; texture(src: TexImageSource): WebGLTexture }
+interface GLState { canvas: OffscreenCanvas | HTMLCanvasElement; gl: WebGL2RenderingContext; width: number; height: number; programs: Map<string, WebGLProgram | Error>; program(frag: string, vert?: string): WebGLProgram; texture(src: TexImageSource): WebGLTexture }
 /** one node type's context, kept from frame to frame (its uploaded meshes, its programs) */
 const nodes = new Map<string, GLState>();
 
@@ -132,14 +132,23 @@ export function nodeContext(key: string): import('@tramme/core').NodeGL {
   const canvas = glCanvas();
   const gl = canvas?.getContext('webgl2', { premultipliedAlpha: true, antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' }) as WebGL2RenderingContext | null;
   if (!canvas || !gl) throw new Error('WebGL2 unavailable for this node');
-  const state: GLState = { canvas, gl, programs: new Map(), program: (frag, vert) => program(state, frag, vert), texture: (src) => texture(gl, src) };
+  const state: GLState = { canvas, gl, width: 1, height: 1, programs: new Map(), program: (frag, vert) => program(state, frag, vert), texture: (src) => texture(gl, src) };
   nodes.set(key, state);
   return state;
 }
 
-/** sizes a node's canvas to the area to fill, in canvas pixels */
+/**
+ * Sets the picture a node draws next, in canvas pixels. The canvas only
+ * grows: the layers of one type at different sizes share it without
+ * reallocating its buffers every frame (each draws its corner, from the
+ * bottom left).
+ */
 export function resizeNode(g: import('@tramme/core').NodeGL, w: number, h: number) {
-  if (g.canvas.width !== w || g.canvas.height !== h) { g.canvas.width = Math.max(1, w); g.canvas.height = Math.max(1, h); }
+  g.width = Math.max(1, w); g.height = Math.max(1, h);
+  if (g.canvas.width < g.width || g.canvas.height < g.height) {
+    g.canvas.width = Math.max(g.canvas.width, g.width);
+    g.canvas.height = Math.max(g.canvas.height, g.height);
+  }
 }
 
 /**

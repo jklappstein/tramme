@@ -83,16 +83,17 @@ function drawContent(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: Draw
   }
   const glo = L.node.render.gl;
   if (glo) {
-    // the node's own WebGL2 context, sized to its bounds; the picture lands on the layer over the area
+    // the node's own WebGL2 context, sized to its bounds (at most 2048: a zoomed or huge node would ask the GPU for a canvas as big as the frame); the picture lands on the layer over the area
     const k = env.scale ? (env.scale[0] + env.scale[1]) / 2 : 1;
     const b = L.node.bounds?.(L.props, env.host(L.id)) ?? { x: -60, y: -60, w: 120, h: 120 };
-    const w = Math.max(1, Math.round(b.w * k)), h = Math.max(1, Math.round(b.h * k));
+    const w = Math.min(2048, Math.max(1, Math.round(b.w * k))), h = Math.min(2048, Math.max(1, Math.round(b.h * k)));
     ctx.save();
     try {
       const g = nodeContext(L.node.type);
       resizeNode(g, w, h);
-      glo(g, L.props, env.host(L.id), { x: 0, y: 0, w: b.w, h: b.h });
-      ctx.drawImage(g.canvas as CanvasImageSource, b.x, b.y, b.w, b.h);
+      glo(g, L.props, env.host(L.id), b);
+      // the node drew its corner of the shared canvas: w × h from GL's bottom left, the top of the canvas below it
+      ctx.drawImage(g.canvas as CanvasImageSource, 0, g.canvas.height - h, w, h, b.x, b.y, b.w, b.h);
     } catch (e) {
       if (!env.onError) throw e;
       drawFailure(ctx, L, env);

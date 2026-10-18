@@ -35,23 +35,24 @@ export function phonemes(word: string, language?: string): Viseme[] {
   return out.length ? out : ['closed'];
 }
 
-export interface MouthKey { t: number; v: Viseme }
+export interface MouthKey { t: number; v: Viseme; ease?: 'hold' }
 
-/** the whole transcript as mouth keys: each word's shapes share its time, the mouth closes between words */
-export function mouthKeys(words: TranscriptWord[], opts: { gap?: number; min?: number } = {}): MouthKey[] {
+/** the whole transcript as mouth keys: each word's shapes share its time, the mouth closes between the words and after the last one; keys hold (a viseme is never in between) */
+export function mouthKeys(words: TranscriptWord[], opts: { gap?: number; min?: number; language?: string } = {}): MouthKey[] {
   const gap = opts.gap ?? 0.06, min = opts.min ?? 0.04;
   const keys: MouthKey[] = [];
   let last = -1;
   for (const word of words) {
-    if (word.s - last >= gap && keys.length) keys.push({ t: Math.max(keys[keys.length - 1].t + 0.001, word.s - gap / 2), v: 'closed' });
-    const shapes = phonemes(word.w, undefined);
+    if (word.s - last >= gap && keys.length) keys.push({ t: Math.max(keys[keys.length - 1].t + 0.001, word.s - gap / 2), v: 'closed', ease: 'hold' });
+    const shapes = phonemes(word.w, opts.language);
     const span = Math.max(word.e - word.s, min * shapes.length);
     shapes.forEach((v, i) => {
       const t = word.s + (span * i) / shapes.length;
       if (keys.length && keys[keys.length - 1].v === v && t - keys[keys.length - 1].t < min) return; // hold the same shape
-      keys.push({ t, v });
+      keys.push({ t, v, ease: 'hold' });
     });
     last = Math.max(last, word.e);
   }
+  if (keys.length) keys.push({ t: Math.max(keys[keys.length - 1].t + 0.001, last + gap / 2), v: 'closed', ease: 'hold' });
   return keys;
 }

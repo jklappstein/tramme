@@ -38,15 +38,15 @@ export function useShortcuts() {
       }
       if (e.key === 'Home') { setTime(0); return; }
       if (e.key === 'End') { setTime(comp.peek().duration); return; }
-      // M drops a marker at the playhead; 1..9 jump to the markers in order
-      if (e.key.toLowerCase() === 'm') {
+      // M drops a marker at the playhead; 1..9 jump to the markers in order (bare keys only: with a modifier they belong to the browser)
+      if (!mod && e.key.toLowerCase() === 'm') {
         e.preventDefault();
         const c = comp.peek(), list = [...(c.markers ?? [])].sort((a, b) => a.t - b.t);
         const id = freshId(Object.fromEntries(list.map((x) => [x.id, 1])), 'marker');
         commit(t('timeline.addMarkerHere'), [{ op: 'add', path: pointer('compositions', S.compId.value, 'markers'), value: [...list, { id, t: snap(S.time.peek(), c.fps), label: t('timeline.markerN', { n: list.length + 1 }) }].sort((a, b) => a.t - b.t) }]);
         return;
       }
-      if (/^[1-9]$/.test(e.key)) {
+      if (!mod && /^[1-9]$/.test(e.key)) {
         const m = [...(comp.peek().markers ?? [])].sort((a, b) => a.t - b.t)[Number(e.key) - 1];
         if (m) { S.playing.value = false; setTime(m.t); }
         return;

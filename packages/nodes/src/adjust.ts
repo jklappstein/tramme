@@ -7,7 +7,7 @@
 import type { NodeType } from '@tramme/core';
 
 export const adjust: NodeType = {
-  type: 'adjust', title: 'Adjustment', category: 'Structure',
+  type: 'adjust', title: 'Adjustment', category: 'Structure', composes: 'adjust',
   description: 'applies its effects to everything under it in the stack',
   ai: { when: 'a correction or an effect that must reach every layer under it at once (a grade over a scene, one blur for a set)' },
   props: {},

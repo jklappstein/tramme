@@ -72,6 +72,21 @@ describe('quality checks', () => {
     expect((await runChecks(d, builtinRegistry())).some((i) => i.check === 'text-over-subject')).toBe(false);
   });
 
+  it('find text over the busy part of a picture once its free space is known', async () => {
+    // a picture filling the frame, its top left quarter crowded
+    const d = doc({
+      photo: { type: 'image', transform: { position: [540, 960] }, props: { image: 'shot', size: [1080, 1920], fit: 'fill' } },
+      onDetail: text('Busy', { transform: { position: [270, 480] } }),
+      clear: text('Calm', { transform: { position: [540, 1500] } }),
+    });
+    d.assets = { shot: { type: 'image', src: 'shot.png' }, 'space-shot': { type: 'json', src: 'shot-space.json' } };
+    const space = { version: 1, kind: 'space', t: 0, width: 1080, height: 1920, cols: 2, rows: 2, busy: [0.9, 0.1, 0.1, 0.1], rect: { x: 0, y: 0.5, w: 1, h: 0.5 } };
+    const issues = await runChecks(d, builtinRegistry(), 'main', { data: (id) => (id === 'space-shot' ? space : undefined) });
+    expect(issues.filter((i) => i.check === 'text-over-detail').map((i) => i.layers?.join())).toEqual(['onDetail']);
+    // without the analysis, nothing is said
+    expect((await runChecks(d, builtinRegistry())).some((i) => i.check === 'text-over-detail')).toBe(false);
+  });
+
   it('run the checks of a plugin, and report one that fails', async () => {
     const custom: CheckType = { name: 'brand', description: 'logo present', run: () => [{ check: 'brand', severity: 'warning', message: 'no logo' }] };
     const broken: CheckType = { name: 'broken', description: 'fails', run: () => { throw new Error('boom'); } };

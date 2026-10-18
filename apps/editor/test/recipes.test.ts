@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyOps, runChecks, validate, type ToolContext, type TrammeDoc } from '@tramme/core';
 import { newProject } from '@tramme/project';
-import { parseData, parseEvents, parseStops } from '../src/recipes.ts';
+import { BUILTIN_KITS, parseData, parseEvents, parseStops } from '../src/recipes.ts';
 import { editorRegistry } from '../src/vocabulary.ts';
 
 const reg = editorRegistry();
@@ -52,6 +52,18 @@ describe('recipes', () => {
     expect(warnings.map((i) => i.message)).toEqual([]);
   });
 
+  it('keep their keys in order with a slow kit and the shortest pieces', async () => {
+    // calm: a 1 s entrance, longer than what a 1 s piece leaves before its fade out
+    let doc = await use(project(), 'kit', { kit: 'calm', font: false });
+    doc = { ...doc, assets: { ...doc.assets, logo: { type: 'image', src: 'assets/logo.png' } } };
+    doc = await use(doc, 'list', { items: 'One, Two, Three', title: 'Steps', at: 0, duration: 1 });
+    doc = await use(doc, 'timeline', { data: '2020: Launch, 2022: Series B, 2024: Today', title: 'Road', at: 1, duration: 1 });
+    doc = await use(doc, 'logo-reveal', { logo: 'logo', name: 'Brand', style: 'rise', at: 2, duration: 1 });
+    doc = await use(doc, 'map-journey', { stops: '0.2,0.3 0.5,0.6 0.8,0.4', names: 'Paris, Lyon, Marseille', at: 3, duration: 1 });
+    doc = await use(doc, 'stat', { value: '42', label: 'Answers', at: 6, duration: 1 });
+    expect(validate(doc, reg)).toEqual([]);
+  });
+
   it('follow the style kit', async () => {
     let doc = await use(project(), 'kit', { kit: 'editorial', font: false });
     doc = await use(doc, 'kinetic-title', { text: 'Hello world', emphasis: 2 });
@@ -73,7 +85,13 @@ describe('recipes', () => {
       const font = doc.assets['font-karla'];
       expect(font).toMatchObject({ type: 'font', family: 'Karla', weight: '200 800' });
       expect(font.src).toBe('assets/fonts/karla.woff2');
-      expect(asked).toEqual(['https://cdn.jsdelivr.net/fontsource/fonts/karla@latest/latin-wght-normal.woff2']);
+      expect(asked).toEqual(['https://cdn.jsdelivr.net/fontsource/fonts/karla:vf@5.3.0/latin-wght-normal.woff2']);
+      // every kit font at a pinned version; a variable one (a weight range) under "<id>:vf", or the CDN answers 404
+      for (const k of BUILTIN_KITS) {
+        if (!k.font) continue;
+        expect(k.font.url).not.toMatch(/@latest/);
+        expect(k.font.url.includes(':vf@')).toBe(/\d+ \d+/.test(k.font.weight ?? ''));
+      }
       // a second kit does not pile fonts on: the project's font stays
       const again = await use(doc, 'kit', { kit: 'neon' });
       expect(again.assets['font-space-grotesk']).toBeUndefined();
@@ -115,7 +133,18 @@ describe('recipes', () => {
     expect((path.props!.path as { v: unknown[][] }).v).toHaveLength(3);
     const dot = c.layers['journey-dot'];
     expect((dot.transform!.position as { $k: unknown[] }).$k).toHaveLength(3);
-    expect(c.layers['journey-reveal'].visible).toBe(false);
+    const reveal = c.layers['journey-reveal'];
+    expect(reveal.visible).toBe(false);
+    // the reveal keeps pace with the dot: a key at each arrival, never two at the same time
+    const at = (k: { $k: { t: number }[] }) => k.$k.map((x) => x.t);
+    expect(at(reveal.transform!.scale as never)).toEqual(at(dot.transform!.position as never));
+    // the rect (drawn centred on its origin) covers the stops' bounds top to bottom: anchored mid-height on its starting edge
+    const [w, h] = reveal.props!.size as [number, number], [ax, ay] = reveal.transform!.anchor as [number, number];
+    const [, py] = reveal.transform!.position as [number, number];
+    expect(ay).toBe(0);
+    expect(ax).toBe(-w / 2);
+    expect(py - h / 2).toBeLessThanOrEqual(0.3 * 1920);
+    expect(py + h / 2).toBeGreaterThanOrEqual(0.6 * 1920);
   });
 
   it('split the frame into sliding panels', async () => {

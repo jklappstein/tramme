@@ -9,16 +9,16 @@
 // (/ menu).
 
 import { ALL_FORMATS, BufferTarget, CanvasSink, CanvasSource, getFirstEncodableVideoCodec, Input, Mp4OutputFormat, Output, Quality, UrlSource } from 'mediabunny';
-import { pointer, type Layer, type Op, type ToolContext, type ToolType, type TrammeDoc } from '@tramme/core';
+import { pointer, staticValue, type Effect, type Layer, type Op, type ToolContext, type ToolType, type TrammeDoc } from '@tramme/core';
 import { AVC_FROM_STREAM } from './avc.ts';
 import { t } from './i18n/index.ts';
-import { freshId, siblingsOf } from './model.ts';
+import { freshId, isToolAsset, linkedTransform, siblingsOf, transformOp } from './model.ts';
 import { canvas, loadImage, onDemand } from './perception.ts';
 
 /** long side of the pictures the model reads */
 const PROC = 512;
-/** long side of the depth picture of a photo, at most: past it, its source area is scaled to the map's pixels */
-const MAP = 4096;
+/** long side of the depth picture of a photo, at most: twice what the model reads (smoothed up, a larger file holds no more depth); past it, its source area is scaled to the map's pixels */
+const MAP = 1024;
 /** long side of the depth video, at most */
 const VIDEO = 1280;
 /** a change of depth this large (of 255) between two frames is a move, not a flicker */
@@ -159,7 +159,7 @@ export function scaleFor(range: number, plane: number, perspective: number, amou
  * them. For a photo, `box` (its source area scaled to the map's pixels) keeps
  * the map exactly under it.
  */
-export function depthLayers(doc: TrammeDoc, compId: string, source: string, depthAsset: string, box?: [number, number, number, number]): { ops: Op[]; depth: string } {
+export function depthLayers(doc: TrammeDoc, compId: string, source: string, depthAsset: string, box?: [number, number, number, number]): { ops: Op[]; depth: string; framing?: Framing } {
   const c = doc.compositions[compId], l = c.layers[source], video = l.type === 'video', prop = video ? 'video' : 'image';
   const ops: Op[] = [];
   let depth = Object.keys(c.layers).find((id) => c.layers[id].props?.[prop] === depthAsset);
@@ -168,12 +168,19 @@ export function depthLayers(doc: TrammeDoc, compId: string, source: string, dept
     const taken: Record<string, unknown> = { ...c.layers };
     depth = freshId(taken, `${source}-depth`);
     taken[depth] = 1;
-    const transform = Object.fromEntries(['anchor', 'position', 'scale', 'rotation', 'opacity', ...(l.transform?.depth !== undefined ? ['depth'] : [])].map((k) => [k, { $link: `${source}.transform.${k}` }]));
+    const transform = linkedTransform(source, l);
     const timing = { ...(l.in !== undefined ? { in: l.in } : {}), ...(l.out !== undefined ? { out: l.out } : {}) };
     const name = l.name ?? source;
     // the map drawn exactly where the source is: the same frame, fit and focus for footage; the same frame and fit for a photo, its area scaled to the map's pixels
     const props: Record<string, unknown> = video
-      ? { [prop]: depthAsset, start: l.props?.start ?? 0, size: { $link: `${source}.size` }, ...(l.props?.fit !== undefined ? { fit: l.props.fit } : {}), ...(l.props?.focus !== undefined ? { focus: l.props.focus } : {}), muted: true }
+      ? {
+          [prop]: depthAsset, start: l.props?.start ?? 0,
+          // the map plays the file like the source does: the same pace and loop, or it drifts out of the picture
+          ...(l.props?.rate !== undefined ? { rate: l.props.rate } : {}),
+          ...(l.props?.loop !== undefined ? { loop: l.props.loop } : {}),
+          ...(l.props?.loopEnd !== undefined ? { loopEnd: l.props.loopEnd } : {}),
+          size: { $link: `${source}.size` }, ...(l.props?.fit !== undefined ? { fit: l.props.fit } : {}), ...(l.props?.focus !== undefined ? { focus: l.props.focus } : {}), muted: true,
+        }
       : { image: depthAsset, size: { $link: `${source}.size` }, fit: { $link: `${source}.fit` }, focus: { $link: `${source}.focus` }, zoom: { $link: `${source}.zoom` }, offset: { $link: `${source}.offset` }, ...(box ? { box } : {}), crop: { $link: `${source}.crop` } };
     ops.push({ op: 'add', path: pointer('compositions', compId, 'layers', depth), value: { type: video ? 'video' : 'image', name: t('perception.depthMap', { name }), visible: false, ...timing, transform, props } });
     const list = [...was];
@@ -181,6 +188,7 @@ export function depthLayers(doc: TrammeDoc, compId: string, source: string, dept
     ops.push({ op: 'replace', path: pointer('compositions', compId, ...path), value: list });
   }
   const effects = l.effects ?? [];
+  let framing: Framing | undefined;
   if (!effects.some((e) => e.type === 'fx.parallax' && e.props?.source === depth)) {
     ops.push({
       op: 'add', path: pointer('compositions', compId, 'layers', source, 'effects'),
@@ -190,19 +198,40 @@ export function depthLayers(doc: TrammeDoc, compId: string, source: string, dept
         props: { source: depth, perspective: { $link: '$comp.camera.perspective' }, zoom: { $link: '$comp.camera.zoom' }, at: { $link: `${source}.transform.depth` } },
       }],
     });
-  }
-  return { ops, depth };
+    // a photo is framed for its relief once, with the parallax it serves: run again (depth or photo-2.5d), it is never scaled twice
+    if (!video) {
+      const framed = reliefFraming(l, compId, source);
+      ops.push(...framed.ops);
+      framing = framed.framing;
+    }
+  } else if (!video) framing = 'kept';
+  return { ops, depth, ...(framing ? { framing } : {}) };
 }
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
+/** what became of a photo's scale for its relief: scaled now, framed by an earlier run, or animated (left as it is) */
+export type Framing = 'scaled' | 'kept' | 'animated';
+
 /**
- * The move of a photo in 2.5D: the composition camera (a slow drift, only
- * when there is none) and the photo scaled up by the most its map can
- * stretch it, so the relief shows no edge (an animated scale is left as is).
+ * The photo scaled up by the most its map can stretch it, so the relief shows
+ * no edge: its own scale times about 1.18 (an inset stays an inset), an
+ * animated scale left as it is.
  */
-export function photo25dOps(doc: TrammeDoc, compId: string, source: string, drift = 1, seconds?: number): { ops: Op[]; added: boolean; scaled: boolean } {
-  const c = doc.compositions[compId], l = c.layers[source];
+function reliefFraming(l: Layer, compId: string, source: string): { ops: Op[]; framing: Framing } {
+  const scale = l.transform?.scale;
+  if (scale !== undefined && !Array.isArray(scale)) return { ops: [], framing: 'animated' };
+  const [sx, sy] = (scale as [number, number] | undefined) ?? [1, 1], f = scaleFor(320, 0.5, 1000);
+  return { ops: [transformOp(compId, source, l, 'scale', [r2(sx * f), r2(sy * f)])], framing: 'scaled' };
+}
+
+/**
+ * The move of a photo in 2.5D: the composition camera, a slow drift, only
+ * when there is none (the photo's framing comes with its parallax, see
+ * depthLayers).
+ */
+export function photo25dOps(doc: TrammeDoc, compId: string, drift = 1, seconds?: number): { ops: Op[]; added: boolean } {
+  const c = doc.compositions[compId];
   const ops: Op[] = [];
   let added = false;
   if (!c.camera) {
@@ -217,25 +246,20 @@ export function photo25dOps(doc: TrammeDoc, compId: string, source: string, drif
     });
     added = true;
   }
-  const scale = l.transform?.scale;
-  let scaled = false;
-  if (scale === undefined || Array.isArray(scale)) {
-    const [sx, sy] = (scale as [number, number] | undefined) ?? [1, 1];
-    const value = [r2(sx * scaleFor(320, 0.5, 1000)), r2(sy * scaleFor(320, 0.5, 1000))];
-    ops.push(l.transform === undefined
-      ? { op: 'add', path: pointer('compositions', compId, 'layers', source, 'transform'), value: { scale: value } }
-      : { op: 'add', path: pointer('compositions', compId, 'layers', source, 'transform', 'scale'), value });
-    scaled = true;
-  }
-  return { ops, added, scaled };
+  return { ops, added };
 }
 
-/** the video or image layer the tools work on: the one given, the selected one, or the first that is no one's depth map */
-function sourceOf(ctx: ToolContext, wanted?: string): { id: string; l: Layer } {
+/** the video or image layer the tools work on: the one given, the selected one, or the first whose media is not a tool's own file (a depth map, a cut-out) */
+function sourceOf(ctx: ToolContext, wanted?: string, types: readonly string[] = ['video', 'image']): { id: string; l: Layer } {
   const c = ctx.doc.compositions[ctx.compId];
-  const ok = (id: string) => ['video', 'image'].includes(c.layers[id]?.type as string) && !/-depth/.test(id);
+  const ok = (id: string) => {
+    const l = c.layers[id];
+    if (!l || !types.includes(l.type)) return false;
+    const media = staticValue(l.props?.[l.type === 'video' ? 'video' : 'image']);
+    return typeof media !== 'string' || !isToolAsset(media, ctx.doc.assets[media]);
+  };
   const id = wanted ?? ctx.selection.find(ok) ?? Object.keys(c.layers).find(ok);
-  if (!id) throw new Error('the composition has no video or image layer');
+  if (!id) throw new Error(`the composition has no ${types.join(' or ')} layer`);
   return { id, l: c.layers[id] };
 }
 
@@ -250,7 +274,7 @@ const spanOf = (l: Layer, duration: number): [number, number] => {
  * the map file written (again, when there is one: it is rewritten), the layers
  * wired (reused), and for a photo a depth of field added too.
  */
-async function ensureDepth(ctx: ToolContext, source: string, progress: Progress): Promise<{ ops: Op[]; asset: string; reload: string[]; frames: number }> {
+async function ensureDepth(ctx: ToolContext, source: string, progress: Progress): Promise<{ ops: Op[]; asset: string; reload: string[]; frames: number; framing?: Framing }> {
   const c = ctx.doc.compositions[ctx.compId], l = c.layers[source];
   const media = l.props?.[l.type === 'video' ? 'video' : 'image'];
   if (typeof media !== 'string' || !ctx.doc.assets[media]) throw new Error(`${source}: this layer has no media of its own yet`);
@@ -258,8 +282,12 @@ async function ensureDepth(ctx: ToolContext, source: string, progress: Progress)
   const had = !!ctx.doc.assets[asset];
   let blob: Blob, frames = 0, box: [number, number, number, number] | undefined;
   if (l.type === 'video') {
-    const [from, to] = spanOf(l, c.duration);
-    ({ blob, frames } = await depthVideo(ctx.assetUrl(media), from, to, ctx.signal, progress));
+    const [a, b] = spanOf(l, c.duration);
+    // the map is timed like the file: the span read is the layer's own, brought to the file's time (its start offset, its pace)
+    const lin = l.in ?? 0;
+    const start = Math.max(0, Number(staticValue(l.props?.start)) || 0);
+    const rate = Number(staticValue(l.props?.rate)) || 1;
+    ({ blob, frames } = await depthVideo(ctx.assetUrl(media), start + (a - lin) * rate, start + (b - lin) * rate, ctx.signal, progress));
   } else {
     const map = await depthImage(ctx.assetUrl(media), ctx.signal, progress);
     blob = map.blob;
@@ -271,13 +299,32 @@ async function ensureDepth(ctx: ToolContext, source: string, progress: Progress)
   const src = await ctx.writeFile(l.type === 'video' ? `assets/depth/${source}.mp4` : `assets/depth/${source}.png`, blob);
   const wired = depthLayers(ctx.doc, ctx.compId, source, asset, box);
   // a photo takes a depth of field too, once (footage is given one by hand, or by photo-2.5d)
-  const effects = l.effects ?? [];
-  if (l.type === 'image' && !effects.some((e) => e.type === 'fx.depthBlur' && e.props?.source === asset)) {
-    wired.ops.push({ op: 'add', path: pointer('compositions', ctx.compId, 'layers', source, 'effects'), value: [...effects, { id: freshId(Object.fromEntries(effects.map((e) => [e.id, 1])), 'dof'), type: 'fx.depthBlur', props: { source: asset, focus: 0.5 } }] });
-  }
+  if (l.type === 'image') wired.ops = withDepthBlur(wired.ops, l, ctx.compId, source, wired.depth);
   const value = { type: l.type === 'video' ? 'video' : 'image', src, name: t('perception.depthLabel', { name: ctx.doc.assets[media].name ?? media }) };
-  return { ops: [{ op: had ? 'replace' : 'add', path: pointer('assets', asset), value }, ...wired.ops], asset, reload: had ? [asset] : [], frames };
+  return { ops: [{ op: had ? 'replace' : 'add', path: pointer('assets', asset), value }, ...wired.ops], asset, reload: had ? [asset] : [], frames, ...(wired.framing ? { framing: wired.framing } : {}) };
 }
+
+/**
+ * The ops of depthLayers with a depth of field on the photo, once: it reads
+ * the hidden map layer `depth` (a layer, like the parallax's source), and
+ * joins the effects list those ops may have just written (with the
+ * parallax), as a second list would replace the first.
+ */
+export function withDepthBlur(ops: Op[], l: Layer, compId: string, source: string, depth: string): Op[] {
+  if ((l.effects ?? []).some((e) => e.type === 'fx.depthBlur' && e.props?.source === depth)) return ops;
+  const path = pointer('compositions', compId, 'layers', source, 'effects');
+  const at = ops.findIndex((o) => o.op === 'add' && o.path === path);
+  const effects = (at >= 0 ? (ops[at] as Extract<Op, { op: 'add' }>).value : l.effects ?? []) as Effect[];
+  const list = [...effects, { id: freshId(Object.fromEntries(effects.map((e) => [e.id, 1])), 'dof'), type: 'fx.depthBlur', props: { source: depth, focus: 0.5 } }];
+  return at >= 0 ? ops.map((o, i) => (i === at ? { op: 'add', path, value: list } : o)) : [...ops, { op: 'add', path, value: list }];
+}
+
+/** what the tools tell of a photo's framing */
+const framingNote = (f: Framing): string => f === 'scaled'
+  ? 'The photo is scaled up by about 1.18 (its own scale times that), so the near depths stretching past its edges show nothing.'
+  : f === 'kept'
+    ? 'Its framing for the relief was set by an earlier run: its scale is left as it is.'
+    : 'Its scale is animated, so I left the framing to you: the far depths may show an edge.';
 
 /** reports progress at most once a percent */
 const throttled = (ctx: ToolContext) => {
@@ -303,12 +350,13 @@ const depth: ToolType<{ layer?: string }> = {
   },
   async run({ layer: wanted }, ctx) {
     const { id, l } = sourceOf(ctx, wanted);
-    const { ops, asset, reload, frames } = await ensureDepth(ctx, id, throttled(ctx));
+    const { ops, asset, reload, frames, framing } = await ensureDepth(ctx, id, throttled(ctx));
     return {
       ops, reload, label: t('perception.depthLabel', { name: l.name ?? id }),
       text: [
         `Depth of "${id}" read (${l.type === 'video' ? `${frames} frames` : 'one picture'}): grey map saved as asset "${asset}" (bright where near), played by the hidden layer "${asset}-…", and fx.parallax on the layer, its perspective and zoom linked to the composition's camera.`,
         ...(l.type === 'image' ? ['The photo also got fx.depthBlur (focus 0.5): a depth of field where the map leaves the middle.'] : []),
+        ...(framing ? [framingNote(framing)] : []),
         'Nothing moves until the composition has a camera: add one (pan, zoom) and the layer gains the relief. For a photo, photo-2.5d does depth and camera in one.',
         `Run again, the map is read again and the layers are reused. If "${id}" is trimmed or moved in time, run depth again.`,
       ].join('\n'),
@@ -334,13 +382,10 @@ const photo25d: ToolType<{ layer?: string; drift?: number; seconds?: number }> =
   },
   async run({ layer: wanted, drift = 1, seconds }, ctx) {
     const c = ctx.doc.compositions[ctx.compId];
-    const ok = (id: string) => c.layers[id]?.type === 'image' && !/-depth/.test(id);
-    const id = wanted ?? ctx.selection.find(ok) ?? Object.keys(c.layers).find(ok);
-    if (!id) throw new Error('the composition has no image layer');
-    const l = c.layers[id];
-    const { ops, asset, reload } = await ensureDepth(ctx, id, throttled(ctx));
-    // the camera (only when there is none: an existing one keeps its own move) and the framing
-    const { ops: move, added, scaled } = photo25dOps(ctx.doc, ctx.compId, id, drift, seconds);
+    const { id, l } = sourceOf(ctx, wanted, ['image']);
+    const { ops, asset, reload, framing } = await ensureDepth(ctx, id, throttled(ctx));
+    // the camera, only when there is none: an existing one keeps its own move (the framing came with the parallax)
+    const { ops: move, added } = photo25dOps(ctx.doc, ctx.compId, drift, seconds);
     ops.push(...move);
     const dur = Math.min(seconds ?? c.duration, c.duration);
     return {
@@ -348,7 +393,7 @@ const photo25d: ToolType<{ layer?: string; drift?: number; seconds?: number }> =
       text: [
         `"${id}" now moves in 2.5D: depth map asset "${asset}" (the hidden layer), fx.parallax on the photo (linked to the camera), fx.depthBlur (focus 0.5).`,
         added ? `A camera was added: a slow drift over ${r2(dur)} s (pan, ease).` : 'A camera drives the parallax (the composition had one already: its move).',
-        scaled ? 'The photo is scaled up by about 1.18, so the near depths stretching past its edges show nothing.' : 'Its scale is animated, so I left the framing to you: the far depths may show an edge.',
+        framingNote(framing ?? 'kept'),
         'Tune it: drift for a wider move, fx.parallax range for a deeper relief, fx.depthBlur focus for what stays sharp.',
       ].join('\n'),
       notice: t('perception.photo25dDone', { name: l.name ?? id }),

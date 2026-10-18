@@ -32,6 +32,7 @@ const trs = (out: Mat4, t: ArrayLike<number>, q: Quat, s: ArrayLike<number>): Ma
 };
 const turnY = (out: Mat4, a: number): Mat4 => { ident(out); const c = Math.cos(a), s = Math.sin(a); out[0] = c; out[2] = -s; out[8] = s; out[10] = c; return out; };
 const turnX = (out: Mat4, a: number): Mat4 => { ident(out); const c = Math.cos(a), s = Math.sin(a); out[5] = c; out[6] = s; out[9] = -s; out[10] = c; return out; };
+const move = (out: Mat4, t: ArrayLike<number>): Mat4 => { ident(out); out[12] = t[0]; out[13] = t[1]; out[14] = t[2]; return out; };
 const project = (out: Mat4, fovY: number, aspect: number, near: number, far: number): Mat4 => {
   const f = 1 / Math.tan(fovY / 2), k = 1 / (near - far);
   out.fill(0); out[0] = f / aspect; out[5] = f; out[10] = (far + near) * k; out[11] = -1; out[14] = 2 * far * near * k;
@@ -55,8 +56,9 @@ const lookAt = (out: Mat4, eye: number[], at: number[]): Mat4 => {
 
 // ── the parsed files and their uploads ───────────────────────
 
-/** parsed files, keyed by asset id (a file's content is deterministic) */
+/** parsed files, keyed by asset id, with the address they were read from (a replaced file is read again) */
 const models = new Map<string, GltfModel>();
+const modelUrls = new Map<string, string>();
 /** uploaded meshes, keyed by asset id; made again when the context is new */
 interface Uploads { gl: WebGL2RenderingContext; prims: { vao: WebGLVertexArrayObject; count: number; color: number[] }[] }
 const uploads = new Map<string, Uploads>();
@@ -118,11 +120,13 @@ export const model: NodeType = {
   },
   async load(p, host) {
     if (!p.source) return;
-    if (models.has(p.source)) return;
     const url = host.asset<string>(p.source);
+    if (models.has(p.source) && modelUrls.get(p.source) === url) return;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`the model file could not be read (HTTP ${res.status})`);
     models.set(p.source, parseGltf(await res.arrayBuffer()));
+    modelUrls.set(p.source, url);
+    uploads.delete(p.source);
   },
   bounds(p) {
     const h = Math.max(8, p.height ?? 400);
@@ -133,7 +137,8 @@ export const model: NodeType = {
       const m = p.source ? models.get(p.source) : null;
       if (!m) throw new Error('the model file is not loaded yet');
       const { gl } = g;
-      gl.viewport(0, 0, g.canvas.width, g.canvas.height);
+      // this layer's picture: g.width × g.height from the bottom left of the type's shared canvas
+      gl.viewport(0, 0, g.width, g.height);
       gl.clearColor(0, 0, 0, 0);
       gl.enable(gl.DEPTH_TEST);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -141,7 +146,7 @@ export const model: NodeType = {
       gl.useProgram(prog);
       let up = uploads.get(p.source);
       if (!up || up.gl !== gl) { up = { gl, prims: [] }; upload(m.roots, gl, up); uploads.set(p.source, up); }
-      const aspect = g.canvas.width / g.canvas.height;
+      const aspect = g.width / g.height;
       gl.uniformMatrix4fv(gl.getUniformLocation(prog, 'uProj'), false, project(M(), FOV, aspect, m.radius / 32, m.radius * 8));
       const dist = m.radius / Math.sin(FOV / 2) * 1.06;
       gl.uniformMatrix4fv(gl.getUniformLocation(prog, 'uView'), false, lookAt(M(), [m.center[0], m.center[1], m.center[2] + dist], [m.center[0], m.center[1], m.center[2]]));
@@ -149,7 +154,8 @@ export const model: NodeType = {
       const uModel = gl.getUniformLocation(prog, 'uModel'), uColor = gl.getUniformLocation(prog, 'uColor');
       const ta = host.t - (host.layerIn ?? 0);
       const at = m.duration > 0 ? ta - Math.floor(ta / m.duration) * m.duration : 0;
-      const turn = mul(M(), turnY(M(), ((p.yaw ?? 0) + (p.spin ?? 0) * ta) * D2R), turnX(M(), (p.pitch ?? 0) * D2R));
+      // the turn pivots on the model's centre: a model authored away from the origin spins in place instead of orbiting
+      const turn = mul(M(), mul(M(), move(M(), m.center), mul(M(), turnY(M(), ((p.yaw ?? 0) + (p.spin ?? 0) * ta) * D2R), turnX(M(), (p.pitch ?? 0) * D2R))), move(M(), [-m.center[0], -m.center[1], -m.center[2]]));
       const explode = p.explode ?? 0;
       let i = 0;
       const walk = (n: GltfNode, parent: Mat4) => {
