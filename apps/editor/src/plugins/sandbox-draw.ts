@@ -113,7 +113,7 @@ async function request(host: Host, type: string, props: unknown, previousFrame?:
   const doc = e.context();
   if (!doc) return { err: 'no document to draw from', frame: previousFrame ?? host.frame };
   const h = e.host();
-  sendDoc(h, doc);
+  ensureSandboxDoc(h, doc);
   // the other layers at this instant, for host.layer
   const comp = Object.values(doc.doc.compositions).find((c) => c.layers[host.layerId]);
   const layers = (comp?.order ?? []).map((id) => { const l = host.layer?.(id); return l ? { id, ...l } : null; }).filter((l) => !!l);
@@ -138,7 +138,8 @@ async function request(host: Host, type: string, props: unknown, previousFrame?:
 /** the document's side, sent when the document (or an asset) changed */
 let lastDoc: TrammeDoc | null = null;
 const shipped = new WeakSet<object>();
-function sendDoc(h: PluginHost, doc: SandboxContext) {
+/** make sure the sandbox holds the document and its assets (idempotent) */
+export function ensureSandboxDoc(host: PluginHost, doc: SandboxContext) {
   if (doc.doc === lastDoc) return;
   lastDoc = doc.doc;
   const images: Record<string, unknown> = {}, json: Record<string, unknown> = {};
@@ -153,7 +154,7 @@ function sendDoc(h: PluginHost, doc: SandboxContext) {
       fonts.push({ url: new URL(a.src, doc.docUrl).href, family: a.family ?? id, weight: a.weight });
     }
   }
-  h.setDoc({ doc: doc.doc, docUrl: doc.docUrl, images, json, fonts });
+  host.setDoc({ doc: doc.doc, docUrl: doc.docUrl, images, json, fonts });
 }
 
 /** a project change invalidates what crossed (the previews rebind) */

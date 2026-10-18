@@ -19,7 +19,7 @@ import { editorRegistry } from './vocabulary.ts';
 import { clipChain, masterGainDb, mixBus, playClip, Renderer } from '@tramme/render';
 import { comp, compIdOf, S, setRegistry, setTime, toast, viewDoc } from './state.ts';
 import { attachIsolated, filterModule, pluginHost } from './plugins/index.ts';
-import { bindSandbox, resetSandbox, type SandboxContext } from './plugins/sandbox-draw.ts';
+import { bindSandbox, ensureSandboxDoc, resetSandbox, type SandboxContext } from './plugins/sandbox-draw.ts';
 import { t } from './i18n/index.ts';
 import { prefs } from './settings.ts';
 import { syncPluginTours } from './tours/index.ts';
@@ -56,6 +56,8 @@ class Preview {
   private scrubAt = 0;
   /** counter for re-loading an edited plugin in the sandbox */
   private bust = 0;
+  /** one sandbox frame in flight (the flag's draw path) */
+  private sandboxBusy = false;
   /** the sharp frame being drawn in steps, cancelled by any change */
   private job: (() => EvaluatedFrame | null) | null = null;
   /** frame of the composition last drawn during playback (exact frames) */
@@ -244,17 +246,29 @@ class Preview {
     this.setScale(r, moving || scrubbing ? this.motionScale(still) : still, still);
     const t0 = performance.now();
     try {
-      const frame = r.render(t, { samples: 1, checker: true });
-      this.docSamples = frame.motionBlur.samples;
-      // a video frame still decoding: drawn again as soon as it is there
-      if (r.incomplete) r.settle().then((waited) => { if (waited && !S.playing.peek()) this.invalidate(); });
-      // a layer or effect that failed is drawn as a red frame: say which and why
-      if (r.errors.size) S.renderError.value = `render: ${[...r.errors].map(([id, m]) => `${id}: ${m}`).join(' · ')}`;
-      else if (S.renderError.peek()?.startsWith('render')) S.renderError.value = null;
-      // still for a moment: the sharp picture, with its motion blur, at the still size
-      const blurred = (this.sharpSamples() ?? frame.motionBlur.samples) > 1;
-      if (!moving && (blurred || r.scale < still)) {
-        this.refineTimer = setTimeout(() => { this.refineTimer = null; requestAnimationFrame(() => this.refine()); }, 180);
+      if (prefs.peek().sandboxPreview) {
+        // the whole picture comes from the sandbox (docs/evaluator-sandbox.md): modifiers, effects and simulations never run here
+        if (!this.sandboxBusy) {
+          this.sandboxBusy = true;
+          void this.drawSandboxFrame(t).catch((e) => { S.renderError.value = `sandbox: ${(e as Error).message}`; }).finally(() => {
+            this.sandboxBusy = false;
+            // still: the fresh picture replaces the one drawn meanwhile
+            if (!S.playing.peek()) this.invalidate();
+          });
+        }
+      } else {
+        const frame = r.render(t, { samples: 1, checker: true });
+        this.docSamples = frame.motionBlur.samples;
+        // a video frame still decoding: drawn again as soon as it is there
+        if (r.incomplete) r.settle().then((waited) => { if (waited && !S.playing.peek()) this.invalidate(); });
+        // a layer or effect that failed is drawn as a red frame: say which and why
+        if (r.errors.size) S.renderError.value = `render: ${[...r.errors].map(([id, m]) => `${id}: ${m}`).join(' · ')}`;
+        else if (S.renderError.peek()?.startsWith('render')) S.renderError.value = null;
+        // still for a moment: the sharp picture, with its motion blur, at the still size
+        const blurred = (this.sharpSamples() ?? frame.motionBlur.samples) > 1;
+        if (!moving && (blurred || r.scale < still)) {
+          this.refineTimer = setTimeout(() => { this.refineTimer = null; requestAnimationFrame(() => this.refine()); }, 180);
+        }
       }
     } catch (e) {
       S.renderError.value = `render: ${(e as Error).message}`;
@@ -263,6 +277,43 @@ class Preview {
     this.stats.frames++;
     this.stats.ms += this.lastMs;
     if (S.playing.peek()) this.invalidate();
+  }
+
+  /**
+   * The picture of the flag: the sandbox evaluates and draws the whole
+   * composition (modifiers, effects, simulations inside), the page blits the
+   * finished picture through the renderer's own compositor — the canvas is
+   * WebGL, so the bitmap goes in as a frame, and the checker shows behind
+   * transparency as anywhere. Video frames are still decoded here and travel
+   * with the request.
+   */
+  private async drawSandboxFrame(t: number) {
+    const r = this.renderer!;
+    const doc = this.applied ?? S.doc.peek();
+    const c = doc.compositions[r.compId];
+    if (!c) return;
+    const docUrl = new URL(S.docUrl.peek(), location.href).href;
+    const ctx: SandboxContext = {
+      doc, docUrl,
+      loaded: (id) => { try { return r.assets.get(id); } catch { return null; } },
+    };
+    ensureSandboxDoc(pluginHost(docUrl), ctx);
+    const videos: Record<string, unknown> = {};
+    for (const [id, a] of Object.entries(doc.assets)) {
+      if (a.type !== 'video') continue;
+      try {
+        const va = r.assets.get<{ frameAt(x: number): unknown } | null>(id);
+        const fr = va?.frameAt?.(t);
+        if (fr) videos[id] = fr;
+      } catch { /* not decoded yet: the node's draw says so */ }
+    }
+    const pic = await pluginHost(docUrl).renderFrame({ compId: r.compId, t, scale: r.scale, width: c.width, height: c.height, videos });
+    if (pic.err) { S.renderError.value = `sandbox: ${pic.err}`; return; }
+    if (!pic.bitmap) return;
+    r.compositor.begin();
+    r.compositor.add(pic.bitmap as unknown as OffscreenCanvas, 1);
+    r.compositor.finish({ bloom: 0, bloomThreshold: 0.85, vignette: 0, grain: 0, exposure: 1 }, { bg: null, checker: true }, 1, { t, scale: r.scale, onError: (e: Error) => { throw e; } });
+    if (S.renderError.peek()?.startsWith('sandbox')) S.renderError.value = null;
   }
 
   /**

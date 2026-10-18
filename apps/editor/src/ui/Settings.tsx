@@ -114,6 +114,9 @@ function Preview() {
       <Row label={t('settings.playAtTheComposition')} hint={t('settings.likeTheExport24')}>
         <Toggle on={p.exactFrames} onChange={(v) => setPrefs({ exactFrames: v })} />
       </Row>
+      <Row label={t('settings.sandboxPreview')} hint={t('settings.sandboxPreviewHint')}>
+        <Toggle on={p.sandboxPreview} onChange={(v) => setPrefs({ sandboxPreview: v })} />
+      </Row>
       {inEditor && (
         <div class="set-info">
           <Icon name="info" />
