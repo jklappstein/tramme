@@ -2,7 +2,7 @@
 
 Where the plugin system goes, and in what order. The goal is not only a richer vocabulary of layers: it is to give the built-in assistant what it needs to produce impressive videos on its own. The editor gets the same abilities, since the editor and the assistant share one API.
 
-Status: steps 1 to 3, 6, 7 and 9 done (glTF is lean: no skinning; rope, cloth and flock are done — fluid and rigid shapes left); steps 4, 5 and 10 mostly done (pose, plugin isolation and audio processing left); steps 7b and 8 wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: steps 1 to 3, 6, 7 and 9 done (glTF is lean: no skinning; rope, cloth and flock are done — fluid and rigid shapes left); steps 4 and 10 mostly done (pose, plugin isolation and audio processing left); steps 7b and 8 wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -94,7 +94,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 - [x] Video: depth (`depth` tool, `apps/editor/src/depth.ts`): Depth Anything v2 small through transformers.js on WebGPU or the processor, steadied from frame to frame, saved as a grey video timed like the file (a grey PNG for a photo), played by a hidden layer and read by `fx.parallax` and `fx.depthBlur` (pose left).
 - [x] Video: an object followed over time (`track` tool: template matching in `packages/core/src/track.ts`, framed by a rectangle, a region or the detector), saved as a JSON asset that the `callout` node and `track()` in expressions read through the video layer: tracked callouts.
 - [x] Image: main colours as tokens (`palette` tool: plate, ink, accent).
-- [ ] Image: saliency and free space as data (the `subjects` text gives the free sides for now).
+- [x] Image: saliency and free space as data (the `space` tool, `freeSides`/`largestFree`/`clearMargins` in `packages/core/src/space.ts`): a small grid of how busy each cell is (edge energy of the frame, robustly scaled), saved as a JSON asset with the free sides and the largest clear rectangle in fractions of the frame — where a title or a caption block fits.
 - [x] Render-time access: nodes read JSON assets with `host.asset(id)`; expressions with `audio(source)` (`pulse`, `barPulse`, `hit`, `energy`, `beat`, `bar`, `phase`, `section`), mapped to the time of a sound layer; the `react` modifier for the same without code. The renderer gives the evaluator the loaded analyses.
 - [x] Checks read analyses: `text-over-subject` warns when text covers a face.
 - [x] Models run in the browser at authoring time, never during a render; the system prompt says when to use each tool.

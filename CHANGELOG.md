@@ -10,6 +10,8 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- A **free space** tool (`space`): a frame read as a small grid of how busy each cell is (edges, robustly scaled), saved as data with the clear sides and the largest clear rectangle in fractions of the frame — where a title or a caption block fits without covering what matters.
+
 - A **lip sync** tool (`lipsync`): the words of a transcript drive a drawn character's mouth — the nine classic shapes (closed, M/B/P, F/V, A/I, E, O, U/W/Q, L, other) written as keys on a sequence's `drawing`, closed between the words, remappable with a mouths map.
 
 - Three **simulated nodes**: a **rope** (tied to the layer's origin, pulled towards another layer, swinging in the wind), a **cloth** (pinned along its top edge, falling and catching a wind that breathes) and a **flock** (boids that steer together across the frame, deterministic on its seed). Stepped frame by frame from the layer's in point, so exports and previews agree.

@@ -4,7 +4,7 @@
 // vocabulary, run by the assistant (use_tool) or from the / menu.
 
 import { ALL_FORMATS, AudioBufferSink, CanvasSink, Input, UrlSource } from 'mediabunny';
-import { analyseAudio, pointer, type Op, type ToolContext, type ToolType } from '@tramme/core';
+import { analyseAudio, clearMargins, freeSides, largestFree, pointer, type Op, type ToolContext, type ToolType } from '@tramme/core';
 import { t } from './i18n/index.ts';
 
 const RATE = 16000;
@@ -357,4 +357,76 @@ const palette: ToolType<{ asset?: string; t?: number; tokens?: boolean }> = {
   },
 };
 
-export const PERCEPTION_TOOLS: ToolType[] = [beats, shots, subjects, palette];
+// ── free space of a frame ────────────────────────────────────
+/** how busy each cell of a small grid is: the edge energy of its pixels, 0 clear to 1 crowded */
+function busyGrid(g: CanvasRenderingContext2D, w: number, h: number): number[] {
+  const px = g.getImageData(0, 0, w, h).data;
+  const luma = new Float32Array(w * h);
+  for (let i = 0; i < luma.length; i++) luma[i] = (0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]) / 255;
+  const energy = new Float32Array(w * h);
+  let max = 0;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x;
+    const dx = Math.abs(luma[i + 1] - luma[i - 1]) + Math.abs(luma[i + w + 1] - luma[i + w - 1]);
+    const dy = Math.abs(luma[i + w] - luma[i - w]) + Math.abs(luma[i + w + 1] - luma[i - w + 1]);
+    const e = dx + dy + (1 - Math.abs(luma[i] * 2 - 1)) * 0.12; // edges, and a little for flat brightness (text lands there well anyway)
+    energy[i] = e;
+    if (e > max) max = e;
+  }
+  // robust scale: the 95th percentile, so one hot edge does not flatten the rest
+  const sorted = [...energy].sort((a, b) => a - b);
+  const cap = sorted[Math.floor(sorted.length * 0.95)] || 1;
+  return [...energy].map((e) => Math.min(1, e / cap));
+}
+
+const space: ToolType<{ asset?: string; t?: number }> = {
+  name: 'space', title: 'Free space', description: 'finds where a frame stays clear (the free sides, the largest clear rectangle) so titles and captions land where nothing matters sits',
+  input: {
+    type: 'object',
+    properties: {
+      asset: { type: 'string', format: 'asset', assetType: ['image', 'video'], title: 'Image or video' },
+      t: { type: 'number', minimum: 0, title: 'Time in the video (s)' },
+    },
+  },
+  ai: { when: 'before placing a title, a caption block or a logo over footage or a photo: it says where the frame is quiet, and the space stays saved as data for the checks' },
+  async run({ asset: wanted, t: at = 0 }, ctx) {
+    const asset = mediaOf(ctx, wanted, ['image', 'video']), a = ctx.doc.assets[asset];
+    // the grid follows the frame's shape: 48 cells across the long side
+    let source: CanvasImageSource, w = 0, h = 0;
+    if (a.type === 'image') {
+      const img = await loadImage(ctx.assetUrl(asset));
+      source = img; w = img.naturalWidth; h = img.naturalHeight;
+    } else {
+      const input = new Input({ source: new UrlSource(ctx.assetUrl(asset)), formats: ALL_FORMATS });
+      try {
+        const track = await input.getPrimaryVideoTrack();
+        if (!track) throw new Error('this file has no picture');
+        w = track.displayWidth; h = track.displayHeight;
+        const f = await new CanvasSink(track, { width: w, height: h, fit: 'fill' }).getCanvas(at);
+        if (!f) throw new Error(`no frame at ${at} s`);
+        source = f.canvas as CanvasImageSource;
+      } finally { input.dispose(); }
+    }
+    const gw = w >= h ? 48 : 27, gh = w >= h ? 27 : 48;
+    const { g } = canvas(gw, gh);
+    g.drawImage(source, 0, 0, gw, gh);
+    const busy = busyGrid(g, gw, gh);
+    const grid = { cols: gw, rows: gh, busy };
+    const sides = freeSides(grid), rect = largestFree(grid), margins = clearMargins(grid);
+    const data = { version: 1, kind: 'space', source: asset, t: at, cols: gw, rows: gh, busy, sides, rect, margins };
+    const { id, ops, reload } = await save(ctx, asset, 'space', data, `Free space · ${a.name ?? asset}`);
+    const pct = (x: number) => `${Math.round(x * 100)} %`;
+    return {
+      ops, reload, label: `Free space of ${a.name ?? asset}`,
+      text: [
+        `Free space of "${asset}"${a.type === 'video' ? ` at ${at} s` : ''}, saved as asset "${id}" (a ${gw}×${gh} grid of how busy each cell is, plus the sides and the largest clear rectangle, all in fractions of the frame).`,
+        `Clear edges: left ${pct(sides.left)}, right ${pct(sides.right)}, top ${pct(sides.top)}, bottom ${pct(sides.bottom)}.`,
+        `The largest clear rectangle holds at x ${pct(rect.x)}–${pct(rect.x + rect.w)}, y ${pct(rect.y)}–${pct(rect.y + rect.h)}: that is where a title or a caption block fits without covering what matters.`,
+        'The check tool reads the same data: it warns when text lands on a busy cell.',
+      ].join('\n'),
+      notice: t('perception.spaceDone', { free: pct(Math.max(sides.left, sides.right, sides.top, sides.bottom)) }),
+    };
+  },
+};
+
+export const PERCEPTION_TOOLS: ToolType[] = [beats, shots, subjects, palette, space];

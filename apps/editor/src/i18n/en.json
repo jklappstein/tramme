@@ -1045,6 +1045,7 @@
     "shotsDone": "{cuts} cut(s) found between shots.",
     "subjectsDone": "People found in {seen} of {looks} look(s). The checks now warn when text covers a face.",
     "paletteDone": "Main colours: {colours}. They are now the plate, ink and accent tokens.",
+    "spaceDone": "The frame has clear edges (up to {free} on one side): the largest clear rectangle is where a title fits.",
     "cutoutDone": "Cut out over {frames} frames ({from} to {to} s). Put the titles between the video and its cut-out: they pass behind the subject.",
     "cutoutLooking": "finding the people",
     "cutoutMatting": "cutting out",
