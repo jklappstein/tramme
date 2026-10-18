@@ -111,6 +111,9 @@ export class Server {
 
   async start(port = 0): Promise<number> {
     await this.bundle('render', path.join(HERE, 'page.ts'));
+    // the plugin sandbox's worker (shared with the editor), at the fixed address its host creates
+    await this.bundle('sandbox', path.join(HERE, '../../../apps/editor/src/plugins/worker.ts'));
+    this.files.set('/plugin-worker.js', this.files.get('/__tramme/sandbox/worker.js')!);
     await new Promise<void>((resolve, reject) => {
       this.http.once('error', reject);
       this.http.listen(port, '127.0.0.1', () => resolve());

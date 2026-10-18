@@ -1,20 +1,53 @@
 // Runtime page driven by the CLI through Puppeteer: loads one document,
 // validates it, loads its assets and exposes window.TRAMME.
-//   /__tramme/?doc=/project/film.tramme.json[&comp=main]
+//   /__tramme/?doc=/project/film.tramme.json[&comp=main][&sandbox=0]
+// With plugins in the project, the whole frame is evaluated and drawn in the
+// plugin sandbox's worker (docs/evaluator-sandbox.md): the page ships the
+// document and each video asset's decoded frame, and one picture comes back.
 
 import type { TrammeDoc } from '@tramme/core';
 import { builtinRegistry } from '@tramme/nodes';
 import { encodeWav, mixComposition, Renderer, type RenderOptions } from '@tramme/render';
+import { blitSandboxFrame, ensureSandboxDoc, sandboxVideoFrames } from '../../../apps/editor/src/plugins/sandbox-draw.ts';
+import { browserHost, type PluginHost } from '../../../apps/editor/src/plugins/host.ts';
 
 const q = new URLSearchParams(location.search);
 const docUrl = new URL(q.get('doc') || '', location.href).href;
+const sandboxOn = q.get('sandbox') !== '0';
 let renderer: Renderer;
+let currentDoc: TrammeDoc | null = null;
+let sandbox: PluginHost | null = null;
 
 async function init() {
   const r = await fetch(docUrl);
   if (!r.ok) throw new Error(`document not found: ${docUrl}`);
-  const doc = (await r.json()) as TrammeDoc;
-  renderer = await Renderer.open(doc, builtinRegistry(), docUrl, document.getElementById('out') as HTMLCanvasElement, { compId: q.get('comp') || doc.root });
+  currentDoc = (await r.json()) as TrammeDoc;
+  renderer = await Renderer.open(currentDoc, builtinRegistry(), docUrl, document.getElementById('out') as HTMLCanvasElement, { compId: q.get('comp') || currentDoc.root });
+}
+
+/** the sandbox host, when the document carries plugins and the flag is not off */
+async function sandboxReady(): Promise<PluginHost | null> {
+  const doc = currentDoc;
+  if (!sandboxOn || !doc || !(doc.plugins ?? []).length) return null;
+  sandbox ??= browserHost(docUrl);
+  ensureSandboxDoc(sandbox, {
+    doc, docUrl,
+    loaded: (id) => { try { return renderer.assets.get(id); } catch { return null; } },
+  });
+  return sandbox;
+}
+
+/** the sandbox's finished picture for frame f, its videos decoded on the page */
+async function sandboxFrame(f: number): Promise<OffscreenCanvas> {
+  const sb = await sandboxReady();
+  if (!sb) throw new Error('the sandbox is off');
+  const time = f / renderer.comp.fps;
+  const videos = await sandboxVideoFrames(renderer, currentDoc!, time);
+  const c = currentDoc!.compositions[renderer.compId];
+  const pic = await sb.renderFrame({ compId: renderer.compId, t: time, scale: 1, width: c.width, height: c.height, videos });
+  if (pic.err) throw new Error(pic.err);
+  if (!pic.bitmap) throw new Error(`frame ${f} drew nothing in the sandbox`);
+  return pic.bitmap as OffscreenCanvas;
 }
 
 const canvas = () => document.getElementById('out') as HTMLCanvasElement;
@@ -38,11 +71,23 @@ const api = {
   },
   /** switch to another version of the document (validated, new assets loaded) */
   async load(doc: TrammeDoc, compId?: string) {
+    currentDoc = doc;
     await renderer.setDoc(doc, { compId: compId || doc.root });
     return api.info();
   },
   /** PNG of one frame as a data URL; maxWidth scales it down (previews for the assistant) */
   async still(t: number, opts: RenderOptions = {}, maxWidth?: number): Promise<string> {
+    if (await sandboxReady()) {
+      blitSandboxFrame(renderer, await sandboxFrame(Math.round(t * renderer.comp.fps)), t, false);
+      const out = canvas();
+      if (!maxWidth || out.width <= maxWidth) return dataUrl(out);
+      const k = maxWidth / out.width, small = document.createElement('canvas');
+      small.width = Math.round(out.width * k); small.height = Math.round(out.height * k);
+      const ctx = small.getContext('2d')!;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(out, 0, 0, small.width, small.height);
+      return dataUrl(small);
+    }
     await renderer.renderComplete(t, opts);
     const out = canvas();
     if (!maxWidth || out.width <= maxWidth) return dataUrl(out);
@@ -76,9 +121,13 @@ const api = {
     const progress = (window as any).__trammeProgress as ((done: number, total: number) => void) | undefined;
     let inflight: Promise<void> | null = null;
     for (let f = f0; f < f1; f++) {
-      await renderer.renderComplete(f / fps, { ...opts, toFbo: true });
-      // a frame whose pictures never came (see SETTLE_LIMIT): the export stops rather than carry a wrong picture
-      if (renderer.late) { ws.close(); throw new Error(`frame ${f} (${(f / fps).toFixed(2)} s) never finished: a video frame or a plugin picture did not come`); }
+      if (await sandboxReady()) {
+        blitSandboxFrame(renderer, await sandboxFrame(f), f / fps, false);
+      } else {
+        await renderer.renderComplete(f / fps, { ...opts, toFbo: true });
+        // a frame whose pictures never came (see SETTLE_LIMIT): the export stops rather than carry a wrong picture
+        if (renderer.late) { ws.close(); throw new Error(`frame ${f} (${(f / fps).toFixed(2)} s) never finished: a video frame or a plugin picture did not come`); }
+      }
       const buf = bufs[f & 1];
       if (kind === 'rgba') renderer.compositor.readRGBA(buf, renderer.lastSeed);
       else renderer.compositor.readYUV(buf, renderer.lastSeed);
