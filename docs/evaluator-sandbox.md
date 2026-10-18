@@ -41,7 +41,7 @@ Run the tail inside a gas-limited interpreter on the page (the Wasm option of pl
 
 **(b), behind a flag, in this series:**
 
-1. **The frame primitive** — the sandbox renders a whole composition: built-in registry, plugin modules, its own Evaluator, the draw and the finish passes on an OffscreenCanvas; one picture comes back. Not wired anywhere yet; tested against the protocol.
+1. **The frame primitive (done).** The sandbox renders a whole composition: built-in registry, plugin modules, its own Evaluator, the draw and the finish passes on an OffscreenCanvas; one picture comes back. Video frames are still decoded on the page and shipped with the request. Not wired anywhere yet; tested against the protocol.
 2. **The preview flag** — a setting, off by default: the viewport blits the sandbox's frame; the mirror evaluator keeps feeding the interface; the real renderer stays open for the registry and the assets. Motion blur and finish may lag behind the flag's label.
 3. **Stills and the browser exports** — the same path where the renderer was the page's.
 4. **The command line's page** — it is a browser page like the editor; the same flag applies.

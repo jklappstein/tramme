@@ -27,8 +27,10 @@ export class CanvasPool {
   private free: HTMLCanvasElement[] = [];
   private cpu: boolean;
   constructor(cpu = true) { this.cpu = cpu; }
+  /** the canvas class a pool builds (a worker builds OffscreenCanvases) */
+  protected make(): HTMLCanvasElement { return document.createElement('canvas'); }
   get(w: number, h: number): CanvasRenderingContext2D {
-    const c = this.free.pop() ?? document.createElement('canvas');
+    const c = this.free.pop() ?? this.make();
     if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     const ctx = c.getContext('2d', { alpha: true, willReadFrequently: this.cpu })!;
     ctx.setTransform(1, 0, 0, 1, 0, 0);

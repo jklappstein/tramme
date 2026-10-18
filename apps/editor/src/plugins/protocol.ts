@@ -116,6 +116,18 @@ export interface DrawPayload {
   items: DrawItem[];
 }
 
+/** a whole composition to evaluate and draw in the sandbox */
+export interface FramePayload {
+  compId: string;
+  t: number;
+  /** canvas pixels per composition pixel (the preview draws smaller) */
+  scale: number;
+  width: number;
+  height: number;
+  /** the current picture of each video asset, decoded on the page (copied, not transferred) */
+  videos?: Record<string, unknown>;
+}
+
 /** what one item drew: its picture (over its bounds), or why it failed */
 export interface DrawResult {
   id: string;
@@ -140,6 +152,7 @@ export type ToWorker =
   | { kind: 'check'; name: string; ctx: CheckCtxData; call: number }
   | { kind: 'doc'; doc: SandboxDoc }
   | { kind: 'draw'; call: number; payload: DrawPayload }
+  | { kind: 'render'; call: number; payload: FramePayload }
   | { kind: 'export'; call: number; type: string; props: unknown }
   | { kind: 'abort'; call: number }
   | { kind: 'answer'; id: number; ok?: unknown; err?: string };
@@ -150,6 +163,7 @@ export type FromWorker =
   | { kind: 'loadFailed'; id: string; message: string }
   | { kind: 'result'; call: number; ok?: unknown; err?: string }
   | { kind: 'drawn'; call: number; frame: number; results: DrawResult[] }
+  | { kind: 'rendered'; call: number; bitmap?: unknown; err?: string }
   | { kind: 'exported'; call: number; svg?: string; lottie?: unknown; err?: string }
   | { kind: 'ask'; id: number; call: number; q: Ask }
   | { kind: 'progress'; call: number; done: number; total: number; step?: string };

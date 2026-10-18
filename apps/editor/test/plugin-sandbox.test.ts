@@ -229,6 +229,7 @@ describe('the sandboxed drawing', () => {
         };
       },
       exportOf: async () => ({ err: 'not this test' }),
+      renderFrame: async () => ({ err: 'not this test' }),
     };
     const { host } = pair(new Map([['blob:stars', plugin()]]), undefined, () => sandbox);
     await host.ensure([{ id: 'stars', url: 'blob:stars' }]);
@@ -250,12 +251,38 @@ describe('the sandboxed drawing', () => {
         if (!node?.export) return { err: `${type} has no vector export` };
         return { svg: node.export.svg?.(props), lottie: node.export.lottie?.(props) };
       },
+      renderFrame: async (p) => {
+        if (!p.videos || !p.videos.clip) return { err: 'no video frame shipped' };
+        const b = { width: 100 } as unknown as ImageBitmap;
+        return { bitmap: b, transfer: [b] };
+      },
     };
     const { host } = pair(new Map([['blob:stars', plugin()]]), undefined, () => sandbox);
     await host.ensure([{ id: 'stars', url: 'blob:stars' }]);
     const r = await host.exportOf('sky.moon', { radius: 7 });
     expect(r.svg).toBe('<circle r="7"/>');
     await expect(host.exportOf('sky.other', {})).rejects.toThrow(/sky\.other/);
+  });
+
+  it('renders a whole frame in the sandbox and hands the picture back', async () => {
+    const frames: unknown[] = [];
+    const bitmap = { width: 96, height: 48 } as unknown as ImageBitmap;
+    const { host } = pair(new Map([['blob:stars', plugin()]]), undefined, () => ({
+      setDoc: () => {},
+      draw: async () => ({ results: [] }),
+      exportOf: async () => ({}),
+      renderFrame: async (p) => { frames.push(p); return { bitmap, transfer: [bitmap] }; },
+    }));
+    host.setDoc({ doc: { assets: {} }, docUrl: DOC_URL, images: {}, json: {}, fonts: [] });
+    const pic = await host.renderFrame({ compId: 'root', t: 0.5, scale: 0.5, width: 192, height: 96, videos: { clip: {} } });
+    expect(pic.bitmap).toBe(bitmap);
+    expect(frames).toHaveLength(1);
+    const p = frames[0] as { compId: string; t: number; videos: Record<string, unknown> };
+    expect(p.compId).toBe('root');
+    expect(p.videos.clip).toEqual({});
+    // without the sandbox: a clear error
+    const bare = pair(new Map());
+    await expect(bare.host.renderFrame({ compId: 'root', t: 0, scale: 1, width: 100, height: 100 })).rejects.toThrow(/cannot render/);
   });
 
   it('the wrapper defers, then draws the picture over its bounds; a later frame keeps the last one', async () => {
@@ -323,6 +350,7 @@ describe('the sandboxed drawing', () => {
       setDoc: () => {},
       draw: () => new Promise<DrawResult[]>((res) => { resolveDraw = res; }),
       exportOf: async () => ({ svg: '<circle r="5"/>' }),
+      renderFrame: async () => ({ bitmap: {} }),
       dispose: () => {},
     } as unknown as PluginHost;
     bindSandbox({ host: () => fakeHost, context: () => ({ doc: doc().doc, docUrl: DOC_URL, loaded: () => null }) });

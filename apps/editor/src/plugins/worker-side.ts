@@ -5,7 +5,7 @@
 // project is a message answered by the page. Nothing here touches the DOM.
 
 import { Registry, type CheckContext, type CheckType, type EffectType, type ModifierType, type NodeType, type PluginModule, type QualityIssue, type ToolContext, type ToolOutput } from '@tramme/core';
-import type { Ask, CheckCtxData, DrawPayload, DrawResult, FromWorker, PluginDecl, SandboxDoc, SchemaEffect, SchemaModifier, SchemaNode, ToWorker, ToolCtxData } from './protocol.ts';
+import type { Ask, CheckCtxData, DrawPayload, DrawResult, FramePayload, FromWorker, PluginDecl, SandboxDoc, SchemaEffect, SchemaModifier, SchemaNode, ToWorker, ToolCtxData } from './protocol.ts';
 
 export interface WorkerSide {
   /** a message from the page */
@@ -20,6 +20,8 @@ export interface SandboxDrawSide {
   draw(p: DrawPayload): Promise<{ results: DrawResult[]; transfer?: Transferable[] }>;
   /** a node's vector export, computed from its declarations' code */
   exportOf(type: string, props: unknown): Promise<{ svg?: string; lottie?: unknown; err?: string }>;
+  /** a whole composition evaluated and drawn here (the evaluator's move); the picture may be transferred */
+  renderFrame(p: FramePayload): Promise<{ bitmap?: unknown; transfer?: Transferable[]; err?: string }>;
 }
 
 export interface WorkerSideOptions {
@@ -142,6 +144,14 @@ export function startWorkerSide({ post, importModule, sandbox: makeSandbox }: Wo
           try { ({ results, transfer } = await sandbox.draw(m.payload)); }
           catch (e) { results = m.payload.items.map((i) => ({ id: i.id, ok: false, err: (e as Error).message })); }
           post({ kind: 'drawn', call: m.call, frame: m.payload.frame, results }, transfer);
+        })();
+        return;
+      }
+      if (m.kind === 'render') {
+        if (!sandbox) { post({ kind: 'rendered', call: m.call, err: 'the sandbox cannot render here' }); return; }
+        void (async () => {
+          const r: { bitmap?: unknown; transfer?: Transferable[]; err?: string } = await sandbox.renderFrame(m.payload).catch((e: Error) => ({ err: e.message }));
+          post({ kind: 'rendered', call: m.call, ...r }, r.transfer);
         })();
         return;
       }

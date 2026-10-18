@@ -5,7 +5,7 @@
 // registry carries — plugins/vocabulary.ts puts them there).
 
 import { toolOutput, type CheckContext, type NodeType, type PlacedLayer, type QualityIssue, type ToolContext, type ToolOutput } from '@tramme/core';
-import type { Ask, DrawPayload, DrawResult, FromWorker, PluginDecl, SandboxDoc, ToWorker } from './protocol.ts';
+import type { Ask, DrawPayload, DrawResult, FramePayload, FromWorker, PluginDecl, SandboxDoc, ToWorker } from './protocol.ts';
 
 /** the schema of a node without its code: what a check's samples may cross */
 const schemaOf = (n: NodeType) => ({ type: n.type, title: n.title, category: n.category, description: n.description, ai: n.ai, props: n.props, ...(n.container ? { container: true } : {}) });
@@ -23,6 +23,8 @@ export interface PluginHost {
   draw(payload: DrawPayload): Promise<DrawResult[]>;
   /** a node's vector export, computed in the sandbox */
   exportOf(type: string, props: unknown): Promise<{ svg?: string; lottie?: unknown; err?: string }>;
+  /** a whole composition evaluated and drawn in the sandbox; one picture comes back */
+  renderFrame(payload: FramePayload): Promise<{ bitmap?: unknown; err?: string }>;
   dispose(): void;
 }
 
@@ -95,6 +97,14 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
       else w.resolve({ svg: m.svg, lottie: m.lottie });
       return;
     }
+    if (m.kind === 'rendered') {
+      const w = waits.get(m.call);
+      if (!w) return;
+      waits.delete(m.call);
+      if (m.err) w.reject(new Error(m.err));
+      else w.resolve({ bitmap: m.bitmap });
+      return;
+    }
     if (m.kind === 'progress') {
       const ctx = bridges.get(m.call);
       if (ctx && 'progress' in ctx) (ctx as ToolContext).progress?.(m.done, m.total, m.step);
@@ -152,6 +162,10 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
     async exportOf(type, props) {
       const r = await run({ kind: 'export', call: ++call, type, props });
       return (r ?? {}) as { svg?: string; lottie?: unknown; err?: string };
+    },
+    async renderFrame(payload) {
+      const r = await run({ kind: 'render', call: ++call, payload });
+      return (r ?? {}) as { bitmap?: unknown; err?: string };
     },
     dispose() {
       for (const [, w] of waits) w.reject(new Error('the plugin sandbox is closed'));
