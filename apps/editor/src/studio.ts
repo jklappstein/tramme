@@ -69,6 +69,11 @@ export interface Turn {
   work: ChatItem[];
 }
 
+// While a turn streams, the conversation changes many times a second but only
+// its last turn does: what did not change keeps its object, so the views of
+// the earlier turns, the notes and the takes are not drawn again.
+const sameTurn = (a: Turn, b: Turn) => a.note === b.note && a.n === b.n && a.work.length === b.work.length && a.work.every((it, i) => it === b.work[i]);
+let lastTurns: Turn[] = [];
 export const turns = computed<Turn[]>(() => {
   const out: Turn[] = [];
   let n = 0;
@@ -77,17 +82,24 @@ export const turns = computed<Turn[]>(() => {
     else if (out.length) out[out.length - 1].work.push(it);
     else out.push({ note: null, n: 0, work: [it] });
   }
-  return out;
+  return (lastTurns = out.map((x, i) => (lastTurns[i] && sameTurn(lastTurns[i], x) ? lastTurns[i] : x)));
 });
 
 /** the notes written at a moment of the film, with their number */
-export const notes = computed(() => turns.value.filter((x) => x.note && x.note.at !== undefined).map((x) => ({ n: x.n, note: x.note! })));
+let lastNotes: { n: number; note: ChatItem }[] = [];
+export const notes = computed(() => {
+  const next = turns.value.filter((x) => x.note && x.note.at !== undefined).map((x) => ({ n: x.n, note: x.note! }));
+  if (next.length === lastNotes.length && next.every((x, i) => x.n === lastNotes[i].n && x.note === lastNotes[i].note)) return lastNotes;
+  return (lastNotes = next);
+});
 
 /** the takes the assistant proposed in this conversation, numbered: id → number */
+let lastTakes = new Map<string, number>();
 export const takes = computed(() => {
   const out = new Map<string, number>();
   for (const it of chat.value) if (it.proposal && !out.has(it.proposal.id)) out.set(it.proposal.id, out.size + 1);
-  return out;
+  if (out.size === lastTakes.size && [...out].every(([id, n]) => lastTakes.get(id) === n)) return lastTakes;
+  return (lastTakes = out);
 });
 
 /** the same note again, for another direction: the take on screen set aside */

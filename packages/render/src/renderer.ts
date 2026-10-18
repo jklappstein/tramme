@@ -20,6 +20,9 @@ export interface RenderOptions {
   checker?: boolean;
 }
 
+/** how long a complete frame waits for what it lacks (a video frame being decoded, a plugin's picture from the sandbox) */
+export const SETTLE_LIMIT = 20_000;
+
 /** sample times inside the shutter, never straddling a cut marker or the ends */
 export function subTimes(t: number, n: number, shutter: number, comp: Composition): number[] {
   if (n <= 1 || shutter <= 0) return [t];
@@ -280,19 +283,48 @@ export class Renderer {
   /** the last frame drawn lacked something still loading (a video frame): draw it again once settled */
   get incomplete() { return this.pending.length > 0; }
 
-  /** waits for what the last frame lacked; true when there was something (the frame should be drawn again) */
-  async settle(): Promise<boolean> {
+  /**
+   * Waits for what the last frame lacked; true when there was something (the
+   * frame should be drawn again). With a limit, false once it is passed (a
+   * decoder or a sandbox that never answers): `late` tells it. A stop ends
+   * the wait at once.
+   */
+  async settle(limit = Infinity, signal?: AbortSignal): Promise<boolean> {
     const p = this.pending;
     this.pending = [];
     if (!p.length) return false;
-    await Promise.all(p);
-    return true;
+    if (limit === Infinity && !signal) { await Promise.all(p); return true; }
+    let timer: ReturnType<typeof setTimeout> | undefined, onAbort: (() => void) | undefined;
+    try {
+      const outcome = await new Promise<'done' | 'late'>((resolve, reject) => {
+        Promise.all(p).then(() => resolve('done'), reject);
+        if (limit !== Infinity) timer = setTimeout(() => resolve('late'), limit);
+        if (signal) {
+          onAbort = () => reject(signal.reason ?? new DOMException('stopped', 'AbortError'));
+          if (signal.aborted) onAbort();
+          else signal.addEventListener('abort', onAbort, { once: true });
+        }
+      });
+      if (outcome === 'late') { this.late = true; return false; }
+      return true;
+    } finally {
+      clearTimeout(timer);
+      if (onAbort) signal?.removeEventListener('abort', onAbort);
+    }
   }
 
-  /** a frame with nothing missing: drawn again until every video frame it shows is the exact one (exports, stills) */
-  async renderComplete(t: number, opts: RenderOptions = {}): Promise<EvaluatedFrame> {
+  /** the last complete frame was drawn before all it waited for came (see SETTLE_LIMIT) */
+  late = false;
+
+  /**
+   * A frame with nothing missing: drawn again until every video frame it shows
+   * is the exact one (exports, stills). What never comes is waited for
+   * SETTLE_LIMIT at most: the frame is then drawn with what it has.
+   */
+  async renderComplete(t: number, opts: RenderOptions & { signal?: AbortSignal } = {}): Promise<EvaluatedFrame> {
+    this.late = false;
     let frame = this.render(t, opts);
-    for (let i = 0; i < 30 && (await this.settle()); i++) frame = this.render(t, opts);
+    for (let i = 0; i < 30 && (await this.settle(SETTLE_LIMIT, opts.signal)); i++) frame = this.render(t, opts);
     return frame;
   }
 

@@ -108,4 +108,6 @@ export async function* companionTurn(
     else if (ev.type === 'error') yield { type: 'error', message: ev.message };
     else if (ev.type === 'done') return;
   }
+  // the companion always ends a turn with "done": a stream cut before it is a companion stopped or restarted
+  if (!signal.aborted) throw new Error(t('ai.companionCut'));
 }

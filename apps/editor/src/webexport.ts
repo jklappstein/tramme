@@ -9,7 +9,7 @@ import { applyPalette, GIFEncoder, quantize } from 'gifenc';
 import { zipSync } from 'fflate';
 import type { TrammeDoc, Registry } from '@tramme/core';
 import { fetchAssetReader, toLottie, toSvg } from '@tramme/interop';
-import { encodeWav, mixComposition, Renderer } from '@tramme/render';
+import { encodeWav, mixComposition, Renderer, SETTLE_LIMIT } from '@tramme/render';
 
 import { AVC_FROM_STREAM } from './avc.ts';
 import type { WebFormat } from './formats.ts';
@@ -35,7 +35,25 @@ const mixAudio = (r: Renderer) => mixComposition(r.doc, r.compId, (id) => r.asse
 
 const wav = (buf: AudioBuffer) => new Blob([encodeWav(buf) as BlobPart], { type: 'audio/wav' });
 
-const aborted = (signal?: AbortSignal) => { if (signal?.aborted) throw new DOMException(t('export.exportCancelled'), 'AbortError'); };
+const cancelled = () => new DOMException(t('export.exportCancelled'), 'AbortError');
+const aborted = (signal?: AbortSignal) => { if (signal?.aborted) throw cancelled(); };
+
+/** how long one step of the encoder (a frame, the end of the file) may take before it is taken as stalled */
+const ENCODE_LIMIT = 60_000;
+
+/** a hardware encoder that stopped answering (Media Foundation on some integrated GPUs): the export starts over in software */
+class EncoderStalled extends Error {}
+
+/** a step of the encoder: the cancel button ends it at once, and one that never finishes is a stall rather than a wait for ever */
+function encoderStep<T>(p: Promise<T>, signal?: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const stop = () => reject(cancelled());
+    if (signal?.aborted) { stop(); return; }
+    signal?.addEventListener('abort', stop, { once: true });
+    const timer = setTimeout(() => reject(new EncoderStalled(t('export.encoderStalled', { s: ENCODE_LIMIT / 1000 }))), ENCODE_LIMIT);
+    p.then(resolve, reject).finally(() => { clearTimeout(timer); signal?.removeEventListener('abort', stop); });
+  });
+}
 
 export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebFormat, opts: WebExportOptions): Promise<WebExportResult> {
   if (format === 'lottie' || format === 'svg') {
@@ -65,9 +83,13 @@ export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebF
     const frames = Math.round(duration * fps);
     // straight RGBA of frame f (alpha kept)
     const rgba = new Uint8Array(W * H * 4);
-    // every video frame exact before reading it
+    // every video frame exact before reading it; a frame whose pictures never come stops the export rather than hang it
+    const complete = async (f: number, toFbo: boolean) => {
+      await r.renderComplete(f / fps, { samples: opts.samples, toFbo, signal: opts.signal });
+      if (r.late) throw new Error(t('export.frameNeverReady', { frame: f, time: (f / fps).toFixed(2), s: SETTLE_LIMIT / 1000 }));
+    };
     const readFrame = async (f: number) => {
-      await r.renderComplete(f / fps, { samples: opts.samples, toFbo: true });
+      await complete(f, true);
       return r.compositor.readRGBA(rgba, r.lastSeed);
     };
 
@@ -110,40 +132,54 @@ export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebF
     const webm = format === 'webm';
     const codec = await getFirstEncodableVideoCodec(webm ? ['vp9', 'vp8', 'av1'] : ['avc', 'vp9', 'av1'], { width: W, height: H });
     if (!codec) throw new Error(t('export.noVideoCodecAvailable', { w: W, h: H }));
-    const target = new BufferTarget();
-    const output = new Output({ format: webm ? new WebMOutputFormat() : new Mp4OutputFormat({ fastStart: 'in-memory' }), target });
-    const quality = new Quality('very-high');
-    // MP4: the visible canvas (opaque); WebM: straight RGBA frames, alpha kept
-    const video = webm ? new VideoSampleSource({ codec, quality, keyFrameInterval: 2, alpha: 'keep' }) : new CanvasSource(canvas, { codec, quality, keyFrameInterval: 2, ...(codec === 'avc' ? AVC_FROM_STREAM : {}) });
-    output.addVideoTrack(video, { frameRate: fps });
     const sound = await mixAudio(r);
-    let audio: AudioBufferSource | null = null;
-    if (sound) {
-      const audioCodec = webm ? 'opus' : (await canEncodeAudio('aac')) ? 'aac' : 'opus';
-      audio = new AudioBufferSource({ codec: audioCodec, quality: new Quality('high') });
-      output.addAudioTrack(audio);
-    }
-    await output.start();
-    try {
-      for (let f = 0; f < frames; f++) {
-        aborted(opts.signal);
-        if (video instanceof VideoSampleSource) {
-          const sample = new VideoSample(await readFrame(f), { format: 'RGBA', codedWidth: W, codedHeight: H, timestamp: f / fps, duration: 1 / fps });
-          await video.add(sample);
-          sample.close();
-        } else {
-          await r.renderComplete(f / fps, { samples: opts.samples });
-          await video.add(f / fps, 1 / fps);
-        }
-        opts.onProgress?.(f + 1, frames);
+    const audioCodec = webm ? 'opus' : (await canEncodeAudio('aac')) ? 'aac' : 'opus';
+    const encode = async (hardwareAcceleration: 'no-preference' | 'prefer-software'): Promise<Blob> => {
+      const target = new BufferTarget();
+      const output = new Output({ format: webm ? new WebMOutputFormat() : new Mp4OutputFormat({ fastStart: 'in-memory' }), target });
+      const quality = new Quality('very-high');
+      // MP4: the visible canvas (opaque); WebM: straight RGBA frames, alpha kept
+      const video = webm
+        ? new VideoSampleSource({ codec, quality, keyFrameInterval: 2, alpha: 'keep', hardwareAcceleration })
+        : new CanvasSource(canvas, { codec, quality, keyFrameInterval: 2, hardwareAcceleration, ...(codec === 'avc' ? AVC_FROM_STREAM : {}) });
+      output.addVideoTrack(video, { frameRate: fps });
+      let audio: AudioBufferSource | null = null;
+      if (sound) {
+        audio = new AudioBufferSource({ codec: audioCodec, quality: new Quality('high') });
+        output.addAudioTrack(audio);
       }
-      if (audio && sound) await audio.add(sound);
-      await output.finalize();
+      await output.start();
+      try {
+        for (let f = 0; f < frames; f++) {
+          aborted(opts.signal);
+          if (video instanceof VideoSampleSource) {
+            const sample = new VideoSample(await readFrame(f), { format: 'RGBA', codedWidth: W, codedHeight: H, timestamp: f / fps, duration: 1 / fps });
+            await encoderStep(video.add(sample), opts.signal);
+            sample.close();
+          } else {
+            await complete(f, false);
+            await encoderStep(video.add(f / fps, 1 / fps), opts.signal);
+          }
+          opts.onProgress?.(f + 1, frames);
+        }
+        if (audio && sound) await encoderStep(audio.add(sound), opts.signal);
+        await encoderStep(output.finalize(), opts.signal);
+      } catch (e) {
+        // not awaited: a stalled encoder would hold the error back
+        output.cancel().catch(() => {});
+        throw e;
+      }
+      return new Blob([target.buffer!], { type: webm ? 'video/webm' : 'video/mp4' });
+    };
+    const ext = webm ? 'webm' : 'mp4';
+    try {
+      return { blob: await encode('no-preference'), ext, warnings: [] };
     } catch (e) {
-      await output.cancel();
-      throw e;
+      if (!(e instanceof EncoderStalled)) throw e;
+      // the hardware encoder stalled: the whole film again, encoded in software (slower, but it finishes)
+      opts.onProgress?.(0, frames);
+      return { blob: await encode('prefer-software'), ext, warnings: [t('export.softwareEncoder', { s: ENCODE_LIMIT / 1000 })] };
     }
-    return { blob: new Blob([target.buffer!], { type: webm ? 'video/webm' : 'video/mp4' }), ext: webm ? 'webm' : 'mp4', warnings: [] };
   } finally {
     r.dispose();
   }

@@ -3,4 +3,4 @@ export { clipChain, encodeWav, MIX_RATE, masterGainDb, mixBus, mixComposition, p
 export { probeVideo, VideoFrames } from './video.ts';
 export { CanvasPool, drawComposed, drawFrame, drawLayers, localMatrix, type DrawEnv, type HostFactory } from './canvas2d.ts';
 export { Compositor, type Finish, type Look } from './compositor.ts';
-export { finishOf, Renderer, subTimes, type RenderOptions } from './renderer.ts';
+export { finishOf, Renderer, SETTLE_LIMIT, subTimes, type RenderOptions } from './renderer.ts';

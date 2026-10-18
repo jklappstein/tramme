@@ -102,6 +102,9 @@ export class ChatReader {
     return { text, reasoning };
   }
 
+  /** the model said why it stopped (a stream cut short says nothing) */
+  get finished() { return this.finish !== ''; }
+
   /** the content blocks, why it stopped, and the calls whose arguments were not valid JSON */
   result(): { content: Block[]; stop: string; invalid: Set<string> } {
     const content: Block[] = [];

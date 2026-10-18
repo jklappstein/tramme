@@ -92,8 +92,11 @@
     "declined": "Claude a décliné cette demande",
     "stoppedAfterNSteps": "arrêt après {n} étapes",
     "urlDoesNotAnswer": "{url} ne répond pas ({error})",
+    "companionCut": "Le compagnon local ne répond pas : sa connexion a été interrompue avant la fin du tour",
     "resumeIn": "Interrompu ({error}). Reprise dans {s} s, essai {n} sur {max}…",
     "serviceError": "erreur du service",
+    "streamCut": "la réponse a été interrompue : son flux s'est arrêté avant que le modèle ait fini",
+    "streamStalled": "la réponse a été interrompue : rien n'est arrivé sur son flux depuis {s} s",
     "editOfName": "Montage de {name}",
     "providerNotConnected": "{provider} n'est pas connecté : ajoutez sa clé dans Réglages, Fournisseurs.",
     "modelAdopted": "L'assistant utilise maintenant {model} ({provider}), l'IA connectée.",
@@ -1031,7 +1034,10 @@
     "removeAVertex": "Retirer un sommet"
   },
   "export": {
+    "encoderStalled": "l'encodeur vidéo ne répond plus ({s} s sans progrès)",
+    "softwareEncoder": "l'encodeur vidéo matériel n'a plus répondu pendant {s} s : le film a été encodé à nouveau en logiciel",
     "exportCancelled": "export annulé",
+    "frameNeverReady": "l'image {frame} ({time} s) ne s'est jamais terminée : une image de vidéo ou de plugin n'est pas arrivée en {s} s. L'export est arrêté plutôt que fait avec une image fausse.",
     "noSoundLayerIn": "aucun calque son dans cette composition",
     "pngFailed": "PNG impossible",
     "fromFpsBroughtDown": "{from} i/s ramenés à {to} i/s (limite du GIF)",

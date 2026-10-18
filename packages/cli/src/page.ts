@@ -77,6 +77,8 @@ const api = {
     let inflight: Promise<void> | null = null;
     for (let f = f0; f < f1; f++) {
       await renderer.renderComplete(f / fps, { ...opts, toFbo: true });
+      // a frame whose pictures never came (see SETTLE_LIMIT): the export stops rather than carry a wrong picture
+      if (renderer.late) { ws.close(); throw new Error(`frame ${f} (${(f / fps).toFixed(2)} s) never finished: a video frame or a plugin picture did not come`); }
       const buf = bufs[f & 1];
       if (kind === 'rgba') renderer.compositor.readRGBA(buf, renderer.lastSeed);
       else renderer.compositor.readYUV(buf, renderer.lastSeed);

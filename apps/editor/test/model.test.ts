@@ -3,6 +3,8 @@ import type { Composition, TrammeDoc } from '@tramme/core';
 import { applyOps as apply } from '@tramme/core';
 import { carriedStart, contentEnd, crossfadeOps, describeOp, isToolAsset, mediaAssetsOf, splitLayerOps, trimInOps } from '../src/model.ts';
 import { passes } from '../src/ai/server.ts';
+import EN from '../src/i18n/en.json' with { type: 'json' };
+import FR from '../src/i18n/fr.json' with { type: 'json' };
 
 const comp = (layers: Composition['layers']): Composition => ({ name: 'Main', width: 1920, height: 1080, fps: 30, duration: 60, layers, order: Object.keys(layers) });
 
@@ -32,10 +34,10 @@ describe('a proposal line', () => {
 
 describe('a failure worth a new attempt', () => {
   it('is the network or a busy server', () => {
-    for (const m of ['Failed to fetch', 'companion: HTTP 503', 'Overloaded', 'read ECONNRESET', 'stream ended before the answer', 'rate_limit_error: rate limit, retry soon']) expect(passes(m), m).toBe(true);
+    for (const m of ['Failed to fetch', 'companion: HTTP 503', 'Overloaded', 'read ECONNRESET', 'stream ended before the answer', 'rate_limit_error: rate limit, retry soon', EN.ai.companionCut, FR.ai.companionCut]) expect(passes(m), m).toBe(true);
   });
   it('is never a quota, a plan or a key', () => {
-    for (const m of ['You exceeded your current quota, please check your plan and billing details', 'Claude AI usage limit reached|1760000000', 'invalid x-api-key', 'HTTP 401', 'Please run /login', 'a property is missing']) expect(passes(m), m).toBe(false);
+    for (const m of ['You exceeded your current quota, please check your plan and billing details', 'Claude AI usage limit reached|1760000000', 'invalid x-api-key', 'HTTP 401', 'Please run /login', "You've hit your session limit · resets 3:40am (Africa/Porto-Novo)", 'a property is missing']) expect(passes(m), m).toBe(false);
   });
 });
 

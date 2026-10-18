@@ -13,6 +13,7 @@ import { timecode } from '../model.ts';
 import { anotherTake, liveStage, notes, STAGE_LABEL, stagesOf, studio, takes, turns, type Stage, type Turn } from '../studio.ts';
 import { Access, FileChip, Markdown, OpLines, QuestionCard, Thinking, ToolLine, UsageLine, useElapsed, Working } from './chat.tsx';
 import type { ComponentChildren } from 'preact';
+import { memo } from 'preact/compat';
 import { Seg } from './controls.tsx';
 import { LogoMark } from './Logo.tsx';
 import { Icon } from './icons.tsx';
@@ -128,14 +129,15 @@ export function Note({ note, n }: { note: ChatItem; n: number }) {
   );
 }
 
-export function TurnView({ turn, live }: { turn: Turn; live: boolean }) {
+/** a turn, drawn again only when it changed (a turn object is kept while its items are: see studio.ts) */
+export const TurnView = memo(function TurnView({ turn, live }: { turn: Turn; live: boolean }) {
   return (
     <article class="turn">
       {turn.note && <Note note={turn.note} n={turn.n} />}
       {(turn.work.length > 0 || live) && <Work work={turn.work} live={live} />}
     </article>
   );
-}
+});
 
 /** the thread itself: the turns, the access when there is none, the question being asked */
 export function Thread({ empty }: { empty?: ComponentChildren }) {

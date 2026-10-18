@@ -199,6 +199,9 @@ async function runClaude(t: Turn, r: TurnRequest) {
       else if (ev.type === 'content_block_stop' && thinking.delete(key)) t.send({ type: 'thinking-stop', key });
     } else if (msg.type === 'result' && msg.subtype !== 'success') {
       t.send({ type: 'error', message: (msg.errors ?? []).join('\n') || `Claude stopped (${msg.subtype})` });
+    } else if (msg.type === 'result' && msg.is_error) {
+      // a turn ended on an API error (a session limit, an overloaded server, a login refused) comes as a "success" whose result is the error
+      t.send({ type: 'error', message: String(msg.result || `Claude stopped (${msg.api_error_status ?? 'API error'})`) });
     }
   }
   if (meter.usage.requests) t.send({ type: 'usage', usage: meter.usage });

@@ -198,8 +198,8 @@ describe('assistant, server path', () => {
   });
 
   describe('tries again by itself', () => {
-    // the waits between tries, at once
-    const instant = () => vi.stubGlobal('setTimeout', ((fn: () => void) => { fn(); return 0; }) as unknown as typeof setTimeout);
+    // the waits between tries, at once; the watch on a stalled stream (minutes) never fires
+    const instant = () => vi.stubGlobal('setTimeout', ((fn: () => void, ms = 0) => { if (ms < 60_000) fn(); return 0; }) as unknown as typeof setTimeout);
     const offline = () => { throw new TypeError('Failed to fetch'); };
     const broken = (before: object[] = []) => () => sse([{ type: 'message_start', message: { id: 'm', role: 'assistant', content: [] } }, ...before, { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }]);
 
@@ -225,6 +225,24 @@ describe('assistant, server path', () => {
       const sent = serve(broken([{ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }, { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Let me' } }]), second);
       await expect(go(new ServerSession(), fakeRunner().runner)).rejects.toThrow('Overloaded');
       expect(sent.length).toBe(1);
+    });
+
+    it('when a stream ends before the model said why it stopped, and says so once the user saw part of it', async () => {
+      instant();
+      const chat = (body: string) => () => new Response(body, { headers: { 'content-type': 'text/event-stream' } });
+      const cutSilent = chat('data: {"choices":[{"delta":{}}]}\n\n');
+      const done = chat('data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n');
+      const chatTurn = () => drain(new ServerSession().turn('Hi', 'custom:deepseek:deepseek-chat', 'system prompt', fakeRunner().runner, new AbortController().signal, { target: { url: '/api/llm/x' } }));
+      let sent = serve(cutSilent, done);
+      expect((await chatTurn()).find((e) => e.type === 'text')).toMatchObject({ delta: 'ok' });
+      expect(sent.length).toBe(2);
+      sent = serve(chat('data: {"choices":[{"delta":{"content":"Let me"}}]}\n\n'), done);
+      await expect(chatTurn()).rejects.toThrow(/interrupted/);
+      expect(sent.length).toBe(1);
+      // the Messages API: an answer without its message_stop
+      sent = serve(() => sse([{ type: 'message_start', message: { id: 'm', role: 'assistant', content: [] } }]), second);
+      await go(new ServerSession(), fakeRunner().runner);
+      expect(sent.length).toBe(2);
     });
 
     it('a limited number of times', async () => {

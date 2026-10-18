@@ -53,6 +53,36 @@ function update(id: string, fn: (it: ChatItem) => ChatItem) {
   chat.value = chat.value.map((it) => (it.id === id ? fn(it) : it));
 }
 
+// The words of a turn arrive by the hundred each second: they are gathered and
+// written to the conversation a few times a second, not one render per word.
+const STREAM_FLUSH = 50;
+const words = new Map<string, { text: string; thinking: string }>();
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** the words gathered so far, written to their items at once */
+function flushWords() {
+  if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+  if (!words.size) return;
+  const batch = new Map(words);
+  words.clear();
+  chat.value = chat.value.map((it) => {
+    const w = batch.get(it.id);
+    if (!w) return it;
+    return {
+      ...it,
+      ...(w.text ? { text: (it.text ?? '') + w.text } : {}),
+      ...(w.thinking && it.thinking ? { thinking: { ...it.thinking, text: it.thinking.text + w.thinking } } : {}),
+    };
+  });
+}
+
+function gather(id: string, kind: 'text' | 'thinking', delta: string) {
+  const w = words.get(id) ?? { text: '', thinking: '' };
+  w[kind] += delta;
+  words.set(id, w);
+  flushTimer ??= setTimeout(flushWords, STREAM_FLUSH);
+}
+
 /** a message for the assistant; command: the tool or workflow it was written with (/name); anchor: the scene and point of a studio note */
 export async function send(text: string, opts: { command?: { cmd: Command; input?: Record<string, unknown> }; anchor?: Anchor } = {}) {
   const atts = pending.peek();
@@ -94,9 +124,11 @@ async function consume(start: (signal: AbortSignal) => AsyncGenerator<AiEvent>, 
   let error = '';
   try {
     for await (const ev of start(controller.signal)) {
+      if (ev.type === 'text') { gather(ev.id, 'text', ev.delta); streaming.value = ev.id; continue; }
+      if (ev.type === 'thinking') { gather(ev.id, 'thinking', ev.delta); continue; }
+      // any other event comes after the words gathered before it
+      flushWords();
       if (ev.type === 'item') { chat.value = [...chat.value, ev.item]; streaming.value = ev.item.text !== undefined ? ev.item.id : null; }
-      else if (ev.type === 'text') { update(ev.id, (it) => ({ ...it, text: (it.text ?? '') + ev.delta })); streaming.value = ev.id; }
-      else if (ev.type === 'thinking') update(ev.id, (it) => ({ ...it, thinking: it.thinking && { ...it.thinking, text: it.thinking.text + ev.delta } }));
       else if (ev.type === 'thinking-done') update(ev.id, (it) => ({ ...it, thinking: it.thinking && { ...it.thinking, done: true, ms: Date.now() - (it.thinking.start ?? Date.now()) } }));
       else if (ev.type === 'tool-done') update(ev.id, (it) => ({ ...it, tool: it.tool && { ...it.tool, done: true, error: ev.error, progress: undefined } }));
       else if (ev.type === 'tool-progress') update(ev.id, (it) => ({ ...it, tool: it.tool && { ...it.tool, progress: ev.progress } }));
@@ -118,6 +150,7 @@ async function consume(start: (signal: AbortSignal) => AsyncGenerator<AiEvent>, 
   } catch (e) {
     if ((e as Error).name !== 'AbortError') { error = (e as Error).message; chat.value = [...chat.value, { id: uid(), role: 'assistant', text: t('assistant.errorError', { error }) }]; }
   } finally {
+    flushWords();
     turnEnds();
     running.value = false;
     streaming.value = null;

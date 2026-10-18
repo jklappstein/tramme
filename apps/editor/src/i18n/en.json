@@ -92,8 +92,11 @@
     "declined": "Claude declined this request",
     "stoppedAfterNSteps": "stopped after {n} steps",
     "urlDoesNotAnswer": "{url} does not answer ({error})",
+    "companionCut": "The local companion does not answer: its connection was interrupted before the end of the turn",
     "resumeIn": "Interrupted ({error}). Going on in {s} s, attempt {n} of {max}…",
     "serviceError": "service error",
+    "streamCut": "the answer was interrupted: its stream ended before the model finished",
+    "streamStalled": "the answer was interrupted: nothing came on its stream for {s} s",
     "editOfName": "Edit of {name}",
     "providerNotConnected": "{provider} is not connected: add its key in Settings, Providers.",
     "modelAdopted": "The assistant now uses {model} ({provider}), the AI connected.",
@@ -1031,7 +1034,10 @@
     "removeAVertex": "Remove a vertex"
   },
   "export": {
+    "encoderStalled": "the video encoder stopped answering ({s} s without progress)",
+    "softwareEncoder": "the hardware video encoder stopped answering for {s} s: the film was encoded again in software",
     "exportCancelled": "export cancelled",
+    "frameNeverReady": "frame {frame} ({time} s) never finished: a video frame or a plugin picture did not come in {s} s. The export is stopped rather than made with a wrong picture.",
     "noSoundLayerIn": "no sound layer in this composition",
     "pngFailed": "PNG failed",
     "fromFpsBroughtDown": "{from} fps brought down to {to} fps (GIF limit)",

@@ -97,9 +97,9 @@ function backoff(attempt: number, signal: AbortSignal, res?: Response): Promise<
 /** a failure worth trying again: a busy or failing server, no answer, a stream cut short */
 const transient = (status: number) => status === 0 || status === 429 || status === 529 || status >= 500;
 /** a failure, as its message tells, that waits for the user: a quota or a plan used up, a key or a login refused */
-const LASTING = /quota|insufficient|billing|credit|usage limit|limit reached|hit your limit|exceeded your|subscription|upgrade|unauthori[sz]ed|forbidden|invalid.{0,20}(key|token)|api.?key|authenticat|log ?in|\b40[1-3]\b/i;
+const LASTING = /quota|insufficient|billing|credit|usage limit|limit reached|hit your (\w+ )?limit|exceeded your|subscription|upgrade|unauthori[sz]ed|forbidden|invalid.{0,20}(key|token)|api.?key|authenticat|log ?in|\b40[1-3]\b/i;
 /** a failure, as its message tells, that passes: the network, a busy or failing server, an answer cut short */
-const PASSING = /network|fetch|connect|ECONN|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|socket|timed? ?out|timeout|overload|busy|unavailable|temporar|stream|interrupted|reset|rate.?limit|\b(429|5\d\d)\b|does not answer|ne répond pas/i;
+const PASSING = /network|fetch|connect|ECONN|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|socket|timed? ?out|timeout|overload|busy|unavailable|temporar|stream|interrupted|interromp|reset|rate.?limit|\b(429|5\d\d)\b|does not answer|ne répond pas/i;
 /** whether a failure known by its message only (a companion's, a turn's last) is worth a new attempt later */
 export const passes = (message: string) => !LASTING.test(message) && PASSING.test(message);
 const retryable = (e: unknown) => (e instanceof ApiFailure ? !e.final && transient(e.status) : (e as Error).name !== 'AbortError');
@@ -107,12 +107,31 @@ const retryable = (e: unknown) => (e instanceof ApiFailure ? !e.final && transie
 /** the status of an error sent inside a stream (the Messages API's error types) */
 const STREAM_STATUS: Record<string, number> = { overloaded_error: 529, rate_limit_error: 429, api_error: 500, timeout_error: 504 };
 
+/**
+ * A stream that receives nothing for this long is taken as dead (a provider
+ * keeps a queued request alive with comments, a model streams its reasoning):
+ * the turn is not left waiting for ever.
+ */
+const STALL = 180_000;
+
+/** the next piece of a stream, or a failure once it stalled */
+function readOrStall<T>(reader: ReadableStreamDefaultReader<T>): Promise<ReadableStreamReadResult<T>> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const stalled = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reader.cancel().catch(() => {});
+      reject(new ApiFailure(0, t('ai.streamStalled', { s: STALL / 1000 })));
+    }, STALL);
+  });
+  return Promise.race([reader.read(), stalled]).finally(() => clearTimeout(timer));
+}
+
 /** server-sent events of a response, as parsed JSON */
 async function* sse(body: ReadableStream<Uint8Array<ArrayBuffer>>): AsyncGenerator<any> {
   const reader = body.pipeThrough(new TextDecoderStream()).getReader();
   let buf = '';
   for (;;) {
-    const { value, done } = await reader.read();
+    const { value, done } = await readOrStall(reader);
     if (done) break;
     buf += value.replace(/\r\n/g, '\n');
     let i;
@@ -199,7 +218,8 @@ export class ServerSession {
       try {
         for (let r = await answer.next(); ; r = await answer.next()) {
           if (r.done) return r.value;
-          shown = true;
+          // what a request cost is told, not shown
+          if (r.value.type !== 'usage') shown = true;
           yield r.value;
         }
       } catch (e) {
@@ -308,6 +328,8 @@ export class ServerSession {
       }
     }
     if (thinkId) yield { type: 'thinking-done', id: thinkId };
+    // every complete answer says why it stopped: a stream cut before is not an answer (the turn would end with no word)
+    if (!reader.finished) throw new ApiFailure(0, t('ai.streamCut'));
     return reader.result();
   }
 
@@ -362,9 +384,10 @@ export class ServerSession {
     const items: string[] = [];
     const invalid = new Set<string>();
     const meter = new UsageMeter();
-    let stop = 'end_turn', declined: string | undefined;
+    let stop = 'end_turn', declined: string | undefined, ended = false;
     for await (const ev of sse(res.body!)) {
       meter.event(ev);
+      if (ev.type === 'message_stop') ended = true;
       if (ev.type === 'content_block_start') {
         blocks[ev.index] = { ...ev.content_block };
         if (ev.content_block.type === 'tool_use') { json[ev.index] = ''; blocks[ev.index].input = {}; }
@@ -395,6 +418,7 @@ export class ServerSession {
       }
     }
     if (meter.usage.requests) yield { type: 'usage', usage: meter.usage };
+    if (!ended) throw new ApiFailure(0, t('ai.streamCut'));
     return { content: afterFallback(blocks.filter(Boolean)), stop, invalid, declined };
   }
 
