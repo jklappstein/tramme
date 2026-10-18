@@ -799,7 +799,7 @@
     "playAtTheComposition": "Lecture aux images de la composition",
     "likeTheExport24": "Comme l'export : 24 images par seconde pour une composition à 24 i/s, plutôt qu'une à chaque rafraîchissement de l'écran. Plus léger, sans perte.",
     "sandboxPreview": "Dessiner l'aperçu dans le bac à sable des plugins (expérimental)",
-    "sandboxPreviewHint": "Toute l'image, built-ins et plugins : modificateurs, effets et simulations sont évalués et dessinés dans le worker du projet, si bien que le code d'un plugin ne s'exécute plus dans la page. Les images vidéo sont toujours décodées ici ; un scrub peut montrer l'image précédente un instant.",
+    "sandboxPreviewHint": "Toute l'image, built-ins et plugins : modificateurs, effets et simulations sont évalués et dessinés dans le worker du projet ; le dessin, les outils et les vérifications d'un plugin ne s'exécutent plus dans la page. Les images vidéo sont toujours décodées ici ; un scrub peut montrer l'image précédente un instant.",
     "previewRenderStillWhen": "Rendu de l'aperçu : {still} à l'arrêt, {motion} en mouvement (ajusté pendant la lecture).",
     "previewRenderStillWhenStill": "Rendu de l'aperçu : {still} à l'arrêt, {motion} en mouvement.",
     "offerToursOnOpening": "Proposer les visites à l'ouverture",
