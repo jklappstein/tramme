@@ -18,6 +18,7 @@ import { comp, S, uiTime } from '../state.ts';
 import { timecode } from '../model.ts';
 import { anchor, direct, focused, focusScene, liveStage, noteSent, notes, pinAt, STAGE_LABEL, studio, takes, turns } from '../studio.ts';
 import { Composer, join } from './composer.tsx';
+import { useSize } from './controls.tsx';
 import { Lightbox, progressOf, useElapsed } from './chat.tsx';
 import { Icon } from './icons.tsx';
 import { LogoMark } from './Logo.tsx';
@@ -189,8 +190,15 @@ export function Studio() {
   const [footH, setFootH] = useState(110);
   const [narrow, setNarrow] = useState(() => matchMedia(NARROW).matches);
   useLayoutEffect(() => {
-    const ro = new ResizeObserver(([e]) => setFootH(Math.round(e.contentRect.height)));
+    // the film keeps the room of the box at its tallest: the words neither shrink it nor cover it
+    const measure = () => {
+      const el = area.current, box = el?.offsetHeight ?? 0;
+      const tallest = el ? parseFloat(getComputedStyle(el).maxHeight) || box : 0;
+      setFootH(Math.round(foot.current!.offsetHeight + Math.max(0, tallest - box)));
+    };
+    const ro = new ResizeObserver(measure);
     ro.observe(foot.current!);
+    if (area.current) ro.observe(area.current);
     const mq = matchMedia(NARROW), change = () => setNarrow(mq.matches);
     mq.addEventListener('change', change);
     return () => { ro.disconnect(); mq.removeEventListener('change', change); };
@@ -204,6 +212,8 @@ export function Studio() {
     requestAnimationFrame(() => area.current?.focus());
     return true;
   };
+  // the notes beside the film widen or narrow like the atelier's panels
+  const [sideW, sideHandle] = useSize('studio-side', 384, 330, 640);
   const [dropping, setDropping] = useState(false);
   // a turn starting on an empty film, or a note left: the notes in front
   useEffect(() => { if (busy) studio.panel.value = 'notes'; }, [busy]);
@@ -213,7 +223,7 @@ export function Studio() {
       onDragLeave={(e) => { if (e.target === e.currentTarget || !(e.relatedTarget as Node | null)) setDropping(false); }}
       onDrop={(e) => { if (!e.dataTransfer?.files.length) return; e.preventDefault(); setDropping(false); join(e.dataTransfer.files); requestAnimationFrame(() => area.current?.focus()); }}>
       <TopBar />
-      <div class="studio-body">
+      <div class="studio-body" style={{ '--side-w': `${sideW}px` }}>
         <main class="studio-main">
           <section class={`studio-stage${busy ? ' working' : ''}${pending ? ' has-take' : ''}${studio.pinning.value ? ' pinning' : ''}${empty ? ' is-empty' : ''}`} data-tour="stage">
             <Viewport bare inset={narrow ? [52, 12, 14, 12] : [60, 32, footH + 22, 32]} overlay={<Pins />} intercept={pressPicture} />
@@ -226,6 +236,7 @@ export function Studio() {
           </section>
           <Storyboard />
         </main>
+        <div class="resizer v" {...sideHandle('x', -1)} />
         <SidePanel />
       </div>
       {dropping && <div class="drop-hint"><Icon name="upload" /><span>{t('studio.dropHint')}</span></div>}

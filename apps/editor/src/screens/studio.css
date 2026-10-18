@@ -6,7 +6,7 @@
 
 /* ── frame ─────────────────────────────────────────────────── */
 .studio { display: grid; grid-template-rows: 52px minmax(0, 1fr); height: 100vh; height: 100dvh; background: var(--bg); }
-.studio-body { display: grid; grid-template-columns: minmax(0, 1fr) 384px; gap: 0 var(--gutter); padding: 0 var(--gutter) var(--gutter); min-height: 0; }
+.studio-body { display: grid; grid-template-columns: minmax(0, 1fr) var(--gutter) var(--side-w, 384px); gap: 0; padding: 0 var(--gutter) var(--gutter); min-height: 0; }
 .studio-main { display: flex; flex-direction: column; gap: var(--gutter); min-width: 0; min-height: 0; }
 .studio .toasts { bottom: auto; top: 64px; }
 
@@ -76,7 +76,7 @@
   box-shadow: var(--shadow-2);
 }
 .direct .composer:focus-within { box-shadow: var(--shadow-2), 0 0 0 2px var(--accent-line); }
-.direct .composer textarea { min-height: 50px; padding: 14px 16px 6px; font-size: var(--fs-md); line-height: 1.5; }
+.direct .composer textarea { min-height: 50px; max-height: 116px; box-sizing: border-box; padding: 14px 16px 6px; font-size: var(--fs-md); line-height: 1.5; }
 .direct .composer .bar { padding: 4px 8px 8px 10px; }
 .direct-context { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; }
 /* what the note will be about: the film, the scene in focus, the pinned point */
@@ -150,6 +150,13 @@ button.ctx-chip:hover { background: var(--field-hover); color: var(--text); }
 .studio-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: hidden; }
 .side-head { display: flex; align-items: center; gap: 4px; height: 44px; flex: none; padding: 0 8px 0 10px; }
 .side-head .grow { flex: 1; }
+.side-head > .seg { flex: none; }
+.side-head .route { flex: none; }
+.side-head .icon-btn { flex: none; }
+.studio-side { container-type: inline-size; }
+/* a narrow panel: the route gives way, the model name shortens before any button is pushed out */
+@container (max-width: 460px) { .side-head .route { display: none; } }
+.side-head .model-pick { flex: 0 1 auto; min-width: 72px; }
 .side-body { flex: 1; min-height: 0; overflow: auto; }
 .studio .thread { padding: 4px 10px 24px; }
 
@@ -192,7 +199,7 @@ button.ctx-chip:hover { background: var(--field-hover); color: var(--text); }
 .dir-source .tag svg.i { width: 11px; height: 11px; padding: 0; color: inherit; }
 
 /* ── narrow screens: the film, the storyboard, the notes; the bar at the thumb ── */
-@media (max-width: 1180px) { .studio-body { grid-template-columns: minmax(0, 1fr) 330px; } }
+@media (max-width: 1180px) { .studio-body { grid-template-columns: minmax(0, 1fr) var(--gutter) min(var(--side-w, 330px), 420px); } }
 @media (max-width: 1020px) { .topbar .seg button span { display: none; } .topbar .seg button { padding: 0 9px; } }
 /* the format moves to the bar's menu */
 @media (max-width: 900px) { .topbar .format-pill { display: none; } }
@@ -207,6 +214,7 @@ button.ctx-chip:hover { background: var(--field-hover); color: var(--text); }
   .storyboard { padding: 6px 10px 8px; }
   .sb-now { display: none; }
   .studio-side { flex: none; min-height: 60vh; padding-bottom: 150px; }
+  .studio-body > .resizer { display: none; }
   .thread { overflow: visible; }
   .invite { bottom: 20px; }
   .invite p { display: none; }
