@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { builtinRegistry } from '@tramme/nodes';
 import { Evaluator, followBox, pictureRect, placeBox, trackAt, type GrayFrame, type Track, type TrammeDoc, type Vec2 } from '../src/index.ts';
+
+// the file decodes real video frames: a few seconds each, under the load of the whole suite
+vi.setConfig({ testTimeout: 30_000 });
 
 describe('a picture in its frame', () => {
   it('fills, covers or fits as the video node draws it', () => {
