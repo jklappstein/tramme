@@ -42,7 +42,7 @@ import { docHref } from '../lib/docs';
   .end { display: flex; align-items: center; gap: 8px; }
   /* once the page moves under it, the bar becomes a surface */
   @supports (animation-timeline: scroll()) {
-    .row { animation: lifted linear both; animation-timeline: scroll(); animation-range: 0 64px; }
+    .row { animation-name: lifted; animation-timing-function: linear; animation-fill-mode: both; animation-timeline: scroll(); animation-range: 0 64px; }
     @keyframes lifted { to { background: color-mix(in srgb, var(--panel) 88%, transparent); box-shadow: 0 0 0 1px var(--line), 0 12px 32px -20px rgba(0, 0, 0, 0.35); } }
   }
   @media (max-width: 960px) {
