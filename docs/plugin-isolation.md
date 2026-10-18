@@ -1,69 +1,88 @@
-# Isolating untrusted plugins
+# Plugin isolation
 
-A design note, not a decision: the codebase gains nothing from it until the author picks an option. It follows the plugins roadmap's open case (step 10, "Isolation of untrusted plugins") and the import guard of the editor, which asks before running an archive's code but does not contain it.
+How to run plugins from projects of unknown sources without handing them the editor. This note prices the options and proposes a staged path; it decides nothing — the code moves only once the author picks (roadmap step 10).
 
-## What runs today, and where
+Today a plugin is arbitrary JavaScript with the page's full power. The import asks before running an archive's code (the code question, `apps/editor/src/importer.ts`), the Code section shows what a project runs, and the shared library vouches for what it ships — but once the answer is yes, the module runs in the editor's page: it can rewrite the document, read and write every project file, reach the provider routes with the keys the user connected, and do anything else the page can do. That is the right deal for projects you wrote and plugins you read. It is not an answer for "projects from unknown sources", which is what the roadmap asks for.
 
-Everything a project brings runs **inside the page** (the editor's origin), with its rights — or inside Node, for the command line:
+## What a plugin is made of
 
-- **Project plugins** (JS modules in `plugins/`, listed in the document's `plugins`) are loaded in three places, each a plain dynamic `import()`:
-  - `apps/editor/src/importer.ts` — during an archive import, to validate the document (behind the trust question since the import guard);
-  - `packages/render/src/assets.ts` — the asset store of the renderer, whenever the document names a `module` asset (preview, exports);
-  - `packages/cli/src/plugins.ts` — offline renders and `tramme validate` (a `data:` URL, or the file with an mtime cache).
-- What a plugin contributes all runs in the same place: **nodes** (their `render.canvas2d` draws every frame; `simulate` steps a state machine frame by frame in the renderer, with checkpoints; `path`, `bounds` and `handles` feed the viewport's gizmos), **effects** (drawn on offscreen canvases, then composited), **modifiers** (pure functions the Evaluator calls), **checks**, **presets**, **tools** (assistant tools with a `ToolContext` that reads and writes the project), **tours**, **translations**.
-- **Expressions** are compiled by `packages/core/src/expr.ts` (`new Function`) with the globals shadowed: honest code stays deterministic, hostile code is not contained — `SECURITY.md` says so.
-- The engine draws synchronously on `Canvas2D` contexts the page owns; the WebGL2 compositor reads the result. The command line runs the same engine in headless Chrome, so the CLI's plugins have *Node's* rights — a local tool's rights, like a linter's.
+The editor loads a plugin with a dynamic `import()` of a blob URL and registers what it exports (`Registry.use`, which checks the API version and the shape of each entry). The top-level code of the module runs at once, where it is imported — that is the true attack surface: a `path()` that only draws is harmless, a module top level that reads your keys is not. The exports split in three kinds, and the kind decides what isolation can cost:
 
-The renderer's APIs a plugin host exposes (`host.layer()`, `host.state()`, `host.drawLayer()`, `host.drawComposition()`, `host.asset()`) are all satisfied from in-page state: the Evaluator, the simulation checkpoints, the decoded assets.
+1. **Declarations — data.** Props schemas, `ai` notes, kits, presets, prompts, tours, `meta`, and the GLSL source of `gl: { code }` effects. These cross any boundary unchanged. A GLSL pass cannot touch the DOM: it runs on the GPU, and its worst mischief is a long loop the browser's watchdog stops. Nothing here needs isolating.
+2. **Authoring-time functions.** Tools (`run(input, ctx)`, already async) and checks (`run(ctx)`, sync or Promise; their samples are plain data). They run when the assistant or the user calls them, never per frame.
+3. **Render-time functions.** Nodes (`canvas2d`, `gl`, `path`, `bounds`, `simulate`, `handles`, `export`), effects' `canvas2d.apply/filter`, modifiers' `apply`. These run inside every frame of the preview and of every export, against a live surface (a `CanvasRenderingContext2D`, the node's `NodeGL` service) and through the host (`asset`, `layer`, `state`, `drawLayer`, `drawComposition`, `defer`).
+
+Three boundary costs are worth naming once, because every option pays some of them:
+
+- **Live objects do not cross.** `Path2D` (the selectable outline, clips), image elements, module namespaces, `AbortSignal`, functions themselves: each becomes a copy, a serialized form (an SVG path string), or a proxy — or stays behind.
+- **Synchronous calls do not cross a worker boundary.** Anything moved there turns async at its caller. Checks already accept a Promise; the draw loop does not — render-time code must move as whole frames (batched), not as per-call RPC, and modifiers (applied per property, many times a frame) cannot pay a round trip at all.
+- **Pixels cross cheaply but not for free.** A transferable `ImageBitmap` moves without a copy, yet each side still uploads or draws it. One per plugin layer per frame is affordable; a dozen round trips per frame is not.
+
+One scope note: the worker of the roadmap's title is a browser Worker, not the Cloudflare Worker the app deploys as — `apps/worker` has no canvas and never renders. The isolation boundary lives where the frames live: the editor's page and the browser page the command line drives (`packages/cli/src/browser.ts`).
 
 ## The options
 
-### A. One worker per open project, OffscreenCanvas, an image per frame
+### (a) The status quo: one thread, trust and review
 
-The whole render path — Evaluator, draw, simulations — moves into a worker that owns an `OffscreenCanvas`. The main thread receives one `ImageBitmap` per frame and blits it; edits go in as messages.
+Everything stays in the main thread. Isolation is the code question, the Code section, the library's curation and plain review. Nothing is technically enforced.
 
-- **Latency**: one bitmap transfer per frame (near zero-copy). The interactive paths are the price: picking and the gizmos need geometry per `pointermove`, so the worker must answer geometry queries (a few hundred µs each) or the main thread keeps a mirror Evaluator for transforms and bounds only — two evaluators, one document, kept in step by the op log (operations are already the only way the document changes, which makes the mirror exact).
-- **Determinism**: unchanged — the same pure functions, one clock (`t`), and simulations step in order in the worker exactly as they do today.
-- **`host.layer()` / `host.state()`**: strictly better — the evaluator and the simulation checkpoints live where the plugins run.
-- **Audio**: `OfflineAudioContext` does not exist in workers. The mix (preview meter, exports, the check tool) stays on the main thread; it needs only `audioClips` and the curves, which are plain data the worker can send. Plugin audio readers (`AudioReader`) read the mix's data, not its nodes: no canvas, no conflict.
-- **Fonts and video**: `WorkerGlobalScope` has `fonts` (a `FontFaceSet`) and `VideoDecoder`, so the font and video assets load in the worker; SVG bitmaps via `createImageBitmap`.
-- **Tools**: a plugin's tools keep running on the main thread at first (they need the DOM: pdf.js, media analysis, `ToolContext`); they are the remaining hole, documented, until they get their own story.
-- **CLI and desktop**: the CLI already runs outside the page (Node — its own question, see below); the desktop app is the same webview and takes the worker as is.
+- **Isolation:** none. A malicious plugin is arbitrary code in the page.
+- **What the plugin loses:** nothing. Every export works everywhere — preview, checks, tools, exports, tours.
+- **Effort:** nil, or a day to make the trust path sharper (the code question could name what the plugin brings — nodes, tools, checks — and the Code section could show where each plugin came from).
+- **Preview and exports:** unchanged.
+- **Right call when:** the projects are yours and the plugins are reviewed. Also the only option that keeps hang-safety at zero: a `while (true)` in a node still freezes the whole tab.
 
-Cost: moving `renderer.ts` and `preview.ts` onto messages is the single biggest lift in this note, and the viewport's interactivity is where the risk sits.
+### (b) A dedicated worker per project, with OffscreenCanvas and RPC
 
-### B. A sandboxed iframe on another origin
+Plugin modules are imported in a Dedicated Worker, one per project. Registration sends the declarations back as data (schemas, kits, presets, prompts, tours, GLSL sources, the tool list that `list_nodes` reads — the assistant's surface does not change at all). Tools and checks run there against a proxied `ToolContext`: `readText`, `files`, `fileUrl`, `assetUrl` answered by the host; `writeFile` ships the bytes back; `renderStill` and `transcript` render on the main thread and ship the result; `signal` becomes a message. Render-time code draws in the worker: the engine ships each frame's evaluated props for the plugin's layers, the worker draws them (Canvas2D, or its own WebGL2 on an `OffscreenCanvas` — `gpu.ts` already prefers `OffscreenCanvas`, so the GL service moves nearly as-is) and returns one transferable `ImageBitmap` per plugin layer; the main thread composites. GLSL effects need not move: their code is data, run by the host's own pipeline.
 
-The plugin code runs in an iframe with `sandbox="allow-scripts"` and an opaque origin.
+- **Isolation:** strong. No DOM, no origin, no storage; only what the proxy exposes. A hung worker stops answering instead of freezing the tab, and a crashed one reloads like a lost GL context.
+- **What the plugin loses or pays:**
+  - `host.asset(id)` hands out copies (cached bitmaps) instead of live elements; module namespaces are imported on the worker's side.
+  - `path()` returns an SVG path string instead of a `Path2D`; the engine rebuilds it.
+  - `host.layer()` and `host.state()` cross as structured clones per frame; `host.drawLayer`/`drawComposition` draw on the main thread and ship a bitmap — a plugin that reads another layer every frame pays two crossings.
+  - Container plugin nodes (children drawn in the node's local space) need their children shipped and drawn in the worker too.
+  - Modifiers and the evaluator stay on the main thread (per-property calls cannot cross): plugin modifiers stay unisolated, or the whole evaluation moves into the worker — a much larger engine change, a decision of its own.
+  - Effects' `canvas2d.apply` mutates the layer's offscreen pixels on the main thread today; either those pixels ship over and back per effect, or Canvas2D effects stay main-thread (trusted-only, documented).
+  - Tools lose nothing that exists: `ToolContext` is already an abstract surface, and every built-in tool would keep working through the proxy.
+- **Effort:** the largest item left on the roadmap — the worker runtime, the registration protocol, the frame protocol (props in, bitmaps and per-layer errors out, so the red frame of the isolated preview keeps working), the `ToolContext` proxy, the editor and CLI wiring, tests. Weeks, not days.
+- **Preview:** with batching, one transferable per plugin layer per frame keeps a plugin-heavy composition interactive; scrubbing over many simulated plugin nodes is the case to measure. Without batching (naïve RPC per call) it does not work at all.
+- **Exports:** the command line already renders in a browser page, so the same worker runs there and determinism holds as long as the worker's draw stays a pure function of the shipped props. A bare-Node renderer neither gains nor loses: it cannot host WebGL2 today (`WebGL2 unavailable` in `gpu.ts`) nor plugin Canvas2D without a DOM canvas.
 
-- **Isolation**: weaker than it looks. No storage, no prompts — but `fetch` and image beacons stay open, so exfiltration of project files and provider calls through `api.reach` still work; CPU burn is unbounded. It buys mainly a killable frame.
-- **Latency**: worse than A — a transfer per *layer* per frame if only plugin nodes render there, or per frame if the whole renderer moves.
-- **Determinism**: a second copy of the engine must be bundled into the iframe; version drift between the two copies is a real risk.
-- **`host.layer()` / `host.state()`**: the evaluator must exist in the iframe too — the same duplication as A, plus a message boundary.
+### (c) An iframe or a worker with a strict CSP and a reduced API
 
-Dominated by A: same work, weaker guarantee.
+The same shape as (b), with the boundary tightened by the platform: a worker whose only network is the host proxy (no free `fetch`), transferables only; or a sandboxed iframe (`sandbox="allow-scripts"`, opaque origin, `connect-src 'none'`), which keeps a DOM — useless for rendering (the pixels still have to leave) but comfortable for tools that parse media with platform codecs or build their own interface.
 
-### C. Precompute and validate without running
+- **Isolation:** strong for network and origin. An iframe is weaker than a worker on DOM reach (it has one, even barren), but its opaque origin keeps it out of the editor's storage and the API.
+- **What the plugin loses:** those of (b) wherever rendering moves. The reduced API falls exactly on the strangers' plugins worth having: one that loads its own model or calls its own service must go through a per-project allowlist the user grants — a permission dialog, like the code question today. In the partial version (only tools and checks move), render-time code stays on the main thread and stays trusted: the isolation is real but half the story.
+- **Effort:** the protocol work of (b) plus policy plumbing (allowlists, permissions); roughly half of (b) if only authoring-time code moves.
+- **Preview and exports:** as (b) where it applies; the authoring-time-only version costs the frame path nothing.
 
-Expressions and modifiers are pure and canvas-free; they could evaluate in a bare worker with no `OffscreenCanvas`. Static vetting of plugin code is not an option — JavaScript cannot be statically contained, and a linter is a speed bump.
+### (d) A Wasm/QuickJS sandbox
 
-- Alone, C leaves drawing (the bulk of a plugin's rights) on the main thread. It is not isolation; it is the first slice of A that carries no canvas cost, and it would change the evaluator's synchronous contract for an asynchronous one — the same plumbing A needs, for a part that runs no untrusted code today (expressions already exist only in documents, which the import guard asks about).
+Plugin code runs in an embedded interpreter (QuickJS compiled to Wasm, or a Wasm runtime) inside the page or a worker. The interpreter can execute synchronously on the main thread under an instruction budget (a gas limit), so the synchronous surfaces survive — checks and modifiers could stay sync and abortable, the one option that keeps both. The host exposes a narrow binding: the document as data, a display list for drawing.
 
-Not worth it on its own; it only pays as the first milestone of A if the evaluator is ever split.
+- **Isolation:** maximal in practice — no platform to escape: no fetch, no timers unless granted, bounded memory.
+- **What the plugin loses:**
+  - No WebGL in the sandbox: `render.gl` nodes cannot run their own GL service. A plugin's 3D must ship GLSL to the host or be drawn by the host from data — and the impressive plugins (a `model.3d`-style node, particles on the GPU) are exactly the ones it cannot host as code.
+  - Canvas2D drawing becomes a display-list dialect replayed by the host: paths, fills, transforms, images. Gradients, filters, `getImageData`, the free mixing with `host.drawLayer` shrink or vanish; every Canvas2D plugin ever written needs a port.
+  - Speed: an interpreter on per-frame code is many times slower; the DSP-heavy tools of step 4 would hurt under a gas limit.
+- **Effort:** very large and permanent — bindings, a display list kept faithful to Canvas2D semantics, gas accounting, a debugging story, and a second dialect plugin authors must learn.
+- **Preview:** interpreter overhead per plugin layer, plus the crossings of (b). **Exports:** the only option whose render story does not depend on a browser — the host replays the display list anywhere, bare Node included; moot today, since bare Node cannot render at all yet.
 
-## Recommendation
+## The decision table
 
-**A, staged**, each step shippable alone:
+| Option | Isolation | Effort | What the plugin loses | Right call when |
+|---|---|---|---|---|
+| (a) status quo | none — trust, review, the code question | nil | nothing | the projects are yours, the plugins reviewed |
+| (b) worker per project + OffscreenCanvas + RPC | strong: no DOM, no origin, a proxied API, hangs contained | weeks: registration, frame protocol, `ToolContext` proxy | live objects become copies; modifiers (and maybe Canvas2D effects) stay main-thread; per-frame host reads pay crossings | untrusted projects are a real case and plugin-heavy previews can pay a bitmap per layer |
+| (c) worker or iframe + strict CSP, reduced API | strong on network and origin; iframe weaker on DOM reach | half of (b) if only tools and checks move; as (b) plus policy plumbing otherwise | strangers' tools need a per-project network allowlist; render-time code stays trusted in the partial version | a first real boundary for authoring-time code, before the render path moves |
+| (d) Wasm/QuickJS | maximal; keeps checks and modifiers synchronous under a gas limit | very large and permanent | WebGL nodes impossible; Canvas2D reduced to a display list; interpreter speed; a second API dialect | never for the render path; perhaps one day for checks and modifiers |
 
-1. **The renderer moves into a worker** for the preview, geometry queries included; the main thread blits bitmaps and keeps a mirror evaluator for the gizmos. No security claim yet — the same code runs, elsewhere.
-2. **Browser exports** render through the same worker (they already render off-screen; nothing user-facing changes).
-3. **The import's "Run it" loads the plugins in the worker only**; the main thread stops importing project modules entirely. From this point the trust question guards real containment: a refused archive runs nothing, an accepted one runs with no page rights — no storage, no `api.reach`, no DOM. The plugin's nodes, effects, modifiers and simulations are covered; its **tools** (which need the DOM) stay main-thread and documented as the remaining trust, until a bridge gives them an explicit, narrowed `ToolContext`.
-4. **A hung or crashed worker** is recovered by restarting it and re-stepping simulations from checkpoints (the machinery exists); the UI shows the project's plugins as stopped, not the editor as dead.
+## A staged recommendation
 
-What stays out of scope, said plainly: the **CLI** runs untrusted plugins with Node's rights — that is a local tooling decision (like installing a linter), separate from the web threat model; and audio keeps its main-thread mixer.
+1. **Stage 0 — sharpen the trust path (cheap, any time).** Keep the main thread. Make the code question name what the plugin brings (nodes, tools, checks, kits) and record each plugin's origin (import, library) in the Code section. Nothing is lost, nothing is enforced; strangers stay on the honour system, but at least they are introduced.
+2. **Stage 1 — the first real boundary: authoring-time code.** Move tools and checks into the per-project worker, with the reduced API of (c): transferables, network through a per-project allowlist. Tools are the widest surface at authoring time (files, providers, transcription) and already async; checks already accept a Promise and their samples are data. The frame path is untouched, so the preview pays nothing; GLSL effects, being data, stay where they are. The assistant's surface does not change: `use_tool` and `list_nodes` already speak in names and schemas.
+3. **Stage 2 — render-time code, only when untrusted plugins must draw.** Move nodes, Canvas2D effects and simulations into the same worker with the frame protocol of (b): evaluated props in, one `ImageBitmap` per plugin layer and per-layer errors out. Modifiers decide the shape of the stage: they stay main-thread and documented as trusted-only, or the evaluator moves too — a separate, larger decision, not a precondition.
 
-## What the import guard already covers
-
-The guard (`readArchive` → `codeInventory` → the ask) is consent, not containment: nothing from an archive runs — plugins are not imported, expressions not compiled — before the user says yes, knowing what the archive carries (the plugins with their file and size, the expressions with their first addresses). Refusal writes nothing; the shipped examples skip the question because they are vetted app content.
-
-It does not cover: what an accepted project does afterwards (page rights: storage of the editor's origin, network, `api.reach` with the user's connected providers, unbounded CPU), a plugin the assistant writes *into an open project* (it runs with the project, as any edit does — the proposal preview shows its effects before it is applied, which is a preview, not a sandbox), and the CLI's Node rights. Those are exactly the gaps option A closes, minus the tools.
+The stages compose: each one is shippable alone, none is undone by the next, and the declaration half of every plugin (schemas, kits, presets, prompts, tours, GLSL) never needs to move at all. What the author picks first is how far to go; this note only prices the road.

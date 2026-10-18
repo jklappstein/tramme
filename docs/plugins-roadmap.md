@@ -2,7 +2,7 @@
 
 Where the plugin system goes, and in what order. The goal is not only a richer vocabulary of layers: it is to give the built-in assistant what it needs to produce impressive videos on its own. The editor gets the same abilities, since the editor and the assistant share one API.
 
-Status: steps 1 to 3, 6, 7 and 9 done (glTF is lean: no skinning; rope, cloth and flock are done — fluid and rigid shapes left); steps 4 and 10 mostly done (pose, plugin isolation and audio processing left); steps 7b and 8 wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: every step is done (glTF is lean: no skinning; rope, cloth and flock are done — fluid and rigid shapes left; pose and audio processing are lean) except the isolation of untrusted plugins (step 10): its design note ([plugin-isolation.md](plugin-isolation.md)) is written, and the code is not moved until the author picks. Steps 7b and 8 still wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 

@@ -8,6 +8,10 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+### Added
+
+- A **design note** on isolating untrusted plugins ([docs/plugin-isolation.md](docs/plugin-isolation.md)): the options (the main thread as today, a dedicated worker with OffscreenCanvas, a strict CSP with a reduced API, a Wasm/QuickJS sandbox), their costs, what each takes from the plugin API, and a staged recommendation — the code moves only once the author picks.
+
 ## [0.9.0] - 2026-10-18
 
 ### Added
