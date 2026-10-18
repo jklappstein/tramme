@@ -6,6 +6,7 @@
 import type { AiNotes } from '@tramme/core';
 
 export const NODE_NOTES: Record<string, AiNotes> = {
+  adjust: { when: 'a correction or an effect that must reach every layer under it at once (a grade over a scene, one blur for a set); it draws nothing by itself' },
   'shape.rect': { when: 'cards, bars, bands behind text, wipes, progress bars; radius for pills; bars and progress bars draw along their x, eased out over 0.3 to 0.6 s', avoid: 'pure white or pure black fills on a dark/light plate: use the tokens' },
   'shape.ellipse': { when: 'dots, rings (fill null + stroke), circular reveals used as a clip, soft glows with a radial gradient; dots and rings scale in with an ease out and a slight settle' },
   'shape.path': { when: 'logos, arrows, underlines and strokes that draw themselves, organic shapes; strokes draw themselves over 0.4 to 0.8 s (animate progress), eased out', avoid: 'hand-written paths with dozens of vertices: keep them simple or use an svg asset' },

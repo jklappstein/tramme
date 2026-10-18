@@ -6,10 +6,11 @@ import { signal } from '@preact/signals';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { layerActive, pointer, staticValue, type Composition, type Keyframe, type Layer, type Op } from '@tramme/core';
 import { clickSelect, comp, commit, draft, cancelDraft, S, select, selectAll, setTime, frameStep, toggleFold, uiTime, viewDoc } from '../state.ts';
-import { animatedProps, contentEnd, flatTree, freshId, keysOf, layerName, parentOf, parseTime, propPath, rawProp, rulerLabel, shiftLayerOps, snap, splitLayerOps, subtree, timecode, topLayers, trimInOps, type TreeItem } from '../model.ts';
+import { animatedProps, contentEnd, crossfadeOps, flatTree, freshId, keysOf, layerName, parentOf, parseTime, propPath, rawProp, rulerLabel, shiftLayerOps, snap, splitLayerOps, subtree, timecode, topLayers, trimInOps, type TreeItem } from '../model.ts';
 import { bandOf, longPress, noBrowserMenu, openMenu, Seg, useSize } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
 import { preview } from '../preview.ts';
+import { FILM_H, FILM_W, filmThumb, filmVersion } from '../filmstrip.ts';
 import { GraphEditor } from './GraphEditor.tsx';
 import { addLayerMenu, FoldButtons, openLayerMenu } from './LeftPanel.tsx';
 import { peaksOf, wavePath, wavesReady } from '../waveforms.ts';
@@ -278,10 +279,16 @@ export function Timeline() {
 
   /** a clip or its name: what the playhead can do to it, then the layer's own menu (the same as in the layer list) */
   const clipMenu = (e: MouseEvent, id: string) => {
-    const l = S.doc.peek().compositions[compId]?.layers[id];
+    const d0 = S.doc.peek(), l = d0.compositions[compId]?.layers[id];
     if (!l) return;
     const at = snap(S.time.peek(), fps), tin = l.in ?? 0, tout = l.out ?? c.duration, inside = at > tin && at < tout;
     const lp = pointer('compositions', compId, 'layers', id);
+    // a cross-fade with the layer under it, when their times meet and neither opacity is animated
+    const fade = crossfadeOps(d0, compId, id, 0.5);
+    const media = l.type === 'video' || l.type === 'audio';
+    const start0 = typeof staticValue(l.props?.start) === 'number' ? (staticValue(l.props?.start) as number) : null;
+    const rate = typeof staticValue(l.props?.rate) === 'number' ? (staticValue(l.props?.rate) as number) : 1;
+    const looping = staticValue(l.props?.loop) === true;
     openLayerMenu(e, id, {
       before: [
         { section: t('timeline.atPlayhead', { time: timecode(at, fps) }) },
@@ -289,6 +296,18 @@ export function Timeline() {
         { label: t('timeline.trimStartToPlayhead'), icon: 'cutHead', disabled: !inside, onClick: () => commit(t('timeline.trimStartToPlayhead'), trimInOps(S.doc.peek(), compId, id, at)) },
         { label: t('timeline.trimEndToPlayhead'), icon: 'cutTail', disabled: !inside, onClick: () => commit(t('timeline.trimEndToPlayhead'), [{ op: 'add', path: `${lp}/out`, value: at }]) },
         { label: t('timeline.moveToPlayhead'), icon: 'arrow', disabled: at === tin, onClick: () => commit(t('timeline.moveToPlayhead'), shiftLayerOps(S.doc.peek(), compId, id, at - tin)) },
+        { label: t('timeline.crossfade'), icon: 'compare', hint: t('timeline.crossfadeHint'), disabled: !fade, onClick: () => fade && commit(t('timeline.crossfade'), fade.ops) },
+        ...(media && start0 !== null ? [{
+          label: looping ? t('timeline.stopTheLoop') : t('timeline.loopToTheEnd'),
+          icon: 'loop' as const,
+          disabled: !looping && tout >= c.duration - 0.5 / fps,
+          onClick: () => {
+            const ops: Op[] = looping
+              ? [{ op: 'add', path: `${lp}/props/loop`, value: false }]
+              : [{ op: 'add', path: `${lp}/props/loop`, value: true }, { op: 'add', path: `${lp}/props/loopEnd`, value: +Math.max(start0 + 1 / fps, (start0 + (tout - tin) * rate)).toFixed(4) }, { op: 'add', path: `${lp}/out`, value: c.duration }];
+            commit(looping ? t('timeline.stopTheLoop') : t('timeline.loopToTheEnd'), ops);
+          },
+        }] : []),
       ],
     });
   };
@@ -405,10 +424,12 @@ export function Timeline() {
               if (b <= a) b = a;
               const keysAll = animatedProps(l).flatMap(([, ks]) => ks.map((kf) => kf.t));
               return (
-                <div key={id} class="tl-row">
+                <div key={id} class={`tl-row`}>
                   <div data-layer={id} class={`clip${sel.includes(id) ? ' selected' : ''}`} style={{ left: X(a), width: Math.max(2, (b - a) * k), '--c': kindColor(l.type), opacity: l.visible === false ? 0.45 : layerActive(l, c, now) ? 1 : 0.8 }}
                     onPointerDown={(e) => dragClip(e, id, 'move')} onDblClick={() => setTime(a)}>
                     {l.type === 'audio' && <ClipWave layer={l} from={a} seconds={b - a} width={(b - a) * k} />}
+                    {l.type === 'video' && !S.playing.value && <ClipFilm layer={l} from={a} seconds={b - a} width={(b - a) * k} />}
+                    {(l.type === 'audio' || l.type === 'video') && (b - a) * k > 60 && <ClipFades compId={compId} id={id} layer={l} seconds={b - a} k={k} />}
                     {(b - a) * k > 60 && <span class="label">{layerName(id, l)}</span>}
                     <span class="edge l" onPointerDown={(e) => dragClip(e, id, 'in')} />
                     <span class="edge r" onPointerDown={(e) => dragClip(e, id, 'out')} />
@@ -462,6 +483,64 @@ function ClipWave({ layer, from, seconds, width }: { layer: Layer; from: number;
   if (typeof asset !== 'string') return null;
   const rate = Number(staticValue(layer.props?.rate) ?? 1) || 1, offset = Number(staticValue(layer.props?.start) ?? 0) + (from - (layer.in ?? 0)) * rate;
   return <Wave class="wave" asset={asset} offset={offset} seconds={seconds} rate={rate} width={width} />;
+}
+
+/** a thumbnail of the file every 64 px of the clip: the video seen at a glance, decoded in the background */
+function ClipFilm({ layer, from, seconds, width }: { layer: Layer; from: number; seconds: number; width: number }) {
+  void filmVersion.value;
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const asset = staticValue(layer.props?.video);
+  if (typeof asset !== 'string' || width < 60) return null;
+  const rate = Number(staticValue(layer.props?.rate) ?? 1) || 1;
+  const start = Math.max(0, Number(staticValue(layer.props?.start) ?? 0) || 0);
+  const looping = staticValue(layer.props?.loop) === true, loopEnd = Number(staticValue(layer.props?.loopEnd) ?? 0);
+  useLayoutEffect(() => {
+    const c = canvas.current;
+    if (!c) return;
+    const g = c.getContext('2d')!;
+    g.clearRect(0, 0, c.width, c.height);
+    const n = Math.ceil(width / FILM_W);
+    const len = (looping ? loopEnd : 0) - start;
+    for (let i = 0; i < n; i++) {
+      const mid = from + ((i + 0.5) * seconds) / n;
+      let src = start + (mid - (layer.in ?? 0)) * rate;
+      if (looping && len > 0.001) src = start + (((src - start) % len) + len) % len;
+      const th = filmThumb(asset, src);
+      if (th) g.drawImage(th, i * FILM_W, 0, FILM_W, FILM_H);
+    }
+  });
+  return <canvas ref={canvas} class="film" width={Math.ceil(width)} height={FILM_H} aria-hidden="true" />;
+}
+
+/** the fades of a clip as two handles at its top corners: drag one, the gain follows */
+function ClipFades({ compId, id, layer, seconds, k }: { compId: string; id: string; layer: Layer; seconds: number; k: number }) {
+  const fi = Number(staticValue(layer.props?.fadeIn) ?? 0) || 0;
+  const fo = Number(staticValue(layer.props?.fadeOut) ?? 0) || 0;
+  const drag = (which: 'in' | 'out') => (e: PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const fps = comp.peek().fps, max = Math.max(0.05, seconds / 2);
+    const name = which === 'in' ? 'fadeIn' : 'fadeOut', v0 = which === 'in' ? fi : fo, x0 = e.clientX, dir = which === 'in' ? 1 : -1;
+    let ops: Op[] = [];
+    const move = (ev: PointerEvent) => {
+      const v = snap(Math.min(max, Math.max(0, v0 + dir * (ev.clientX - x0) / k)), fps);
+      ops = v === v0 ? [] : [{ op: 'add', path: pointer('compositions', compId, 'layers', id, 'props', name), value: +v.toFixed(3) }];
+      if (ops.length) draft(ops); else cancelDraft();
+    };
+    const up = () => {
+      removeEventListener('pointermove', move);
+      removeEventListener('pointerup', up);
+      if (ops.length) commit(t('timeline.fadeName', { name: which === 'in' ? t('common.fadeIn') : t('common.fadeOut') }), ops); else cancelDraft();
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+  };
+  const max = Math.max(0.05, seconds / 2);
+  return <>
+    <span class={`fade-h l${fi > 0.001 ? ' set' : ''}`} style={{ width: Math.min(100, (Math.min(fi, max) / seconds) * 100) + '%' }} title={t('common.fadeIn')} onPointerDown={drag('in')} />
+    <span class={`fade-h r${fo > 0.001 ? ' set' : ''}`} style={{ width: Math.min(100, (Math.min(fo, max) / seconds) * 100) + '%' }} title={t('common.fadeOut')} onPointerDown={drag('out')} />
+  </>;
 }
 
 /** plays a sound layer alone in the preview, or with the others again */

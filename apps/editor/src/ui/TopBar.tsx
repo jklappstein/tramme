@@ -1,13 +1,15 @@
 // Top bar: project, the view (studio or atelier), history, format, frame rate, export.
 
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { signal } from '@preact/signals';
-import { pointer } from '@tramme/core';
+import { pointer, stringifyDoc, type TrammeDoc } from '@tramme/core';
+import { DOCUMENT } from '@tramme/project';
 import { api } from '../api.ts';
+import { confirmWith } from '../confirm.ts';
 import { saveBlob } from '../download.ts';
 import { safeName, takenPaths, upload } from '../files.ts';
 import { canRedo, canUndo, comp, commit, redo, redoLabel, S, saveNow, toast, undo, undoLabel } from '../state.ts';
-import { contentEnd, fmtSeconds, snap } from '../model.ts';
+import { ago, contentEnd, fmtSeconds, snap } from '../model.ts';
 import { shortsOf } from '../shorts.ts';
 import { openMenu, Popover, Select, type MenuItem } from './controls.tsx';
 import { VIDEO, WEB_FORMATS, type WebFormat } from '../formats.ts';
@@ -17,7 +19,7 @@ import { settingsOpen, prefs, VIEWS } from '../settings.ts';
 import { setView, VIEW_LABEL, ViewSwitch } from './views.tsx';
 import { HelpButton, helpMenu } from './Help.tsx';
 import { WindowControls, windowBar } from './WindowControls.tsx';
-import { t } from '../i18n/index.ts';
+import { locale, t } from '../i18n/index.ts';
 
 const FORMATS: [string, string, number, number][] = [
   ['9x16', '9:16 · 1080×1920', 1080, 1920],
@@ -28,6 +30,81 @@ const FORMATS: [string, string, number, number][] = [
 ];
 
 interface Done { blob: Blob; name: string; seconds: number; warnings: string[]; saved?: string }
+
+// ── the project's versions: named points one can come back to ──
+/** the saved document itself is the current version; the snapshots live beside it */
+const VERSIONS_INDEX = 'versions/index.json';
+interface Snap { file: string; label: string; at: string }
+
+async function listVersions(): Promise<Snap[]> {
+  try {
+    const r = await api.readText(S.project.peek().id, VERSIONS_INDEX);
+    if (!r) return [];
+    const j = JSON.parse(r.text) as { versions?: Snap[] };
+    return Array.isArray(j.versions) ? j.versions.slice(0, 30) : [];
+  } catch { return []; }
+}
+
+function VersionsPop({ anchor, onClose }: { anchor: HTMLElement; onClose: () => void }) {
+  const [list, setList] = useState<Snap[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { listVersions().then(setList); }, []);
+  // the state is saved first: the snapshot says exactly what the user sees
+  const create = async () => {
+    setBusy(true);
+    try {
+      await saveNow();
+      const id = S.project.peek().id, now = new Date();
+      const file = `versions/${now.toISOString().replace(/[:.]/g, '-')}.json`;
+      await api.write(id, file, stringifyDoc(S.doc.peek() as TrammeDoc), { type: 'application/json' });
+      const next = [{ file, label: now.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }), at: now.toISOString() }, ...(await listVersions())].slice(0, 30);
+      await api.write(id, VERSIONS_INDEX, JSON.stringify({ versions: next }), { type: 'application/json' });
+      setList(next);
+      toast(t('topbar.versionAdded'));
+    } catch (e) { toast(t('common.couldNotSaveError', { error: (e as Error).message }), 'error'); }
+    setBusy(false);
+  };
+  // the document of the snapshot becomes the document: the page reloads on it
+  const restore = async (v: Snap) => {
+    if (!await confirmWith(t('topbar.restoreVersion'), t('topbar.restoreVersionBody', { label: v.label }), t('topbar.restore'))) return;
+    setBusy(true);
+    try {
+      const id = S.project.peek().id, r = await api.readText(id, v.file);
+      if (!r) throw new Error(`${v.file}: missing`);
+      JSON.parse(r.text) as TrammeDoc;
+      await api.write(id, DOCUMENT, r.text, { type: 'application/json' });
+      location.reload();
+    } catch (e) { toast((e as Error).message, 'error'); setBusy(false); }
+  };
+  const remove = async (v: Snap) => {
+    try {
+      const id = S.project.peek().id;
+      await api.removeFile(id, v.file);
+      const next = (await listVersions()).filter((x) => x.file !== v.file);
+      await api.write(id, VERSIONS_INDEX, JSON.stringify({ versions: next }), { type: 'application/json' });
+      setList(next);
+    } catch (e) { toast((e as Error).message, 'error'); }
+  };
+  return (
+    <Popover anchor={anchor} onClose={onClose} class="versions-pop" align="left">
+      <div style={{ fontWeight: 600 }}>{t('topbar.versions')}</div>
+      <div class="faint" style={{ fontSize: 11 }}>{t('topbar.versionsHint')}</div>
+      <button class="btn sm" disabled={busy} onClick={create}><Icon name="clock" />{t('topbar.addVersionNow')}</button>
+      {list === null && <span class="faint" style={{ fontSize: 11 }}>{t('common.searching')}</span>}
+      {list !== null && list.length === 0 && <span class="faint" style={{ fontSize: 11 }}>{t('topbar.noVersionYet')}</span>}
+      {list?.map((v) => (
+        <div key={v.file} class="versions-row">
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.label}</span>
+            <span class="faint" style={{ fontSize: 11 }}>{ago(v.at)}</span>
+          </span>
+          <button class="btn sm" disabled={busy} onClick={() => restore(v)}>{t('topbar.restore')}</button>
+          <button class="icon-btn" disabled={busy} title={t('common.delete')} onClick={() => remove(v)}><Icon name="trash" /></button>
+        </div>
+      ))}
+    </Popover>
+  );
+}
 type ExpState = { done: number; total: number } | Done | { error: string };
 
 // the export lives outside the popover: closing it (a click beside, the button
@@ -192,6 +269,7 @@ function moreMenu(e: MouseEvent, o: FormatChoice) {
 export function TopBar() {
   const doc = S.doc.value, c = comp.value, save = S.save.value, project = S.project.value;
   const [exp, setExp] = useState<HTMLElement | null>(null);
+  const [ver, setVer] = useState<HTMLElement | null>(null);
   const doneWaiting = expState.value !== null && 'blob' in expState.value && !expState.value.saved;
   const cp = pointer('compositions', S.compId.value);
   const fmt = FORMATS.find((f) => f[2] === c.width && f[3] === c.height)?.[0] ?? 'custom';
@@ -215,6 +293,8 @@ export function TopBar() {
         <span class={`save-state ${save === 'saved' ? '' : save === 'error' ? 'error' : 'dirty'}`} title={t('topbar.projectId', { id: project.id })}>
           <i class="dot" /><span>{save === 'saved' ? t('topbar.saved') : save === 'saving' ? t('topbar.saving') : save === 'error' ? t('topbar.notSaved') : t('topbar.modified')}</span>
         </span>
+        <button class="icon-btn" data-tour="versions" title={t('topbar.versions')} onClick={(e) => setVer(ver ? null : (e.currentTarget as HTMLElement))}><Icon name="clock" /></button>
+        {ver && <VersionsPop anchor={ver} onClose={() => setVer(null)} />}
       </div>
       {!studio && comps.length > 1 && <div style={{ width: 170 }} class="hide-sm"><Select value={S.compId.value} options={comps.map(([id, x]) => [id, x.name])} onChange={(v) => { S.compId.value = v; S.selection.value = []; }} /></div>}
       <span class="grow" />

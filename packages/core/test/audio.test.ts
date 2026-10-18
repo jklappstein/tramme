@@ -34,7 +34,7 @@ describe('the sound of a layer', () => {
 
   it('keeps a video at its own speed, and leaves a muted one out', () => {
     const video = (muted: boolean) => audioClips(doc({}, { b: { type: 'video', props: { video: 'v', rate: 2, muted, fadeIn: 0.2 } } }), 'main').find((c) => c.asset === 'v');
-    expect(video(false)).toMatchObject({ rate: 1, fadeIn: 0.2 });
+    expect(video(false)).toMatchObject({ rate: 2, fadeIn: 0.2 });
     expect(video(true)).toBeUndefined();
   });
 });

@@ -48,6 +48,18 @@ registerTour({
     },
     {
       target: 'timeline', side: 'top', align: 'center',
+      title: m('tours.tips.theClipsSayMore'),
+      body: m('tours.tips.thumbsAlongTheVideoClips'),
+    },
+    {
+      target: 'inspector', side: 'left', align: 'start',
+      before: selectVideo,
+      when: () => !!firstVideo(),
+      title: m('tours.tips.playAtItsSpeed'),
+      body: m('tours.tips.theSpeedOfAVideo'),
+    },
+    {
+      target: 'timeline', side: 'top', align: 'center',
       title: m('tours.tips.theRightClick'),
       body: m('tours.tips.rightClickTheTimeline'),
     },
@@ -60,6 +72,11 @@ registerTour({
       target: 'inspector', side: 'left', align: 'start',
       title: m('tours.tips.beyondTheStaticValue'),
       body: m('tours.tips.theDotsOfAProperty'),
+    },
+    {
+      target: 'ai-resizer', side: 'left', align: 'center',
+      title: m('tours.tips.theLinesBetween'),
+      body: m('tours.tips.everyLineBetween'),
     },
     {
       target: 'viewport', side: 'left', align: 'center',
@@ -75,6 +92,11 @@ registerTour({
       target: 'history', side: 'bottom', align: 'end',
       title: m('tours.tips.undoRedoAndRename'),
       body: m('tours.tips.theTwoArrowsUndo'),
+    },
+    {
+      target: 'versions', side: 'bottom', align: 'start',
+      title: m('tours.tips.goBackInTime'),
+      body: m('tours.tips.theClockBesideTheSaved'),
     },
     {
       target: 'export', side: 'bottom', align: 'end',

@@ -168,7 +168,7 @@ export function carriedStart(l: Layer, din: number): number | null {
   if (p.start !== undefined && typeof raw !== 'number') return null;
   const s0 = (raw as number | undefined) ?? 0;
   const factor = (v: unknown) => Number(staticValue(v) ?? 1) || 1;
-  if (l.type === 'video') return Math.max(0, s0 + din);
+  if (l.type === 'video') return Math.max(0, s0 + din * factor(p.rate));
   if (l.type === 'audio') return Math.max(0, s0 + din * factor(p.rate));
   if (l.type === 'comp' && (p.remap ?? null) === null) return s0 + din * factor(p.speed);
   return null;
@@ -207,6 +207,48 @@ export function splitLayerOps(doc: TrammeDoc, compId: string, id: string, at: nu
     { op: 'replace', path: parent ? pointer('compositions', compId, 'layers', parent, 'children') : pointer('compositions', compId, 'order'), value: [...list.slice(0, i + 1), nid, ...list.slice(i + 1)] },
   ];
   return { ops, id: nid };
+}
+
+/**
+ * A cross-fade between a layer and the closest one under it: opacity keys on
+ * both, over the time they share (half of it at most, `d` seconds around its
+ * centre). Null when nothing to fade into (no other layer, or an opacity
+ * already animated — it is never touched).
+ */
+export function crossfadeOps(doc: TrammeDoc, compId: string, id: string, d: number): { ops: Op[]; under: string } | null {
+  const c = doc.compositions[compId], l = c.layers[id];
+  if (!l || l.children) return null;
+  const i = c.order.indexOf(id);
+  if (i < 0) return null;
+  const tin = l.in ?? 0, tout = l.out ?? c.duration;
+  // the under layer: the closest later one in order, by shared time (a plain neighbour when none overlaps)
+  let under: string | null = null, best = -Infinity;
+  for (let j = i + 1; j < c.order.length; j++) {
+    const o = c.layers[c.order[j]];
+    if (!o || o.children) continue;
+    const oin = o.in ?? 0, oout = o.out ?? c.duration;
+    const shared = Math.min(tout, oout) - Math.max(tin, oin);
+    const score = shared > 0 ? shared : -1 / (1 + Math.min(Math.abs(oout - tin), Math.abs(tout - oin)));
+    if (score > best) { best = score; under = c.order[j]; }
+  }
+  if (!under) return null;
+  const o = c.layers[under], oin = o.in ?? 0, oout = o.out ?? c.duration;
+  // a static opacity only: an animated one, an expression or a link are never touched
+  const topRaw = l.transform?.opacity, underRaw = o.transform?.opacity;
+  const topV = staticValue(topRaw), underV = staticValue(underRaw);
+  if ((topRaw !== undefined && typeof topV !== 'number') || (underRaw !== undefined && typeof underV !== 'number')) return null;
+  const overlap = Math.min(tout, oout) - Math.max(tin, oin);
+  const half = 0.5 / c.fps;
+  if (overlap <= half) return null;
+  const w = Math.min(d * 2, overlap) / 2, m = (Math.max(tin, oin) + Math.min(tout, oout)) / 2;
+  const a0 = r4(snap(m - w, c.fps)), a1 = r4(snap(m + w, c.fps));
+  const lp = pointer('compositions', compId, 'layers', id, 'transform', 'opacity');
+  const lo = pointer('compositions', compId, 'layers', under, 'transform', 'opacity');
+  const ops: Op[] = [
+    { op: 'add', path: lp, value: { $k: [{ t: a0, v: typeof topV === 'number' ? topV : 1 }, { t: a1, v: 0 }] } },
+    { op: 'add', path: lo, value: { $k: [{ t: a0, v: 0 }, { t: a1, v: typeof underV === 'number' ? underV : 1 }] } },
+  ];
+  return { ops, under };
 }
 
 /** a fresh id: base, base2, base3... */

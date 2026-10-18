@@ -1,14 +1,19 @@
 // A video in a frame centred on the layer origin. The layer's in point plays
 // the file from `start`: several layers of the same file with different
 // starts and lengths make the cuts of an edit. Its sound plays with it unless
-// muted (mixed like an audio layer, in the preview and the exports).
+// muted (mixed like an audio layer, in the preview and the exports). `rate`
+// speeds it up or slows it down (the pitch of its sound with it); looping,
+// the section from `start` to `loopEnd` starts over as long as the layer runs.
 
 import { pictureRect, type NodeType, type Vec2, type VideoAsset } from '@tramme/core';
-import { SOUND_PROPS } from './sound.ts';
+import { RATE_PROP, SOUND_PROPS } from './sound.ts';
 
 interface VideoProps {
   video: string | null;
   start: number;
+  rate: number;
+  loop: boolean;
+  loopEnd: number;
   size: Vec2;
   fit: 'cover' | 'contain' | 'fill';
   focus: Vec2;
@@ -16,14 +21,22 @@ interface VideoProps {
   muted: boolean;
 }
 
-/** time in the file at composition time t */
-export const videoTime = (p: { start: number }, t: number, layerIn: number) => p.start + (t - layerIn);
+/** time in the file at composition time t (looping: the section starts over) */
+export const videoTime = (p: { start: number; rate?: number; loop?: boolean; loopEnd?: number }, t: number, layerIn: number) => {
+  const s = p.start + (t - layerIn) * (p.rate ?? 1);
+  const len = (p.loopEnd ?? 0) - p.start;
+  if (!p.loop || len <= 0.001) return Math.max(0, s);
+  return p.start + (((s - p.start) % len) + len) % len;
+};
 
 export const video: NodeType<VideoProps> = {
   type: 'video', title: 'Video', category: 'Media',
   props: {
     video: { type: 'asset', default: null, nullable: true, assetType: 'video', label: 'File', animatable: false },
     start: { type: 'number', default: 0, min: 0, step: 0.01, unit: 's', label: 'Start in the file', animatable: false, description: "the video time shown at the layer's in point (used for cuts)" },
+    rate: { ...RATE_PROP.rate },
+    loop: { type: 'bool', default: false, label: 'Loop the section', animatable: false, group: 'Cut', description: 'when the layer runs past the section, it starts over from the start in the file' },
+    loopEnd: { type: 'number', default: 0, min: 0, step: 0.01, unit: 's', label: 'Section end', animatable: false, group: 'Cut', description: 'time in the file where the looped section ends' },
     size: { type: 'vec2', default: [1920, 1080], label: 'Frame', unit: 'px' },
     fit: { type: 'enum', default: 'cover', options: ['cover', 'contain', 'fill'], label: 'Fit mode' },
     focus: { type: 'vec2', default: [0.5, 0.5], label: 'Focal point', step: 0.01, description: 'point of the picture kept at the center of the frame (0..1); animated, it follows the subject in a cropped frame' },

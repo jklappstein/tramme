@@ -326,9 +326,15 @@ class Preview {
     for (const c of clips.filter((x) => doc.assets[x.asset].type === 'video')) {
       const el = new Audio(r.assets.url(c.asset));
       el.preload = 'auto';
+      el.playbackRate = c.rate;
       ctx.createMediaElementSource(el).connect(clipChain(ctx, c, bus(c), startAt, from));
       const skip = Math.max(0, from - c.at);
       const begin = () => { el.currentTime = c.offset + skip; el.play().catch(() => {}); };
+      // a looped section: the element cannot loopStart like a buffer, the wrap keeps it close (the exports are exact)
+      if (c.loopEnd !== undefined && c.loopStart !== undefined) {
+        const len = c.loopEnd - c.loopStart;
+        el.addEventListener('timeupdate', () => { if (el.currentTime >= c.loopEnd!) el.currentTime -= len; });
+      }
       const wait = Math.max(0, c.at - from) * 1000 + 30;
       this.timers.push(setTimeout(begin, wait), setTimeout(() => el.pause(), wait + (c.duration - skip) * 1000));
       this.media.push(el);

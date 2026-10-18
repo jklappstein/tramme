@@ -128,6 +128,8 @@ export interface NodeType<P = any> {
   props: PropSchema;
   /** accepts children (rendered in the node's local space) */
   container?: boolean;
+  /** composes the layers drawn under it instead of drawing (an adjustment layer: its effects apply to what is below) */
+  composes?: 'adjust';
   /** once per layer, before the first frame; props evaluated at the layer's in point */
   load?(props: P, host: Host): Promise<void> | void;
   /** outline of the layer in local space: makes it usable as a clip, and selectable in the viewport */

@@ -8,6 +8,32 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+### Added
+
+- Two light themes, **lin** and **porcelaine**, beside papier: the picker now draws eight of them with their own colours, four to a row (the dark ones above, the light ones and system below), and the window bar and the page's colour-scheme follow.
+- A filmstrip along the video clips: the clip shows its film as small thumbs, decoded in the background from the preview's own decoder (one at a time, a thumb every quarter second shared by the clips of a file, nothing while the film plays, a small memory of the recent ones). The thumbs follow the cut and the speed.
+- The videos' **Speed** (0.25× to 4×), the pitch of their sound with it, the sound of the exports and of the preview alike; trimming a video's head carries its start at its speed.
+- The fades of a video or a sound as two handles at the clip's top corners: drag one, the fade follows, snapped to frames.
+- The markers at the keyboard: **M** drops one at the playhead, **1** to **9** jump to the markers in order.
+- A **crossfade** with the layer under it, from the clip's menu: opacity keys on both over the time they share. An opacity already animated is never touched.
+- **Loop the section to the end**, from the clip's menu of a video or a sound: what plays past the section starts over from the start in the file (the sound loops natively in the mixes; in the preview a looped video's sound is close but not exact — the exports are).
+- The **adjustment layer**: it draws nothing of its own — its effects apply to everything under it in the stack (a grade over a scene, one blur for a set). A composition without one pays nothing.
+- The project's **versions**: the clock beside the save state keeps instants of the project (the document saved first, so a version says exactly what is on screen), each restorable from a list, each removable.
+- The home screen's **search**: from six films on, a field at the right of "Your films" filters the cards by name.
+
+### Changed
+
+- The home screen's cards keep one thumbnail ratio (16/10, the film filling its box cropped): the rows stand as tall as each other whatever the film's format, where a vertical film used to stretch its whole row.
+- The lines between the atelier's panels show at rest instead of hiding in the gutters, each says what it does (the chat's: "drag: the chat grows or shrinks"), and the tours' "The tricks" has a step on them.
+- The tours' "The tricks" also tells the clips' thumbs and fades, the crossfade and the loop, the videos' speed, the markers at the keyboard and the versions.
+
+### Fixed
+
+- Clicking **Export** while an export runs no longer closes its progress, and a finished file is no longer lost by a click beside: it waits in the export popover (a small dot on the button says so) with its save buttons.
+- The settings' section descriptions sat unstyled on the cards' top edge, half outside; the theme picker crushed its previews to pills and wrapped eight themes as six plus two.
+- The storyboard's play button turned into a bare disc when playing: its pause icon drew nothing (a stroke path forced into a filled button).
+- The examples' cards stood upright, their thumb a small centred picture: they are horizontal cards again (thumb beside the text), as designed.
+
 ## [0.7.1] - 2026-10-18
 
 ### Changed

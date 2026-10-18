@@ -114,6 +114,12 @@ export function playClip(ctx: BaseAudioContext, clip: AudioClip, buffer: AudioBu
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   src.playbackRate.value = clip.rate;
+  // a looped section plays again from its start as long as the clip runs
+  if (clip.loopEnd !== undefined && clip.loopStart !== undefined && clip.loopEnd > clip.loopStart) {
+    src.loop = true;
+    src.loopStart = clip.loopStart;
+    src.loopEnd = Math.min(clip.loopEnd, buffer.duration);
+  }
   src.connect(clipChain(ctx, clip, out, startAt, from));
   src.start(startAt + Math.max(0, clip.at - from), offset, length);
   return src;

@@ -151,7 +151,50 @@ function drawLayer(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: DrawEn
 
 /** draw layers over what the context already holds (nested compositions) */
 export function drawLayers(ctx: CanvasRenderingContext2D, layers: EvaluatedLayer[], env: DrawEnv) {
-  for (const L of layers) drawLayer(ctx, L, env);
+  for (const L of layers) {
+    if (L.node.composes === 'adjust') adjustOver(ctx, L, env);
+    else drawLayer(ctx, L, env);
+  }
+}
+
+/**
+ * An adjustment layer: everything already drawn on the context is run once
+ * more through the layer's effects, then composited back with its opacity and
+ * blend mode. The frame is copied only when such a layer exists and carries
+ * effects — a composition without one pays nothing.
+ */
+function adjustOver(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: DrawEnv) {
+  const fx = L.effects
+    .map((e) => ({ e, type: env.registry.hasEffect(e.type) ? env.registry.effect(e.type) : null }))
+    .filter((x) => x.type?.stage === 'layer' && (x.type.canvas2d || x.type.gl));
+  if (!fx.length || L.transform.opacity <= 0) return;
+  const { width: w, height: h } = ctx.canvas;
+  const off = env.pool.get(w, h);
+  off.drawImage(ctx.canvas, 0, 0);
+  // effect sizes are in composition pixels: they follow the render scale
+  const k = env.scale ? (env.scale[0] + env.scale[1]) / 2 : 1;
+  for (const { e, type } of fx) {
+    try {
+      if (type!.gl) {
+        const inputs: Record<string, CanvasRenderingContext2D | null> = {};
+        for (const [name, d] of Object.entries(type!.props)) if (d.type === 'layer' && typeof e.props[name] === 'string' && e.props[name] !== L.id) inputs[name] = layerPicture(off, e.props[name] as string, env);
+        glPass(off, type!.gl.code, type!.props, e.props, env.t ?? 0, k, Object.fromEntries(Object.entries(inputs).map(([n, c]) => [n, c?.canvas ?? null])));
+        for (const c of Object.values(inputs)) if (c) env.pool.release(c);
+      } else type!.canvas2d?.apply?.(off, e.props, k, env.host(L.id));
+    } catch (err) {
+      if (!env.onError) throw err;
+      env.onError(L.id, new Error(`effect ${e.type}: ${(err as Error).message}`));
+    }
+  }
+  const filter = fx.map(({ e, type }) => type!.canvas2d?.filter?.(e.props, k) ?? '').filter(Boolean).join(' ');
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha *= L.transform.opacity;
+  if (L.layer.blend && L.layer.blend !== 'normal') ctx.globalCompositeOperation = BLEND[L.layer.blend];
+  if (filter) ctx.filter = filter;
+  ctx.drawImage(off.canvas, 0, 0);
+  ctx.restore();
+  env.pool.release(off);
 }
 
 /**

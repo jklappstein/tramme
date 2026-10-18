@@ -32,19 +32,19 @@ function Atelier() {
       <TopBar />
       <div class="workspace" style={{ gridTemplateColumns: `${leftW}px var(--gutter) minmax(0, 1fr) var(--gutter) ${rightW}px` }}>
         <aside class="col left panel" data-tour="left-panel"><LeftPanel /></aside>
-        <div class="resizer v" {...leftHandle('x', 1)} />
+        <div class="resizer v" title={t('app.dragToResize')} {...leftHandle('x', 1)} />
         <main class="center">
           <Viewport />
-          <div class="resizer h" {...bottomHandle('y', -1)} />
+          <div class="resizer h" title={t('app.dragToResize')} {...bottomHandle('y', -1)} />
           <section class="bottom panel" style={{ height: bottomH }}>
             <Transport />
             <div class="timeline-wrap" style={{ display: 'flex', flex: 1, minHeight: 0, flexDirection: 'column' }}><Bottom /></div>
           </section>
         </main>
-        <div class="resizer v" {...rightHandle('x', -1)} />
+        <div class="resizer v" title={t('app.dragToResize')} {...rightHandle('x', -1)} />
         <aside class="col right">
           <div class="inspector-wrap panel panel-body" data-tour="inspector" style={{ flex: 1 }}><Inspector /></div>
-          <div class="resizer h" {...aiHandle('y', -1)} />
+          <div class="resizer h" data-tour="ai-resizer" title={t('app.resizeChat')} {...aiHandle('y', -1)} />
           <Assistant style={{ height: aiH, flex: 'none' }} />
         </aside>
       </div>

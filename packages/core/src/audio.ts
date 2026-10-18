@@ -39,6 +39,9 @@ export interface AudioClip {
   fadeOut: number;
   /** playback speed, pitch with it: 1 as recorded */
   rate: number;
+  /** looping: the section [loopStart, loopEnd] (file seconds) starts over while the clip runs */
+  loopStart?: number;
+  loopEnd?: number;
   /** filters (Hz): sound under lowCut and over highCut removed, 0 for none */
   lowCut: number;
   /** the low cut over time when it is animated (a build thinning the music out): [composition time, Hz] */
@@ -93,9 +96,14 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
       at = Math.max(at, g.in ?? 0); end = Math.min(end, g.out ?? comp.duration);
     }
     if (hidden || end <= at) continue;
-    const duration = end - at, rate = layer.type === 'audio' ? clamp(num(staticValue(props.rate), 1), 0.25, 4) : 1;
+    const duration = end - at, rate = clamp(num(staticValue(props.rate), 1), 0.25, 4);
     const envelope = envelopeOf(props.gain, at, end, doc), lowCutCurve = envelopeOf(props.lowCut, at, end, doc);
     const role = staticValue(props.role), visual = staticValue(props.visual);
+    const start = Math.max(0, num(staticValue(props.start), 0));
+    // looping: the section [start, loopEnd] wraps as long as the layer runs
+    const loopEnd = num(staticValue(props.loopEnd), 0), loops = staticValue(props.loop) === true && loopEnd > start + 0.01;
+    const raw = start + (at - (layer.in ?? 0)) * rate;
+    const offset = loops ? start + (((raw - start) % (loopEnd - start)) + (loopEnd - start)) % (loopEnd - start) : raw;
     clips.push({
       layerId, asset, at, duration,
       // unsaid: a video's sound is someone speaking; a sound is what its names say, an effect otherwise
@@ -103,7 +111,8 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
       weight: staticValue(props.weight) === 'hero' ? 'hero' : 'support',
       ...(SOUND_VISUALS.includes(visual as SoundVisual) ? { visual: visual as SoundVisual } : {}),
       // a group starting after the layer skips the beginning of its file
-      offset: Math.max(0, num(staticValue(props.start), 0)) + (at - (layer.in ?? 0)) * rate,
+      offset,
+      ...(loops ? { loopStart: start, loopEnd } : {}),
       gainDb: envelope ? envelope[0][1] : num(staticValue(props.gain), 0),
       envelope,
       fadeIn: clamp(num(staticValue(props.fadeIn), 0), 0, duration),

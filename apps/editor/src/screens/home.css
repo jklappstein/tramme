@@ -16,6 +16,12 @@ a.brand:hover { background: var(--hover); }
 .home-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
 .home-h h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; letter-spacing: -0.01em; }
 .home-h .faint { font-size: var(--fs-sm); }
+/* the projects' search: a quiet field at the right of the heading */
+.home-search { display: flex; align-items: center; gap: 6px; margin-left: auto; padding: 0 10px; height: 30px; border-radius: var(--r-md); background: var(--field); box-shadow: inset 0 0 0 1px var(--line); }
+.home-search svg.i { width: 14px; height: 14px; color: var(--text-3); flex: none; }
+.home-search input { width: 150px; border: 0; background: none; color: var(--text); font: var(--fs-sm) var(--ui); outline: none; }
+.home-search input::placeholder { color: var(--text-3); }
+.home-search:focus-within { box-shadow: inset 0 0 0 1px var(--accent-line); }
 .home-note { display: flex; gap: 8px; align-items: center; padding: 10px 12px; margin-bottom: 14px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); color: var(--text-2); }
 .home-note.err { color: var(--error-text); background: var(--error-bg); }
 .home-note svg.i { flex: none; }

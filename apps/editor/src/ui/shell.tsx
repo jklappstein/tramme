@@ -3,7 +3,9 @@
 // the dialogs and menus that float over the page.
 
 import { useEffect } from 'preact/hooks';
-import { S, undo, redo, frameStep, setTime, comp, saveNow, toast, select, selectAll } from '../state.ts';
+import { pointer } from '@tramme/core';
+import { S, undo, redo, frameStep, setTime, commit, comp, saveNow, toast, select, selectAll } from '../state.ts';
+import { freshId, snap } from '../model.ts';
 import { MenuHost } from './controls.tsx';
 import { deleteSelection, duplicateSelection } from './LeftPanel.tsx';
 import { deleteKeys } from './Timeline.tsx';
@@ -36,6 +38,19 @@ export function useShortcuts() {
       }
       if (e.key === 'Home') { setTime(0); return; }
       if (e.key === 'End') { setTime(comp.peek().duration); return; }
+      // M drops a marker at the playhead; 1..9 jump to the markers in order
+      if (e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        const c = comp.peek(), list = [...(c.markers ?? [])].sort((a, b) => a.t - b.t);
+        const id = freshId(Object.fromEntries(list.map((x) => [x.id, 1])), 'marker');
+        commit(t('timeline.addMarkerHere'), [{ op: 'add', path: pointer('compositions', S.compId.value, 'markers'), value: [...list, { id, t: snap(S.time.peek(), c.fps), label: t('timeline.markerN', { n: list.length + 1 }) }].sort((a, b) => a.t - b.t) }]);
+        return;
+      }
+      if (/^[1-9]$/.test(e.key)) {
+        const m = [...(comp.peek().markers ?? [])].sort((a, b) => a.t - b.t)[Number(e.key) - 1];
+        if (m) { S.playing.value = false; setTime(m.t); }
+        return;
+      }
       if (e.key === 'Delete' || e.key === 'Backspace') { if (!deleteKeys()) deleteSelection(); return; }
       if (e.key === 'Escape') { select([]); S.keys.value = []; S.assistantFull.value = false; }
     };

@@ -239,6 +239,7 @@ export function Home() {
   const [dialog, setDialog] = useState<null | { kind: 'new' } | { kind: 'rename' | 'remove'; m: Manifest } | { kind: 'failure'; error: Error }>(null);
   const [busy, setBusy] = useState<{ label: string; done: number; total: number; bytes?: boolean } | null>(null);
   const [drag, setDrag] = useState(false);
+  const [query, setQuery] = useState('');
   const input = useRef<HTMLInputElement>(null);
   const video = useRef<HTMLInputElement>(null);
 
@@ -330,13 +331,25 @@ export function Home() {
       <main class="home-main">
         <DirectionBox busy={!!busy} onStart={start} />
         <section data-tour="home-projects">
-          <div class="home-h"><h2>{t('home.yourFilms')}</h2>{projects && projects.length > 0 && <span class="faint">{projects.length}</span>}</div>
+          <div class="home-h">
+            <h2>{t('home.yourFilms')}</h2>
+            {projects && projects.length > 0 && <span class="faint">{projects.length}</span>}
+            {projects && projects.length > 5 && (
+              <span class="home-search"><Icon name="search" /><input value={query} placeholder={t('home.findAProject')} spellcheck={false}
+                onInput={(e) => setQuery((e.target as HTMLInputElement).value)} /></span>
+            )}
+          </div>
           {/* personal mode: nothing is kept on the server, the user should know where the projects are */}
           {personal && <div class="home-note"><Icon name="info" /><span>{t('personal.storedHere')}</span></div>}
           {loadError && <div class="home-note err"><Icon name="alert" /><span>{t('home.projectsCannotBeRead', { error: loadError })}</span></div>}
           {!projects && !loadError && <div class="cards">{[0, 1, 2].map((i) => <div key={i} class="card ghost-card"><div class="card-thumb" /><div class="card-meta"><i /><i /></div></div>)}</div>}
-          {projects && projects.length === 0 && <div class="home-empty"><Icon name="film" /><div class="faint">{t('home.noFilmsYet')}</div></div>}
-          {projects && projects.length > 0 && <div class="cards">{projects.map((m) => <Card key={m.id} m={m} onMenu={(e) => menu(e, m)} />)}</div>}
+          {projects && projects.length === 0 && <p class="faint" style={{ margin: '8px 0 0' }}>{t('home.noFilmsYet')}</p>}
+          {projects && projects.length > 0 && (() => {
+            const q = query.trim().toLowerCase();
+            const shown = q ? projects.filter((m) => m.name.toLowerCase().includes(q)) : projects;
+            if (!shown.length) return <p class="faint" style={{ margin: '8px 0 0' }}>{t('home.noProjectNamed', { query: query.trim() })}</p>;
+            return <div class="cards">{shown.map((m) => <Card key={m.id} m={m} onMenu={(e) => menu(e, m)} />)}</div>;
+          })()}
         </section>
         {examples.length > 0 && (
           <section data-tour="home-examples">

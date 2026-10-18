@@ -50,6 +50,8 @@ export const audio: NodeType = {
   props: {
     audio: { type: 'asset', default: null, nullable: true, assetType: 'audio', label: 'File', animatable: false },
     start: { type: 'number', default: 0, label: 'Start in the file', min: 0, unit: 's', animatable: false },
+    loop: { type: 'bool', default: false, label: 'Loop the section', animatable: false, description: 'when the sound runs past the section, it starts over from the start in the file' },
+    loopEnd: { type: 'number', default: 0, min: 0, step: 0.01, unit: 's', label: 'Section end', animatable: false, description: 'time in the file where the looped section ends' },
     ...SOUND_PROPS,
     ...RATE_PROP,
     ...MIX_PROPS,
