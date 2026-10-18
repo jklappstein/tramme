@@ -2,7 +2,7 @@
 
 Where the plugin system goes, and in what order. The goal is not only a richer vocabulary of layers: it is to give the built-in assistant what it needs to produce impressive videos on its own. The editor gets the same abilities, since the editor and the assistant share one API.
 
-Status: steps 1 to 3, 6, 7 and 9 done (glTF is lean: no skinning; rope, cloth and flock are done — fluid and rigid shapes left); steps 4, 5 and 10 mostly done (pose, phonemes, plugin isolation and audio processing left); steps 7b and 8 wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: steps 1 to 3, 6, 7 and 9 done (glTF is lean: no skinning; rope, cloth and flock are done — fluid and rigid shapes left); steps 4, 5 and 10 mostly done (pose, plugin isolation and audio processing left); steps 7b and 8 wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -88,7 +88,7 @@ Done when: a project plugin exports a tool, the assistant finds it with `list_no
 Built-in plugins whose tools analyse the material at authoring time and save the result as `json` assets. Nodes, expressions and recipes read them.
 
 - [x] Audio (`beats` tool, `analyseAudio` in `packages/core/src/analysis.ts`): tempo, beats, bars, onsets, sections, loudness of the whole and of three bands at 50 Hz. Pure DSP, deterministic, tested on synthetic grooves.
-- [ ] Phonemes from the transcript (lip sync of drawn characters).
+- [x] Phonemes from the transcript (`lipsync` tool, `mouthKeys` in `packages/core/src/lipsync.ts`): the words said become the nine classic mouth shapes, held while their letters would be spoken and closed between the words, written as keys on a sequence's `drawing` (a drawn rig holds one drawing per shape, remappable with a mouths map).
 - [x] Video: shot changes (`shots` tool, colour histograms), people boxes over time (`subjects` tool, YOLOS tiny through transformers.js, loaded on demand).
 - [x] Video: segmentation masks (`cutout` tool, `apps/editor/src/cutout.ts`): U²-Net (people, or any salient subject) through onnxruntime on WebGPU or the processor, kept to the people the detector finds, steadied from frame to frame, saved as a mask video timed like the file.
 - [x] Video: depth (`depth` tool, `apps/editor/src/depth.ts`): Depth Anything v2 small through transformers.js on WebGPU or the processor, steadied from frame to frame, saved as a grey video timed like the file (a grey PNG for a photo), played by a hidden layer and read by `fx.parallax` and `fx.depthBlur` (pose left).

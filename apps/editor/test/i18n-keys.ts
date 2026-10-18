@@ -19,6 +19,9 @@ import { BUILTIN_KITS, RECIPE_TOOLS } from '../src/recipes.ts';
 import { EVENT_TOOLS } from '../src/events.ts';
 import { PERCEPTION_TOOLS } from '../src/perception.ts';
 import { CUTOUT_TOOLS } from '../src/cutout.ts';
+import { DEPTH_TOOLS } from '../src/depth.ts';
+import { LIPSYNC_TOOLS } from '../src/lipsync.ts';
+import { MODEL_TOOLS } from '../src/model3d.ts';
 import { TRACKING_TOOLS } from '../src/tracking.ts';
 import { EDITOR_PRESETS } from '../src/presets.ts';
 import { LIBRARY_TOOLS } from '../src/library.ts';
@@ -66,7 +69,7 @@ export function registryKeys(): Set<string> {
   schema(CAMERA_SCHEMA);
   schema(SOUND_MIX_SCHEMA);
   // the editor's tools and workflows, shown in the chat's / menu
-  const tools = [...EDITOR_TOOLS, ...FILM_TOOLS, ...RECIPE_TOOLS, ...FIGURE_TOOLS, ...EVENT_TOOLS, ...PERCEPTION_TOOLS, ...TRACKING_TOOLS, ...CUTOUT_TOOLS, ...REVIEW_TOOLS, ...SOUND_TOOLS, ...MIXING_TOOLS, ...SOURCE_TOOLS, ...LIBRARY_TOOLS];
+  const tools = [...EDITOR_TOOLS, ...FILM_TOOLS, ...RECIPE_TOOLS, ...FIGURE_TOOLS, ...EVENT_TOOLS, ...PERCEPTION_TOOLS, ...TRACKING_TOOLS, ...CUTOUT_TOOLS, ...DEPTH_TOOLS, ...MODEL_TOOLS, ...LIPSYNC_TOOLS, ...REVIEW_TOOLS, ...SOUND_TOOLS, ...MIXING_TOOLS, ...SOURCE_TOOLS, ...LIBRARY_TOOLS];
   for (const x of [...tools, ...EDITOR_PROMPTS, ...BUILTIN_CHECKS, ...BUILTIN_KITS, ...FILM_KITS, ...EDITOR_PRESETS]) { add(x.title); add(x.description); }
   for (const c of BUILTIN_CHECKS) for (const text of c.texts ?? []) add(text);
   for (const text of Object.values(SOUND_TEXTS)) add(text);

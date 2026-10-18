@@ -155,6 +155,7 @@ Each layer type declares its property schema; the inspector and the validator us
 | `particles` | deterministic emitter: `rate`, `life`, `speed`, `spread`, `gravity`, `size`, `color`, `seed` |
 | `shader` | `shader` (fragment GLSL), `size`, `params`: an image made by a shader |
 | `model.3d` | `source` (.glb asset), `height` (px), `spin` (deg/s), `yaw`, `pitch`, `explode` (animatable), `light` (`studio`, `sun`, `flat`): a glTF 2.0 model drawn in 3D on its own WebGL2 service, its parts rigidly animated, framed square by `height` (the `model` tool places it) |
+| `lipsync` (tool) | `sequence` (the drawn character), `transcript`, `mouths` (json: which drawing shows each of the nine shapes — closed, M/B/P, F/V, A/I, E, O, U/W/Q, L, other): writes keys on the sequence's `drawing` so the mouth speaks with the voice |
 | `follow` | `target` (a layer), `frequency` (Hz), `damping`, `size`, `color`, `trail` (frames): a dot following another layer on a spring, drawn in composition space |
 | `rope` | `target` (a layer, the far end), `segments`, `length` (0: as it starts), `gravity`, `wind`, `damping`, `thickness`, `color`: a Verlet rope tied to the layer origin, swinging (drawn in composition space, keep its transform at rest) |
 | `cloth` | `columns`, `rows`, `width`, `height`, `gravity`, `wind`, `sway`, `stiffness`, `color`, `wireframe`: a cloth pinned along its top edge, centred on the origin, that falls and catches a breathing wind |

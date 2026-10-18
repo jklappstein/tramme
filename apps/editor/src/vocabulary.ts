@@ -14,6 +14,7 @@ import { FIGURE_TOOLS } from './figures.ts';
 import { FILM_KITS, FILM_TOOLS } from './film.ts';
 import { IMAGE_TOOLS } from './images.ts';
 import { LIBRARY_TOOLS } from './library.ts';
+import { LIPSYNC_TOOLS } from './lipsync.ts';
 import { MODEL_TOOLS } from './model3d.ts';
 import { PERCEPTION_TOOLS } from './perception.ts';
 import { EDITOR_PRESETS } from './presets.ts';
@@ -88,5 +89,5 @@ export const EDITOR_PROMPTS: PromptType[] = [
 
 /** the base vocabulary of the editor, before a document's plugins */
 export function editorRegistry() {
-  return builtinRegistry().registerTool(...EDITOR_TOOLS, ...FILM_TOOLS, ...RECIPE_TOOLS, ...FIGURE_TOOLS, ...EVENT_TOOLS, ...PERCEPTION_TOOLS, ...TRACKING_TOOLS, ...CUTOUT_TOOLS, ...DEPTH_TOOLS, ...MODEL_TOOLS, ...REVIEW_TOOLS, ...SOUND_TOOLS, ...MIXING_TOOLS, ...IMAGE_TOOLS, ...SHORTS_TOOLS, ...SOURCE_TOOLS, ...BLOCK_TOOLS, ...BRIEF_TOOLS, ...LIBRARY_TOOLS).registerPrompt(...EDITOR_PROMPTS).registerKit(...BUILTIN_KITS, ...FILM_KITS).registerPreset(...EDITOR_PRESETS);
+  return builtinRegistry().registerTool(...EDITOR_TOOLS, ...FILM_TOOLS, ...RECIPE_TOOLS, ...FIGURE_TOOLS, ...EVENT_TOOLS, ...PERCEPTION_TOOLS, ...TRACKING_TOOLS, ...CUTOUT_TOOLS, ...DEPTH_TOOLS, ...MODEL_TOOLS, ...LIPSYNC_TOOLS, ...REVIEW_TOOLS, ...SOUND_TOOLS, ...MIXING_TOOLS, ...IMAGE_TOOLS, ...SHORTS_TOOLS, ...SOURCE_TOOLS, ...BLOCK_TOOLS, ...BRIEF_TOOLS, ...LIBRARY_TOOLS).registerPrompt(...EDITOR_PROMPTS).registerKit(...BUILTIN_KITS, ...FILM_KITS).registerPreset(...EDITOR_PRESETS);
 }

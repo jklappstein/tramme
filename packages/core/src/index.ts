@@ -13,6 +13,7 @@ export * from './validate.ts';
 export * from './format.ts';
 export * from './modifiers.ts';
 export * from './sequence.ts';
+export * from './lipsync.ts';
 export * from './audio.ts';
 export * from './loudness.ts';
 export * from './spectrum.ts';

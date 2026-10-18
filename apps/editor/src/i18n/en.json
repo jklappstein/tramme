@@ -1060,6 +1060,9 @@
   "model": {
     "placed": "{name} placed as a 3D model."
   },
+  "lipsync": {
+    "done": "{name} speaks with the voice."
+  },
   "events": {
     "saved": "Event list saved: {count} event(s){totals}. Show it with /event-counter, /event-tags and /event-receipt.",
     "listLabel": "Event list {name}",
