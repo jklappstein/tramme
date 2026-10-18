@@ -248,6 +248,8 @@ In the editor's preview, a node or effect that fails is drawn as a red frame and
 
 Tools also appear in the chat's `/` menu, with a form generated from `input` (`title` as the label; `format: 'asset'` with `assetType` picks an asset, `format: 'layer'` a layer). Once the required fields are filled, the tool runs at once without a model; words written after the command send it to the assistant instead.
 
+In the editor, the tools and checks of a project's plugins run in a sandbox of their own: one worker per project, with no page rights (its network reaches the project's own origin only). What a tool needs — the document, the project's files, stills, transcripts — crosses a message bridge, and what it returns crosses back as plain data, so a plugin's authoring code never runs with the editor's rights. The assistant's surface does not change: `use_tool` and `list_nodes` speak in names and schemas as before. The code that draws (nodes, effects, modifiers) and the module's load still run in the page, as does everything in the command line (Node's rights): those move only in a later stage of the isolation plan ([plugin-isolation.md](plugin-isolation.md)).
+
 A plugin may also export `checks`: quality checks run by the `check` tool (assistant and `/check`) next to the built-in ones (text size, reading time, safe zone, overlapping text, text crossing an element, text over a person or on a busy area, low contrast behind text, crowded entrances, still stretches). A check reads the composition sampled four times a second, each layer placed in composition space, and returns issues:
 
 ```js

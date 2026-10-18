@@ -210,6 +210,7 @@
   },
   "editor": {
     "softwareGpu": "No graphics card is drawing the preview: the processor does it, the whole computer may slow down. Check that hardware acceleration is on (browser settings) and that the graphics drivers are up to date.",
+    "pluginSandbox": "The project's plugins could not be loaded in the sandbox: {error}. Their tools and checks are unavailable; the layers they bring still draw.",
     "newLayerNameType": "new layer \"{name}\" ({type})",
     "deleteName": "delete \"{name}\"",
     "layer": "layer",

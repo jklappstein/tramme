@@ -210,6 +210,7 @@
   },
   "editor": {
     "softwareGpu": "Aucune carte graphique ne dessine l'aperçu : c'est le processeur qui le fait, tout l'ordinateur peut ralentir. Vérifiez que l'accélération matérielle est active (réglages du navigateur) et que les pilotes graphiques sont à jour.",
+    "pluginSandbox": "Les plugins du projet n'ont pas pu être chargés dans le bac à sable : {error}. Leurs outils et vérifications sont indisponibles ; les calques qu'ils apportent continuent de se dessiner.",
     "newLayerNameType": "nouveau calque « {name} » ({type})",
     "deleteName": "supprimer « {name} »",
     "layer": "calque",

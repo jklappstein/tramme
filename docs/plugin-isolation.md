@@ -1,6 +1,6 @@
 # Plugin isolation
 
-How to run plugins from projects of unknown sources without handing them the editor. This note prices the options and proposes a staged path; it decides nothing — the code moves only once the author picks (roadmap step 10).
+How to run plugins from projects of unknown sources without handing them the editor. This note prices the options and proposes a staged path; the author picked the staged path, and it is under way: stages 0 and 1 below are shipped, stage 2 waits until untrusted plugins must draw.
 
 Today a plugin is arbitrary JavaScript with the page's full power. The import asks before running an archive's code (the code question, `apps/editor/src/importer.ts`), the Code section shows what a project runs, and the shared library vouches for what it ships — but once the answer is yes, the module runs in the editor's page: it can rewrite the document, read and write every project file, reach the provider routes with the keys the user connected, and do anything else the page can do. That is the right deal for projects you wrote and plugins you read. It is not an answer for "projects from unknown sources", which is what the roadmap asks for.
 
@@ -81,8 +81,10 @@ Plugin code runs in an embedded interpreter (QuickJS compiled to Wasm, or a Wasm
 
 ## A staged recommendation
 
-1. **Stage 0 — sharpen the trust path (cheap, any time).** Keep the main thread. Make the code question name what the plugin brings (nodes, tools, checks, kits) and record each plugin's origin (import, library) in the Code section. Nothing is lost, nothing is enforced; strangers stay on the honour system, but at least they are introduced.
-2. **Stage 1 — the first real boundary: authoring-time code.** Move tools and checks into the per-project worker, with the reduced API of (c): transferables, network through a per-project allowlist. Tools are the widest surface at authoring time (files, providers, transcription) and already async; checks already accept a Promise and their samples are data. The frame path is untouched, so the preview pays nothing; GLSL effects, being data, stay where they are. The assistant's surface does not change: `use_tool` and `list_nodes` already speak in names and schemas.
+The picked path, one shippable step at a time:
+
+1. **Stage 0 — sharpen the trust path (done).** The code question names what each plugin brings (nodes, tools, checks, kits...), read statically in the module's text before anything runs.
+2. **Stage 1 — the first real boundary: authoring-time code (done).** Tools and checks run in the per-project worker, with the reduced API: no free network beyond its own origin, no sockets, files and stills through the bridge. The frame path is untouched, so the preview pays nothing; GLSL effects, being data, stay where they are. The assistant's surface does not change: `use_tool` and `list_nodes` already speak in names and schemas. What stays open, said plainly: a module's load and its render-time code still run in the page (they draw), and dynamic import of remote modules from inside the sandbox is not yet blocked — a CSP closes that. The command line keeps its own rule: plugins load in Node, with a local tool's rights.
 3. **Stage 2 — render-time code, only when untrusted plugins must draw.** Move nodes, Canvas2D effects and simulations into the same worker with the frame protocol of (b): evaluated props in, one `ImageBitmap` per plugin layer and per-layer errors out. Modifiers decide the shape of the stage: they stay main-thread and documented as trusted-only, or the evaluator moves too — a separate, larger decision, not a precondition.
 
-The stages compose: each one is shippable alone, none is undone by the next, and the declaration half of every plugin (schemas, kits, presets, prompts, tours, GLSL) never needs to move at all. What the author picks first is how far to go; this note only prices the road.
+The stages compose: each one is shippable alone, none is undone by the next, and the declaration half of every plugin (schemas, kits, presets, prompts, tours, GLSL) never needs to move at all.

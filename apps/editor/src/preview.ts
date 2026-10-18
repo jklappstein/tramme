@@ -18,6 +18,7 @@ import { audioClips, soundMix, type TrammeDoc, type EvaluatedFrame } from '@tram
 import { editorRegistry } from './vocabulary.ts';
 import { clipChain, masterGainDb, mixBus, playClip, Renderer } from '@tramme/render';
 import { comp, compIdOf, S, setRegistry, setTime, toast, viewDoc } from './state.ts';
+import { attachIsolated, filterModule, pluginHost } from './plugins/index.ts';
 import { t } from './i18n/index.ts';
 import { prefs } from './settings.ts';
 import { syncPluginTours } from './tours/index.ts';
@@ -52,6 +53,8 @@ class Preview {
   private motion = { scale: 0.5, ceiling: 2, calm: 0, intervals: [] as number[], last: 0 };
   /** when the time last changed while paused (scrubbing the playhead) */
   private scrubAt = 0;
+  /** counter for re-loading an edited plugin in the sandbox */
+  private bust = 0;
   /** the sharp frame being drawn in steps, cancelled by any change */
   private job: (() => EvaluatedFrame | null) | null = null;
   /** frame of the composition last drawn during playback (exact frames) */
@@ -66,8 +69,9 @@ class Preview {
 
   async start() {
     try {
-      this.renderer = await Renderer.open(S.doc.peek(), editorRegistry(), new URL(S.docUrl.peek(), location.href).href, this.canvas, { compId: compIdOf(S.doc.peek()), raster: 'gpu', scale: S.previewScale.peek(), preserve: false, isolate: true });
+      this.renderer = await Renderer.open(S.doc.peek(), editorRegistry(), new URL(S.docUrl.peek(), location.href).href, this.canvas, { compId: compIdOf(S.doc.peek()), raster: 'gpu', scale: S.previewScale.peek(), preserve: false, isolate: true, pluginModule: filterModule });
       this.applied = S.doc.peek();
+      await this.attachPlugins();
       setRegistry(this.renderer.registry);
       if (this.renderer.compositor.software) toast(t('editor.softwareGpu'), 'error');
       this.pluginTours();
@@ -99,6 +103,23 @@ class Preview {
     syncPluginTours((doc.plugins ?? []).map((id) => { try { return { id, module: r.assets.get(id) }; } catch { return { id, module: null }; } }));
   }
 
+  /** the plugins' tools and checks join the registry as sandbox-backed entries (no cost when there are none, or nothing new) */
+  private async attachPlugins(reload: string[] = []) {
+    const r = this.renderer;
+    if (!r) return;
+    const doc = this.applied ?? S.doc.peek();
+    if (!(doc.plugins ?? []).length) return;
+    try {
+      await attachIsolated(r.registry, pluginHost(new URL(S.docUrl.peek(), location.href).href), doc, (id) => {
+        const url = r.assets.url(id);
+        // an edited plugin file: a fresh url, so the sandbox imports it again
+        return reload.includes(id) ? `${url}${url.includes('?') ? '&' : '?'}pw=${++this.bust}` : url;
+      });
+    } catch (e) {
+      toast(t('editor.pluginSandbox', { error: (e as Error).message }), 'error', 9000);
+    }
+  }
+
   /** apply the latest wanted document, one at a time (asset loading is async) */
   private async sync() {
     if (this.busy || !this.renderer) return;
@@ -110,6 +131,7 @@ class Preview {
       // a drag's draft comes from a valid document: no need to validate it again
       await this.renderer.setDoc(doc, { compId, trusted: doc === S.draft.peek() });
       this.applied = doc;
+      await this.attachPlugins();
       setRegistry(this.renderer.registry);
       this.pluginTours();
       S.renderError.value = null;
@@ -127,6 +149,7 @@ class Preview {
   async reload(assetIds: string[]) {
     if (!this.renderer) return;
     await this.renderer.setDoc(this.applied!, { compId: compIdOf(this.applied!), reload: assetIds });
+    await this.attachPlugins(assetIds);
     setRegistry(this.renderer.registry);
     this.pluginTours();
     this.invalidate();

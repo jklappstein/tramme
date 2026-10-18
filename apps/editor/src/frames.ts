@@ -7,6 +7,7 @@ import { effect, signal } from '@preact/signals';
 import type { TrammeDoc } from '@tramme/core';
 import { Renderer } from '@tramme/render';
 import { editorRegistry } from './vocabulary.ts';
+import { attachIsolated, filterModule, pluginHost } from './plugins/index.ts';
 import { S } from './state.ts';
 
 /** a renderer of its own (never the preview's) and the stills it draws */
@@ -20,10 +21,12 @@ export class Stills {
   async rendererFor(doc: TrammeDoc, compId?: string): Promise<Renderer> {
     const id = compId ?? doc.root;
     const base = new URL(S.docUrl.peek(), location.href).href;
-    if (!this.renderer) this.renderer = await Renderer.open(doc, editorRegistry(), base, this.canvas, { compId: id, raster: 'gpu' });
+    if (!this.renderer) this.renderer = await Renderer.open(doc, editorRegistry(), base, this.canvas, { compId: id, raster: 'gpu', pluginModule: filterModule });
     // the same version again: its simulations stay computed
     else if (doc !== this.doc || id !== this.compId) await this.renderer.setDoc(doc, { compId: id, trusted: true });
     this.doc = doc; this.compId = id;
+    // a proposal may add a plugin: its tools join as sandbox-backed entries
+    if ((doc.plugins ?? []).length) await attachIsolated(this.renderer.registry, pluginHost(base), doc, (pid) => this.renderer!.assets.url(pid)).catch((e) => console.error('[plugins]', (e as Error).message));
     return this.renderer;
   }
 

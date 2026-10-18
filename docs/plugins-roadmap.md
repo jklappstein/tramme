@@ -2,7 +2,7 @@
 
 Where the plugin system goes, and in what order. The goal is not only a richer vocabulary of layers: it is to give the built-in assistant what it needs to produce impressive videos on its own. The editor gets the same abilities, since the editor and the assistant share one API.
 
-Status: every step is done (glTF is lean: no skinning; rope, cloth and flock are done — fluid and rigid shapes left; pose and audio processing are lean) except the isolation of untrusted plugins (step 10): its design note ([plugin-isolation.md](plugin-isolation.md)) is written, and the code is not moved until the author picks. Steps 7b and 8 still wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: every step is done (glTF is lean: no skinning; rope, cloth and flock are done — fluid and rigid shapes left; pose and audio processing are lean) except the isolation of untrusted plugins (step 10): the author picked the staged path of [plugin-isolation.md](plugin-isolation.md) and stages 0 and 1 are shipped (the code question names what each plugin brings; the plugins' tools and checks run in a per-project worker); stage 2, the render path, waits until untrusted plugins must draw. Steps 7b and 8 still wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -140,7 +140,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 - [x] `meta` manifest (`name`, `version`, `description`, `api`), the API version checked at load (`PLUGIN_API`): a newer plugin is refused with a clear message.
 - [x] `@tramme/plugin` (`packages/plugin`): every type a plugin exports and `definePlugin()`.
 - [x] A library of plugins shared between projects (`/api/library` in the Worker, R2 `library/plugins/`); tools `library-add` and `library-use` (assistant and `/` menu); a plugin is copied into the project when used, so archives stay self-contained.
-- [ ] Isolation of untrusted plugins (worker with OffscreenCanvas) for projects from unknown sources — a design note with the options, their costs and a staged recommendation is written ([plugin-isolation.md](plugin-isolation.md)); the code is not moved until the author picks.
+- [ ] Isolation of untrusted plugins for projects from unknown sources, staged ([plugin-isolation.md](plugin-isolation.md)). Stage 0 done: the code question names what each plugin brings. Stage 1 done: the plugins' tools and checks run in a per-project browser worker, their context bridged by message (`apps/editor/src/plugins`); the render path is untouched and the assistant's surface unchanged. Stage 2 — nodes, effects and simulations in the worker with OffscreenCanvas — waits until untrusted plugins must draw.
 - [x] General-purpose packs ship with the editor (charts, kinetic type, physics, UI walkthrough, accessibility checks, localization), added to a project in one click from the Code section.
 - [x] Audio processing (gain curves, fades, low and high cut, equaliser in three bands, reverb, speed) with one mixer for the preview and every export ([sound-roadmap.md](sound-roadmap.md), step 7); a compressor (`compress`, 0 to 1, one DynamicsCompressor between the equaliser and the gain, in the one mixer).
 

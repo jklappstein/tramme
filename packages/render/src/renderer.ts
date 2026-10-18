@@ -3,7 +3,7 @@
 // with the Canvas2D backend, accumulate in linear light, then finish
 // (background plate, finishing effects, grain) in the compositor.
 
-import { assertValid, DocSchema, Evaluator, parseColor, type Composition, type TrammeDoc, type EvaluatedEffect, type EvaluatedFrame, type Host, type Registry } from '@tramme/core';
+import { assertValid, DocSchema, Evaluator, parseColor, type Composition, type TrammeDoc, type EvaluatedEffect, type EvaluatedFrame, type Host, type PluginModule, type Registry } from '@tramme/core';
 import { AssetStore } from './assets.ts';
 import { CanvasPool, drawComposed, drawFrame, drawLayers, type DrawEnv, type HostFactory } from './canvas2d.ts';
 import { Compositor, type Finish, type FinishPass, type Look } from './compositor.ts';
@@ -61,6 +61,12 @@ export interface RendererOptions {
   preserve?: boolean;
   /** true (the editor's preview): a layer or effect that fails is drawn as a red frame and listed in `errors`, the rest renders; exports keep failing */
   isolate?: boolean;
+  /**
+   * What the registry takes from a plugin module, as the caller wants it: the
+   * editor strips the tools and checks, which run in its sandbox instead
+   * (docs/plugin-isolation.md) — without the hook, the whole module is used.
+   */
+  pluginModule?: (mod: PluginModule, id: string) => PluginModule;
 }
 
 export class Renderer {
@@ -90,6 +96,7 @@ export class Renderer {
   private pending: Promise<unknown>[] = [];
   private preserve = true;
   private isolate = false;
+  private pluginModule?: RendererOptions['pluginModule'];
   /** what failed in the last frame drawn (isolate mode): layer id -> message */
   readonly errors = new Map<string, string>();
   /** simulations: a state every CHECKPOINT frames from the in point, and the last one computed */
@@ -110,6 +117,7 @@ export class Renderer {
     r.scale = opts.scale ?? 1;
     r.preserve = opts.preserve ?? true;
     r.isolate = opts.isolate ?? false;
+    r.pluginModule = opts.pluginModule;
     await r.setDoc(doc, { compId: opts.compId });
     return r;
   }
@@ -128,7 +136,7 @@ export class Renderer {
     await this.assets.sync(doc, reload);
     const samePlugins = this.registry && !reload.length && doc.plugins === this.doc?.plugins && (doc.plugins || []).every((id) => doc.assets[id] === this.doc.assets[id]);
     const registry = samePlugins ? this.registry : this.base.clone();
-    if (!samePlugins) for (const id of doc.plugins || []) registry.use(this.assets.get(id), id);
+    if (!samePlugins) for (const id of doc.plugins || []) registry.use(this.pluginModule?.(this.assets.get(id), id) ?? this.assets.get(id), id);
     if (!trusted) assertValid(doc, registry);
     this.doc = doc;
     this.registry = registry;

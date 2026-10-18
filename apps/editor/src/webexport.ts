@@ -13,6 +13,7 @@ import { encodeWav, mixComposition, Renderer } from '@tramme/render';
 
 import { AVC_FROM_STREAM } from './avc.ts';
 import type { WebFormat } from './formats.ts';
+import { filterModule } from './plugins/index.ts';
 import { t } from './i18n/index.ts';
 
 export interface WebExportOptions {
@@ -47,7 +48,8 @@ export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebF
   }
 
   const canvas = document.createElement('canvas');
-  const r = await Renderer.open(doc, opts.registry, base, canvas, { compId: opts.compId });
+  // plugin tools and checks stay where the editor put them (the sandbox); an export runs render-time code only
+  const r = await Renderer.open(doc, opts.registry, base, canvas, { compId: opts.compId, pluginModule: filterModule });
   try {
     const { fps, duration } = r.comp;
     // the render size (the width is rounded to a multiple of 8)
