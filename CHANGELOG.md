@@ -8,6 +8,17 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-18
+
+### Changed
+
+- The studio's notes panel is resized like the atelier's panels: a handle between the film and the panel, from 330 to 640 px, remembered from one session to the next.
+- The studio's note box grows to four lines, then scrolls; the film keeps the room of the box at its tallest, so writing neither shrinks it nor covers it.
+
+### Fixed
+
+- The model menu in the studio's notes panel was crushed to nothing: it keeps its room, its name shortens first, and on a narrow panel the route label (Companion) gives way instead of the buttons, the new conversation's included, being pushed out of the panel.
+
 ## [0.7.0] - 2026-10-18
 
 ### Added
@@ -227,7 +238,8 @@ First public release.
 
 - Cloudflare Worker serving the editor and the API, projects stored in R2, access protected by Cloudflare Access.
 
-[Unreleased]: ../../compare/v0.7.0...HEAD
+[Unreleased]: ../../compare/v0.7.1...HEAD
+[0.7.1]: ../../compare/v0.7.0...v0.7.1
 [0.7.0]: ../../compare/v0.6.0...v0.7.0
 [0.6.0]: ../../compare/v0.5.0...v0.6.0
 [0.5.0]: ../../compare/v0.4.0...v0.5.0
