@@ -10,6 +10,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- The **code question names what each plugin brings**: the import's inventory reads each plugin module's text (without running it) for its declared exports — nodes, effects, modifiers, tools, workflows, checks, kits, presets, tours — and the dialog lists them per plugin file, so what is accepted is known before it runs.
 - A **design note** on isolating untrusted plugins ([docs/plugin-isolation.md](docs/plugin-isolation.md)): the options (the main thread as today, a dedicated worker with OffscreenCanvas, a strict CSP with a reduced API, a Wasm/QuickJS sandbox), their costs, what each takes from the plugin API, and a staged recommendation — the code moves only once the author picks.
 
 ## [0.9.0] - 2026-10-18

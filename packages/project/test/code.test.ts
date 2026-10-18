@@ -19,13 +19,14 @@ describe('codeInventory', () => {
     expect(inv.addresses).toEqual([]);
   });
 
-  it('inventories the plugins with their file and size', () => {
+  it('inventories the plugins with their file, size and kinds', () => {
     const d = doc();
     d.assets.mod = { type: 'module', src: 'plugins/stars.js' };
     d.plugins = ['mod'];
-    const files = new Map([['plugins/stars.js', new Uint8Array(24)]]);
+    const source = `export const meta = { name: 'stars' };\nexport const nodes = [];\nexport const tools = [];\nconst checks = 1; (a binding without export is not a kind)`;
+    const files = new Map([['plugins/stars.js', new TextEncoder().encode(source)]]);
     const inv = codeInventory(d, files);
-    expect(inv.plugins).toEqual([{ id: 'mod', path: 'plugins/stars.js', size: 24 }]);
+    expect(inv.plugins).toEqual([{ id: 'mod', path: 'plugins/stars.js', size: files.get('plugins/stars.js')!.byteLength, kinds: ['nodes', 'tools'] }]);
   });
 
   it('keeps a plugin whose file or src is off', () => {
@@ -34,8 +35,8 @@ describe('codeInventory', () => {
     d.plugins = ['mod', 'ghost'];
     const inv = codeInventory(d, new Map());
     expect(inv.plugins).toEqual([
-      { id: 'mod', path: null, size: null },
-      { id: 'ghost', path: null, size: null },
+      { id: 'mod', path: null, size: null, kinds: [] },
+      { id: 'ghost', path: null, size: null, kinds: [] },
     ]);
   });
 

@@ -7,7 +7,7 @@
 import { stringifyDoc, validate, type TrammeDoc, type Registry } from '@tramme/core';
 import { fromLottie } from '@tramme/interop';
 import { builtinRegistry } from '@tramme/nodes';
-import { checkProject, codeInventory, DOCUMENT, MANIFEST, newProject, pathIssue, srcPath, unpackProject, type CodeInventory, type Issue, type Manifest } from '@tramme/project';
+import { checkProject, codeInventory, DOCUMENT, MANIFEST, newProject, pathIssue, srcPath, unpackProject, type CodeInventory, type Issue, type Manifest, type PluginCode } from '@tramme/project';
 import { probeVideo } from '@tramme/render';
 import { api } from './api.ts';
 import { confirmWith } from './confirm.ts';
@@ -28,10 +28,29 @@ export type Progress = (done: number, total: number, label: string) => void;
 /** asked before the code an archive carries runs; null skips the question (the shipped examples) */
 export type CodeAsk = (inv: CodeInventory) => Promise<boolean>;
 
+/** the label of each kind a plugin can declare */
+const KIND_LABEL: Record<string, () => string> = {
+  nodes: () => t('importer.kindNodes'),
+  effects: () => t('importer.kindEffects'),
+  modifiers: () => t('importer.kindModifiers'),
+  tools: () => t('importer.kindTools'),
+  prompts: () => t('importer.kindPrompts'),
+  checks: () => t('importer.kindChecks'),
+  kits: () => t('importer.kindKits'),
+  presets: () => t('importer.kindPresets'),
+  tours: () => t('importer.kindTours'),
+};
+
+/** one plugin, named with what it declares it brings */
+const pluginLine = (p: PluginCode) => {
+  const kinds = p.kinds.map((k) => KIND_LABEL[k]?.() ?? k).join(', ');
+  return `${p.path?.split('/').pop() ?? p.id}${kinds ? ` (${kinds})` : ''}`;
+};
+
 /** the import's question, as a dialog over the editor */
 const askInEditor: CodeAsk = async (inv) => {
   const code = [
-    inv.plugins.length ? t('importer.codePlugins', { n: inv.plugins.length }) : '',
+    inv.plugins.length ? t('importer.codePlugins', { n: inv.plugins.length, list: inv.plugins.map(pluginLine).join(', ') }) : '',
     inv.expressions ? t('importer.codeExpressions', { n: inv.expressions, address: inv.addresses[0] ?? '' }) : '',
   ].filter(Boolean).join(', ');
   return confirmWith(t('importer.codeTitle'), t('importer.codeText', { code }), t('importer.codeYes'));

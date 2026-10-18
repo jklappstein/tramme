@@ -14,6 +14,8 @@ export interface PluginCode {
   path: string | null;
   /** its size in bytes, null when the file is missing */
   size: number | null;
+  /** what the module declares it brings, read in its text without running it: nodes, effects, tools... */
+  kinds: string[];
 }
 
 export interface CodeInventory {
@@ -32,10 +34,22 @@ const isPlainObject = (v: unknown): v is Record<string, unknown> => !!v && typeo
 /** the property carries code: an expression of its own, or one over its keyframes */
 const hasExpr = (v: unknown) => isPlainObject(v) && v.$expr !== undefined;
 
+/** the kinds a plugin module declares to bring, in the order the vocabulary presents them */
+const KINDS = ['nodes', 'effects', 'modifiers', 'tools', 'prompts', 'checks', 'kits', 'presets', 'tours'] as const;
+const EXPORTED_KIND = /export\s+(?:const|let|var)\s+(nodes|effects|modifiers|tools|prompts|checks|kits|presets|tours)\b/g;
+
+/** a static read of the module's text (the load itself stays a question of trust) */
+function kindsOf(source: string): string[] {
+  const found = new Set<string>();
+  for (const m of source.matchAll(EXPORTED_KIND)) found.add(m[1]);
+  return KINDS.filter((k) => found.has(k));
+}
+
 export function codeInventory(doc: TrammeDoc, files: Map<string, Uint8Array>): CodeInventory {
   const plugins = (doc.plugins || []).map((id) => {
     const path = srcPath(doc.assets[id]?.src ?? '') || null;
-    return { id, path, size: path ? files.get(path)?.byteLength ?? null : null };
+    const data = path ? files.get(path) : undefined;
+    return { id, path, size: data?.byteLength ?? null, kinds: data ? kindsOf(new TextDecoder().decode(data)) : [] };
   });
   let expressions = 0;
   const addresses: string[] = [];

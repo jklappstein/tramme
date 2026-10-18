@@ -77,6 +77,6 @@ describe('readArchive', () => {
     const ask = vi.fn(async (_inv: CodeInventory) => false);
     await readArchive(archiveOf(withCode([50, 50], ['stars']), { 'plugins/stars.js': PLUGIN }), ask).catch(() => {});
     expect(ask).toHaveBeenCalledTimes(1);
-    expect(ask.mock.calls[0][0].plugins).toEqual([{ id: 'stars', path: 'plugins/stars.js', size: PLUGIN.length }]);
+    expect(ask.mock.calls[0][0].plugins).toEqual([{ id: 'stars', path: 'plugins/stars.js', size: PLUGIN.length, kinds: ['nodes'] }]);
   });
 });
