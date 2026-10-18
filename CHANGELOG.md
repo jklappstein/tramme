@@ -10,6 +10,10 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- **Depth** (`depth` tool): the depth map of a photo or a video, read in the browser (Depth Anything v2 small, WebGPU or the processor), saved as a grey file (bright where near) played by a hidden layer, and wired: `fx.parallax` moves the layer the way the composition camera would, a photo also takes `fx.depthBlur`.
+- **Photo in 2.5D** (`photo-2.5d` tool): one pass that reads the depth of a still photo, adds the composition camera with a slow drift and scales the photo past the relief's widest stretch, so nothing shows at its edges.
+- Two layer effects behind them: **Depth parallax** (`fx.parallax`, a per-pixel relief from the map, linked to the camera) and **Depth blur** (`fx.depthBlur`, a depth of field with an animatable focus for focus pulls).
+
 - Two light themes, **lin** and **porcelaine**, beside papier: the picker now draws eight of them with their own colours, four to a row (the dark ones above, the light ones and system below), and the window bar and the page's colour-scheme follow.
 - A filmstrip along the video clips: the clip shows its film as small thumbs, decoded in the background from the preview's own decoder (one at a time, a thumb every quarter second shared by the clips of a file, nothing while the film plays, a small memory of the recent ones). The thumbs follow the cut and the speed.
 - The videos' **Speed** (0.25× to 4×), the pitch of their sound with it, the sound of the exports and of the preview alike; trimming a video's head carries its start at its speed.

@@ -40,6 +40,8 @@ export const EFFECT_NOTES: Record<string, AiNotes> = {
   'fx.tint': { when: 'duotone looks, recolouring an icon or a logo to the accent token' },
   'fx.matte': { when: 'footage or a gradient seen through big type or a shape (hide the matte layer); luma for a soft mask', example: { source: 'title', mode: 'alpha' } },
   'fx.displace': { when: 'glass, heat haze, liquid or glitch looks: the map layer is usually a hidden moving shader or noisy shape' },
+  'fx.parallax': { when: 'a photo or flat footage in 2.5D under the composition camera: the depth tool makes the map and wires it; keep the depth span at about a third of the perspective', avoid: 'a range much over half the perspective (the edges stretch); an unhidden depth layer' },
+  'fx.depthBlur': { when: 'a depth of field from a depth map (a photo where only the subject stays sharp, portrait blur on footage): the depth tool makes the map; animate focus for a focus pull', avoid: 'amount over about 30 px (mush)' },
   'look.chromatic': { when: 'a glitch beat, an energetic edit, a lens feel; animate it on hits', avoid: 'more than 8 px on calm pieces' },
   'look.grade': { when: 'giving the whole film one mood: warm (temperature 0.3), cold, washed (saturation 0.8, lift 0.03)' },
 };

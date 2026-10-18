@@ -126,6 +126,69 @@ export const displace: EffectType<{ source: string | null; amount: number }> = {
   },
 };
 
+/**
+ * Depth parallax: each pixel moves the way the composition camera would place
+ * it at the depth its map shows (grey levels, bright = near), so a still
+ * picture or a flat video gains a 2.5D relief as the camera moves. The
+ * camera's own move of the layer is left out (`at`, the layer's depth), so
+ * linking the camera's settings gives the exact camera math, per pixel.
+ */
+export const parallax: EffectType<{ source: string | null; plane: number; range: number; amount: number; perspective: number; zoom: number; at: number }> = {
+  type: 'fx.parallax', title: 'Depth parallax', category: 'Effects', stage: 'layer',
+  description: 'a 2.5D relief from a depth map (the depth tool makes one): near grows, far shrinks as the camera moves',
+  props: {
+    source: { type: 'layer', default: null, nullable: true, label: 'Depth layer', animatable: false, description: 'usually hidden; grey levels, bright = near' },
+    plane: { type: 'number', default: 0.5, min: 0, max: 1, step: 0.01, label: 'Plane', description: 'the depth that stays as the layer is' },
+    range: { type: 'number', default: 320, min: 0, step: 10, unit: 'px', label: 'Depth span', description: 'the map spans this many px of depth, from the plane back' },
+    amount: { type: 'number', default: 1, min: 0, step: 0.05, unit: 'x', label: 'Strength' },
+    perspective: { type: 'number', default: 1000, min: 50, step: 10, unit: 'px', label: 'Perspective', description: "the composition camera's: link to $comp.camera.perspective" },
+    zoom: { type: 'number', default: 1, min: 0.05, step: 0.01, unit: 'x', label: 'Zoom', description: "the composition camera's: link to $comp.camera.zoom" },
+    at: { type: 'number', default: 0, step: 10, unit: 'px', label: 'Layer depth', description: "the layer's own transform.depth, so the camera's move is not counted twice: link to it" },
+  },
+  gl: {
+    code: `vec4 effect(vec2 uv) {
+  vec4 m = texture(u_source, uv);
+  float d = m.a > 0.0 ? dot(m.rgb / m.a, vec3(0.2126, 0.7152, 0.0722)) : u_plane;
+  float z = (u_plane - d) * u_range;
+  float k = (z - u_at) / max(u_zoom * u_perspective, 1.0) * u_amount;
+  return texture(uImage, uv + (uv - 0.5) * k);
+}`,
+  },
+};
+
+/** a depth of field from a depth map: each pixel blurred by how far its depth sits from the focus */
+export const depthBlur: EffectType<{ source: string | null; amount: number; focus: number }> = {
+  type: 'fx.depthBlur', title: 'Depth blur', category: 'Effects', stage: 'layer',
+  description: 'a depth of field from a depth map (the depth tool makes one): the focus stays sharp, the rest blurs by its distance',
+  props: {
+    source: { type: 'layer', default: null, nullable: true, label: 'Depth layer', animatable: false, description: 'usually hidden; grey levels, bright = near' },
+    amount: { type: 'number', default: 12, min: 0, step: 0.5, unit: 'px', label: 'Blur', description: 'the blur of the depths furthest from the focus' },
+    focus: { type: 'number', default: 0.5, min: 0, max: 1, step: 0.01, label: 'Focus', description: 'the depth that stays sharp; animate it for a focus pull' },
+  },
+  gl: {
+    code: `vec4 effect(vec2 uv) {
+  vec4 m = texture(u_source, uv);
+  float d = m.a > 0.0 ? dot(m.rgb / m.a, vec3(0.2126, 0.7152, 0.0722)) : u_focus;
+  float r = u_amount * clamp(abs(d - u_focus) * 2.0, 0.0, 1.0) * uScale;
+  vec2 s = vec2(1.0, uRes.x / uRes.y) * r / uRes;
+  vec4 c = texture(uImage, uv) * 2.0;
+  c += texture(uImage, uv + vec2(-0.326, -0.406) * s);
+  c += texture(uImage, uv + vec2(-0.840, -0.074) * s);
+  c += texture(uImage, uv + vec2(-0.696, 0.457) * s);
+  c += texture(uImage, uv + vec2(-0.203, 0.621) * s);
+  c += texture(uImage, uv + vec2(0.962, -0.195) * s);
+  c += texture(uImage, uv + vec2(0.473, -0.480) * s);
+  c += texture(uImage, uv + vec2(0.519, 0.767) * s);
+  c += texture(uImage, uv + vec2(0.185, -0.893) * s);
+  c += texture(uImage, uv + vec2(0.507, 0.064) * s);
+  c += texture(uImage, uv + vec2(0.896, 0.412) * s);
+  c += texture(uImage, uv + vec2(-0.322, -0.930) * s);
+  c += texture(uImage, uv + vec2(-0.792, -0.598) * s);
+  return c / 14.0;
+}`,
+  },
+};
+
 /** colour fringes towards the edges of the frame, like a lens */
 export const chromatic: EffectType<{ amount: number }> = {
   type: 'look.chromatic', title: 'Chromatic aberration', category: 'Finishing', stage: 'finish',

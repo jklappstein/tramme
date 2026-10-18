@@ -1050,7 +1050,12 @@
     "cutoutMatting": "cutting out",
     "cutoutLabel": "Cut-out of {name}",
     "cutoutMask": "{name} · mask",
-    "cutoutSubject": "{name} · cut-out"
+    "cutoutSubject": "{name} · cut-out",
+    "depthEstimating": "reading the depth",
+    "depthDone": "Depth read over {frames} frame(s). Give the composition a camera (or run photo-2.5d on a photo): the layer moves in 2.5D.",
+    "depthLabel": "Depth of {name}",
+    "depthMap": "{name} · depth",
+    "photo25dDone": "{name} now moves in 2.5D: depth, camera and framing set."
   },
   "events": {
     "saved": "Event list saved: {count} event(s){totals}. Show it with /event-counter, /event-tags and /event-receipt.",

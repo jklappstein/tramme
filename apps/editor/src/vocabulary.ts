@@ -8,6 +8,7 @@ import { builtinRegistry } from '@tramme/nodes';
 import { BLOCK_TOOLS } from './blocks.ts';
 import { BRIEF_TOOLS } from './brief.ts';
 import { CUTOUT_TOOLS } from './cutout.ts';
+import { DEPTH_TOOLS } from './depth.ts';
 import { EVENT_TOOLS } from './events.ts';
 import { FIGURE_TOOLS } from './figures.ts';
 import { FILM_KITS, FILM_TOOLS } from './film.ts';
@@ -86,5 +87,5 @@ export const EDITOR_PROMPTS: PromptType[] = [
 
 /** the base vocabulary of the editor, before a document's plugins */
 export function editorRegistry() {
-  return builtinRegistry().registerTool(...EDITOR_TOOLS, ...FILM_TOOLS, ...RECIPE_TOOLS, ...FIGURE_TOOLS, ...EVENT_TOOLS, ...PERCEPTION_TOOLS, ...TRACKING_TOOLS, ...CUTOUT_TOOLS, ...REVIEW_TOOLS, ...SOUND_TOOLS, ...MIXING_TOOLS, ...IMAGE_TOOLS, ...SHORTS_TOOLS, ...SOURCE_TOOLS, ...BLOCK_TOOLS, ...BRIEF_TOOLS, ...LIBRARY_TOOLS).registerPrompt(...EDITOR_PROMPTS).registerKit(...BUILTIN_KITS, ...FILM_KITS).registerPreset(...EDITOR_PRESETS);
+  return builtinRegistry().registerTool(...EDITOR_TOOLS, ...FILM_TOOLS, ...RECIPE_TOOLS, ...FIGURE_TOOLS, ...EVENT_TOOLS, ...PERCEPTION_TOOLS, ...TRACKING_TOOLS, ...CUTOUT_TOOLS, ...DEPTH_TOOLS, ...REVIEW_TOOLS, ...SOUND_TOOLS, ...MIXING_TOOLS, ...IMAGE_TOOLS, ...SHORTS_TOOLS, ...SOURCE_TOOLS, ...BLOCK_TOOLS, ...BRIEF_TOOLS, ...LIBRARY_TOOLS).registerPrompt(...EDITOR_PROMPTS).registerKit(...BUILTIN_KITS, ...FILM_KITS).registerPreset(...EDITOR_PRESETS);
 }

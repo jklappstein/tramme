@@ -2,7 +2,7 @@
 
 Where the plugin system goes, and in what order. The goal is not only a richer vocabulary of layers: it is to give the built-in assistant what it needs to produce impressive videos on its own. The editor gets the same abilities, since the editor and the assistant share one API.
 
-Status: steps 1 to 3, 6 and 9 done; steps 4, 5, 7 and 10 mostly done (pose, depth maps, phonemes, depth sequences, glTF, plugin isolation and audio processing left); steps 7b and 8 wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: steps 1 to 3, 6 and 9 done; steps 4, 5, 7 and 10 mostly done (pose, phonemes, glTF, plugin isolation and audio processing left); steps 7b and 8 wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -91,7 +91,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 - [ ] Phonemes from the transcript (lip sync of drawn characters).
 - [x] Video: shot changes (`shots` tool, colour histograms), people boxes over time (`subjects` tool, YOLOS tiny through transformers.js, loaded on demand).
 - [x] Video: segmentation masks (`cutout` tool, `apps/editor/src/cutout.ts`): U²-Net (people, or any salient subject) through onnxruntime on WebGPU or the processor, kept to the people the detector finds, steadied from frame to frame, saved as a mask video timed like the file.
-- [ ] Video: pose, depth.
+- [x] Video: depth (`depth` tool, `apps/editor/src/depth.ts`): Depth Anything v2 small through transformers.js on WebGPU or the processor, steadied from frame to frame, saved as a grey video timed like the file (a grey PNG for a photo), played by a hidden layer and read by `fx.parallax` and `fx.depthBlur` (pose left).
 - [x] Video: an object followed over time (`track` tool: template matching in `packages/core/src/track.ts`, framed by a rectangle, a region or the detector), saved as a JSON asset that the `callout` node and `track()` in expressions read through the video layer: tracked callouts.
 - [x] Image: main colours as tokens (`palette` tool: plate, ink, accent).
 - [ ] Image: saliency and free space as data (the `subjects` text gives the free sides for now).
@@ -106,7 +106,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 - [x] Layer effects in GLSL: a pass on the layer drawn alone, through one shared WebGL2 canvas (`packages/render/src/gpu.ts`); uniforms generated from the props schema, `uScale` for the preview size.
 - [x] Layer inputs: the `layer` property type (validated, picked in the inspector); GLSL effects get it as a texture of that layer drawn alone, hidden or not; `host.drawLayer(ctx, id)` for nodes. Built-in: `fx.matte` (alpha, luma, inverted), `fx.displace`.
 - [x] Masks as assets read per frame: a mask video (luma) played by a hidden video layer and read through `fx.matte`, so "text behind the subject" needs no new render path.
-- [ ] Depth sequences, the same way.
+- [x] Depth sequences, the same way.
 
 ### Step 6. Time and state
 
@@ -120,7 +120,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 - [ ] A WebGL node service for plugins (own context, drawn into the layer).
 - [ ] glTF models with animation, studio lighting, turntables, exploded views.
 - [x] A virtual camera for 2.5D: `camera` on the composition (pan, zoom, perspective, focus, blur) and `transform.depth` on layers: parallax and depth blur, in the inspector and the schema.
-- [ ] Photo to 2.5D from a depth map (step 4's depth).
+- [x] Photo to 2.5D from a depth map (step 4's depth): the `photo-2.5d` tool reads the depth, adds the composition camera with a slow drift and scales the photo past the relief's widest stretch.
 
 ### Step 8. Generated assets
 
