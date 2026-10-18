@@ -1162,6 +1162,8 @@
     "one name per stop, separated by commas": "un nom par étape, séparés par des virgules",
     "Map": "Carte",
     "a line that travels from stop to stop on a map (or a picture), a dot marking each stop: the route of a trip, a delivery, a story": "une ligne qui voyage d'étape en étape sur une carte (ou une image), un point marquant chaque étape : le trajet d'un voyage, d'une livraison, d'une histoire",
+    "applies a motion language (colours, curves, pace, font) as the design tokens that recipes and dressings follow": "applique un langage de mouvement (couleurs, courbes, rythme, police) comme jetons de design que recettes et habillages suivent",
+    "bring the kit's font file into the project (yes by default)": "apporte le fichier de police du kit dans le projet (oui par défaut)",
     "Cut": "Coupe",
     "cuts the person (or the main subject) out of a video so titles and graphics can pass behind them": "détoure la personne (ou le sujet principal) d'une vidéo pour que titres et graphismes passent derrière",
     "From (s)": "De (s)",

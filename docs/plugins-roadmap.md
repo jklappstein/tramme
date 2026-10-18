@@ -74,7 +74,7 @@ Done when: a project plugin exports a tool, the assistant finds it with `list_no
 - [x] More recipes: map journey (a line travelling stop to stop, revealed in step with the dot), word-by-word quote, logo reveal (iris, wipe or rise), list (tick, number or dash markers), timeline, split screen.
 - [x] The built-in templates (captions, title, keyword, lower third) are also tools of the editor's vocabulary, with the same API. `apply_template` stays for the assistant.
 - [x] `kits` export: a motion language as tokens (`plate`, `ink`, `accent`, `accent2`, `enter`, `exit`, `pace`, `stagger`) applied by the `kit` tool and read by the recipes. Built-in kits: editorial, punchy, calm, neon.
-- [ ] Fonts in kits (a font file per kit, loaded with the project).
+- [x] Fonts in kits: each built-in kit names its typeface (Newsreader, IBM Plex Mono, Archivo Black, Karla, Space Grotesk — a woff2 fetched once, kept as a project file); the `kit` tool brings it in as a font asset, and the recipes write in it.
 
 ### Step 3. Quality loop
 

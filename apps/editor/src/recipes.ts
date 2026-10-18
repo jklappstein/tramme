@@ -533,20 +533,21 @@ const mapJourney: ToolType<{ stops: string; names?: string; map?: string; at?: n
 const tok = (type: 'color' | 'ease' | 'number', value: unknown, description?: string) => ({ type, value, ...(description ? { description } : {}) });
 
 export const BUILTIN_KITS: KitType[] = [
-  { name: 'editorial', title: 'Editorial', description: 'paper and ink, a burnt orange accent, unhurried curves', tokens: { plate: tok('color', '#F4EFE6'), ink: tok('color', '#1B1A17'), accent: tok('color', '#C2410C'), accent2: tok('color', '#1E3A8A'), enter: tok('ease', [0.22, 1, 0.36, 1]), exit: tok('ease', [0.64, 0, 0.78, 0]), standard: tok('ease', [0.42, 0, 0.24, 1]), emphasized: tok('ease', [0.2, 0.8, 0.16, 1]), pace: tok('number', 0.7, 'seconds of an entrance'), stagger: tok('number', 0.07, 'seconds between siblings') } },
-  { name: 'hairline', title: 'Hairline', description: 'technical line drawings on paper: thin strokes, one accent, figures that answer the pointer', tokens: { plate: tok('color', '#F7F5F0'), ink: tok('color', '#24241F'), accent: tok('color', '#0F62FE'), accent2: tok('color', '#9A968C'), enter: tok('ease', [0.16, 1, 0.3, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.4, 0, 0.2, 1]), emphasized: tok('ease', [0.2, 0, 0, 1]), pace: tok('number', 0.5, 'seconds of an entrance'), stagger: tok('number', 0.05, 'seconds between siblings') } },
-  { name: 'punchy', title: 'Punchy', description: 'black and white with a yellow accent, fast entrances that overshoot', tokens: { plate: tok('color', '#0E0E10'), ink: tok('color', '#FFFFFF'), accent: tok('color', '#FFD400'), accent2: tok('color', '#FF4D6D'), enter: tok('ease', [0.34, 1.56, 0.64, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.3, 0, 0.15, 1]), emphasized: tok('ease', [0.34, 1.3, 0.5, 1]), pace: tok('number', 0.4, 'seconds of an entrance'), stagger: tok('number', 0.04, 'seconds between siblings') } },
-  { name: 'calm', title: 'Calm', description: 'soft blue-grey, slow and smooth movements', tokens: { plate: tok('color', '#E8EEF2'), ink: tok('color', '#23313B'), accent: tok('color', '#5B8DB8'), accent2: tok('color', '#8FB89A'), enter: tok('ease', [0.45, 0, 0.2, 1]), exit: tok('ease', [0.55, 0, 0.55, 1]), standard: tok('ease', [0.45, 0, 0.25, 1]), emphasized: tok('ease', [0.25, 0.3, 0.2, 1]), pace: tok('number', 1, 'seconds of an entrance'), stagger: tok('number', 0.1, 'seconds between siblings') } },
-  { name: 'neon', title: 'Neon', description: 'a night plate, cyan and pink accents, sharp curves', tokens: { plate: tok('color', '#07060F'), ink: tok('color', '#F2F0FF'), accent: tok('color', '#22D3EE'), accent2: tok('color', '#F0ABFC'), enter: tok('ease', [0.16, 1, 0.3, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.3, 0, 0.1, 1]), emphasized: tok('ease', [0.18, 0.9, 0.2, 1]), pace: tok('number', 0.5, 'seconds of an entrance'), stagger: tok('number', 0.05, 'seconds between siblings') } },
+  { name: 'editorial', title: 'Editorial', description: 'paper and ink, a burnt orange accent, unhurried curves', font: { family: 'Newsreader', url: 'https://cdn.jsdelivr.net/fontsource/fonts/newsreader@latest/latin-wght-normal.woff2', weight: '200 800' }, tokens: { plate: tok('color', '#F4EFE6'), ink: tok('color', '#1B1A17'), accent: tok('color', '#C2410C'), accent2: tok('color', '#1E3A8A'), enter: tok('ease', [0.22, 1, 0.36, 1]), exit: tok('ease', [0.64, 0, 0.78, 0]), standard: tok('ease', [0.42, 0, 0.24, 1]), emphasized: tok('ease', [0.2, 0.8, 0.16, 1]), pace: tok('number', 0.7, 'seconds of an entrance'), stagger: tok('number', 0.07, 'seconds between siblings') } },
+  { name: 'hairline', title: 'Hairline', description: 'technical line drawings on paper: thin strokes, one accent, figures that answer the pointer', font: { family: 'IBM Plex Mono', url: 'https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-400-normal.woff2' }, tokens: { plate: tok('color', '#F7F5F0'), ink: tok('color', '#24241F'), accent: tok('color', '#0F62FE'), accent2: tok('color', '#9A968C'), enter: tok('ease', [0.16, 1, 0.3, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.4, 0, 0.2, 1]), emphasized: tok('ease', [0.2, 0, 0, 1]), pace: tok('number', 0.5, 'seconds of an entrance'), stagger: tok('number', 0.05, 'seconds between siblings') } },
+  { name: 'punchy', title: 'Punchy', description: 'black and white with a yellow accent, fast entrances that overshoot', font: { family: 'Archivo Black', url: 'https://cdn.jsdelivr.net/fontsource/fonts/archivo-black@latest/latin-400-normal.woff2' }, tokens: { plate: tok('color', '#0E0E10'), ink: tok('color', '#FFFFFF'), accent: tok('color', '#FFD400'), accent2: tok('color', '#FF4D6D'), enter: tok('ease', [0.34, 1.56, 0.64, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.3, 0, 0.15, 1]), emphasized: tok('ease', [0.34, 1.3, 0.5, 1]), pace: tok('number', 0.4, 'seconds of an entrance'), stagger: tok('number', 0.04, 'seconds between siblings') } },
+  { name: 'calm', title: 'Calm', description: 'soft blue-grey, slow and smooth movements', font: { family: 'Karla', url: 'https://cdn.jsdelivr.net/fontsource/fonts/karla@latest/latin-wght-normal.woff2', weight: '200 800' }, tokens: { plate: tok('color', '#E8EEF2'), ink: tok('color', '#23313B'), accent: tok('color', '#5B8DB8'), accent2: tok('color', '#8FB89A'), enter: tok('ease', [0.45, 0, 0.2, 1]), exit: tok('ease', [0.55, 0, 0.55, 1]), standard: tok('ease', [0.45, 0, 0.25, 1]), emphasized: tok('ease', [0.25, 0.3, 0.2, 1]), pace: tok('number', 1, 'seconds of an entrance'), stagger: tok('number', 0.1, 'seconds between siblings') } },
+  { name: 'neon', title: 'Neon', description: 'a night plate, cyan and pink accents, sharp curves', font: { family: 'Space Grotesk', url: 'https://cdn.jsdelivr.net/fontsource/fonts/space-grotesk@latest/latin-wght-normal.woff2', weight: '300 700' }, tokens: { plate: tok('color', '#07060F'), ink: tok('color', '#F2F0FF'), accent: tok('color', '#22D3EE'), accent2: tok('color', '#F0ABFC'), enter: tok('ease', [0.16, 1, 0.3, 1]), exit: tok('ease', [0.7, 0, 0.84, 0]), standard: tok('ease', [0.3, 0, 0.1, 1]), emphasized: tok('ease', [0.18, 0.9, 0.2, 1]), pace: tok('number', 0.5, 'seconds of an entrance'), stagger: tok('number', 0.05, 'seconds between siblings') } },
 ];
 
-const kit: ToolType<{ kit: string; background?: boolean }> = {
-  name: 'kit', title: 'Style kit', description: 'applies a motion language (colours, curves, pace) as the design tokens that recipes and dressings follow',
+const kit: ToolType<{ kit: string; background?: boolean; font?: boolean }> = {
+  name: 'kit', title: 'Style kit', description: 'applies a motion language (colours, curves, pace, font) as the design tokens that recipes and dressings follow',
   input: {
     type: 'object',
     properties: {
       kit: { type: 'string', format: 'kit', title: 'Kit' },
       background: { type: 'boolean', title: 'Background', description: 'the composition takes the kit\'s plate' },
+      font: { type: 'boolean', title: 'Font', description: 'bring the kit\'s font file into the project (yes by default)' },
     },
     required: ['kit'],
   },
@@ -556,7 +557,19 @@ const kit: ToolType<{ kit: string; background?: boolean }> = {
     if (!found) throw new Error(`unknown kit: ${a.kit} (${ctx.registry.listKits().map((k) => k.kit.name).join(', ')})`);
     const ops: Op[] = Object.entries(found.kit.tokens).map(([n, value]) => ({ op: 'add', path: pointer('tokens', n), value }));
     if (a.background !== false && found.kit.tokens.plate) ops.push({ op: 'add', path: pointer('compositions', ctx.compId, 'background'), value: '@plate' });
-    return { ops, label: `Style kit ${found.kit.title ?? found.kit.name}`, text: `Kit ${found.kit.name}: tokens ${Object.keys(found.kit.tokens).join(', ')} set${a.background !== false && found.kit.tokens.plate ? ', background @plate' : ''}. Existing layers keep their colours unless they use these tokens.` };
+    const done = (fontNote: string) => ({ ops, label: `Style kit ${found.kit.title ?? found.kit.name}`, text: `Kit ${found.kit.name}: tokens ${Object.keys(found.kit.tokens).join(', ')} set${a.background !== false && found.kit.tokens.plate ? ', background @plate' : ''}${fontNote}. Existing layers keep their colours unless they use these tokens.` });
+    // the kit's font: fetched once, kept as a project file, so the film holds its voice offline too
+    const f = found.kit.font, has = Object.values(ctx.doc.assets).some((x) => x.type === 'font');
+    if (!f || a.font === false) return done('');
+    if (has) return done('. The project already has a font: it stays; remove it first to take the kit\'s');
+    return (async () => {
+      const slug = f.family.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const r = await fetch(f.url);
+      if (!r.ok) throw new Error(`the kit's font ${f.family} could not be fetched (HTTP ${r.status})`);
+      const src = await ctx.writeFile(`assets/fonts/${slug}.woff2`, await r.blob());
+      ops.push({ op: 'add', path: pointer('assets', `font-${slug}`), value: { type: 'font', src, family: f.family, name: f.family, ...(f.weight ? { weight: f.weight } : {}) } });
+      return done(`, its font ${f.family} brought in as a font asset (recipes and dressings now write in it)`);
+    })();
   },
 };
 

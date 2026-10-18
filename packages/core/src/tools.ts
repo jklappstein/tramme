@@ -109,6 +109,8 @@ export interface KitType {
   title?: string;
   description: string;
   tokens: Record<string, Token>;
+  /** the kit's typeface: a font file (woff2) the kit tool brings into the project as a font asset, so the film also keeps one voice */
+  font?: { family: string; url: string; weight?: string };
 }
 
 export const TOOL_NAME = /^[A-Za-z][\w.-]{0,63}$/;
