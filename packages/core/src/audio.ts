@@ -52,6 +52,8 @@ export interface AudioClip {
   eqMid: number;
   eqMidFreq: number;
   eqHigh: number;
+  /** how hard the loud moments are brought down, 0 (as recorded) to 1 (tight) */
+  compress: number;
   /** share of reverb, 0 (dry) to 1 */
   reverb: number;
 }
@@ -125,6 +127,7 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
       eqMid: clamp(num(staticValue(props.eqMid), 0), -24, 12),
       eqMidFreq: clamp(num(staticValue(props.eqMidFreq), 1000), 200, 8000),
       eqHigh: clamp(num(staticValue(props.eqHigh), 0), -24, 12),
+      compress: clamp(num(staticValue(props.compress), 0), 0, 1),
       reverb: clamp(num(staticValue(props.reverb), 0), 0, 1),
     });
   }

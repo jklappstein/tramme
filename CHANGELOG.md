@@ -12,6 +12,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- A **compressor** per sound (`compress`, 0 to 1): one DynamicsCompressor between the equaliser and the gain in the one mixer — the loud moments brought down (a voice kept level, a hero that never jumps out), harder as the amount grows, in the preview and every export alike.
 - Four **new commands**: `/transcript` (the words of a sound or a video, read with the moments that matter), `/cut-silences` (a new `silences` tool cuts a talking video on the gaps of its transcript — hesitations shortened, the spans laid back to back), `/beats` (the edit lands on the beats and sections), and `/still` (a new `still` tool saves a picture of the composition at a moment as an image asset).
 - A **low contrast** check: the free-space analysis now carries each cell's luminance, and the check weighs a text's ink (its colour, its opacity) against what sits under it — a picture through the analysis, or the composition's background — and warns when the contrast ratio falls under 2.5:1.
 - **Effect-stack presets**: a preset can now be a stack of effects applied to every selected layer at once (the add menu pushes it). Built-in: cinematic tone, dreamy glow, VHS, and a dark shadow plus halo that keeps type readable over anything.

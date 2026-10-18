@@ -13,6 +13,13 @@ describe('the sound of a layer', () => {
     expect(c).toMatchObject({ at: 2, duration: 4, offset: 1, gainDb: -6, envelope: null, fadeIn: 0.5, fadeOut: 4, rate: 4, lowCut: 120, highCut: 8000, reverb: 1 });
   });
 
+  it('compresses a voice: the amount clamped, off by default', () => {
+    const [on] = audioClips(doc({ compress: 1.5 }), 'main');
+    expect(on.compress).toBe(1);
+    const [off] = audioClips(doc({}), 'main');
+    expect(off.compress).toBe(0);
+  });
+
   it('follows an animated gain: ducking under a voice', () => {
     const [c] = audioClips(doc({ gain: { $k: [{ t: 3, v: 0 }, { t: 3.5, v: -12 }, { t: 5, v: -12 }, { t: 5.5, v: 0 }] } }), 'main');
     expect(c.envelope![0]).toEqual([2, 0]);

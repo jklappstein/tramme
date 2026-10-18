@@ -142,7 +142,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 - [x] A library of plugins shared between projects (`/api/library` in the Worker, R2 `library/plugins/`); tools `library-add` and `library-use` (assistant and `/` menu); a plugin is copied into the project when used, so archives stay self-contained.
 - [ ] Isolation of untrusted plugins (worker with OffscreenCanvas) for projects from unknown sources — a design note with the options, their costs and a staged recommendation is written ([plugin-isolation.md](plugin-isolation.md)); the code is not moved until the author picks.
 - [x] General-purpose packs ship with the editor (charts, kinetic type, physics, UI walkthrough, accessibility checks, localization), added to a project in one click from the Code section.
-- [x] Audio processing (gain curves, fades, low and high cut, equaliser in three bands, reverb, speed) with one mixer for the preview and every export ([sound-roadmap.md](sound-roadmap.md), step 7); a compressor left.
+- [x] Audio processing (gain curves, fades, low and high cut, equaliser in three bands, reverb, speed) with one mixer for the preview and every export ([sound-roadmap.md](sound-roadmap.md), step 7); a compressor (`compress`, 0 to 1, one DynamicsCompressor between the equaliser and the gain, in the one mixer).
 
 ## Flagship results and what they need
 

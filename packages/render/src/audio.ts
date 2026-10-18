@@ -90,6 +90,16 @@ export function clipChain(ctx: BaseAudioContext, clip: AudioClip, out: AudioNode
   if (clip.eqLow !== 0) { const f = ctx.createBiquadFilter(); f.type = 'lowshelf'; f.frequency.value = 120; f.gain.value = clip.eqLow; stages.push(f); }
   if (clip.eqMid !== 0) { const f = ctx.createBiquadFilter(); f.type = 'peaking'; f.frequency.value = clip.eqMidFreq; f.Q.value = 0.9; f.gain.value = clip.eqMid; stages.push(f); }
   if (clip.eqHigh !== 0) { const f = ctx.createBiquadFilter(); f.type = 'highshelf'; f.frequency.value = 8000; f.gain.value = clip.eqHigh; stages.push(f); }
+  // the compressor: the loud moments brought down (a voice kept level), harder as `compress` grows
+  if (clip.compress > 0) {
+    const f = ctx.createDynamicsCompressor(), a = clip.compress;
+    f.threshold.value = -12 - 18 * a;
+    f.knee.value = 24;
+    f.ratio.value = 2 + 10 * a;
+    f.attack.value = 0.004;
+    f.release.value = 0.15;
+    stages.push(f);
+  }
   const gain = ctx.createGain();
   stages.push(gain);
   stages.reduce((a, b) => a.connect(b));

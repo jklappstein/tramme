@@ -1170,6 +1170,8 @@
     "applies a motion language (colours, curves, pace, font) as the design tokens that recipes and dressings follow": "applique un langage de mouvement (couleurs, courbes, rythme, police) comme jetons de design que recettes et habillages suivent",
     "bring the kit's font file into the project (yes by default)": "apporte le fichier de police du kit dans le projet (oui par défaut)",
     "Cut the silences": "Couper les silences",
+    "Compress": "Compression",
+    "how hard the loud moments are brought down (a voice kept level, a hero that never jumps out): 0 leaves the dynamics as recorded, 1 is radio-announcer tight": "à quel point les moments forts sont ramenés (une voix tenue au niveau, un héros qui ne jaillit jamais trop) : 0 laisse la dynamique telle qu'enregistrée, 1 serre comme une voix de radio",
     "Cut to the music": "Couper sur la musique",
     "Gaps longer than (s)": "Silences de plus de (s)",
     "Pause kept (s)": "Pause gardée (s)",

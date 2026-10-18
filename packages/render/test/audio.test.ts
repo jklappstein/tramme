@@ -32,6 +32,7 @@ describe('audioClips', () => {
 const param = () => ({ value: 0, setValueCurveAtTime: () => {}, setValueAtTime: () => {} });
 const mockCtx = () => {
   const filters: { type: string; frequency: { value: number }; Q: { value: number }; gain: { value: number } }[] = [];
+  const compressors: { threshold: { value: number }; knee: { value: number }; ratio: { value: number }; attack: { value: number }; release: { value: number } }[] = [];
   const node = () => {
     const n = { connect: (other: unknown) => other };
     return n as never;
@@ -42,16 +43,21 @@ const mockCtx = () => {
       filters.push(f);
       return f as never;
     },
+    createDynamicsCompressor: () => {
+      const f = { threshold: param(), knee: param(), ratio: param(), attack: param(), release: param(), connect: (o: unknown) => o };
+      compressors.push(f);
+      return f as never;
+    },
     createGain: () => ({ gain: param(), connect: (o: unknown) => o }) as never,
     createConvolver: () => ({ buffer: null, connect: (o: unknown) => o }) as never,
   };
-  return { ctx: ctx as unknown as BaseAudioContext, filters };
+  return { ctx: ctx as unknown as BaseAudioContext, filters, compressors };
 };
 
 const clip = (sound: Partial<AudioClip>): AudioClip => ({
   layerId: 'a', role: 'effect', weight: 'support', asset: 'snd', at: 0, offset: 0, duration: 1,
   gainDb: 0, envelope: null, fadeIn: 0, fadeOut: 0, rate: 1, lowCut: 0, lowCutCurve: null, highCut: 0,
-  eqLow: 0, eqMid: 0, eqMidFreq: 1000, eqHigh: 0, reverb: 0, ...sound,
+  eqLow: 0, eqMid: 0, eqMidFreq: 1000, eqHigh: 0, compress: 0, reverb: 0, ...sound,
 });
 
 describe('clipChain', () => {
@@ -76,5 +82,16 @@ describe('clipChain', () => {
     const { ctx, filters } = mockCtx();
     clipChain(ctx, clip({ eqHigh: 4.5 }), { connect: () => {} } as never, 0, 0);
     expect(filters.map((f) => f.type)).toEqual(['highshelf']);
+  });
+
+  it('compresses when asked, between the eq and the gain', () => {
+    const plain = mockCtx();
+    clipChain(plain.ctx, clip({}), { connect: () => {} } as never, 0, 0);
+    expect(plain.compressors.length).toBe(0);
+    const { ctx, compressors, filters } = mockCtx();
+    clipChain(ctx, clip({ eqHigh: 4.5, compress: 0.5 }), { connect: () => {} } as never, 0, 0);
+    expect(filters.map((f) => f.type)).toEqual(['highshelf']);
+    expect(compressors).toHaveLength(1);
+    expect([compressors[0].threshold.value, compressors[0].ratio.value, compressors[0].knee.value]).toEqual([-21, 7, 24]);
   });
 });
