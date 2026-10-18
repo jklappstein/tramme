@@ -10,6 +10,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- A **design note** on moving the evaluator into the sandbox ([docs/evaluator-sandbox.md](docs/evaluator-sandbox.md)): why the last four page-side pieces of plugin code (modifiers, Canvas2D effects, the stepping of simulations, the module's load) are one move and not four patches, the options priced, and the series that ships the whole-frame sandbox behind a flag.
 - **3D models join a project like any material**: `.glb` and `.gltf` files are accepted by the home screen, the chat's attachments and the sources import — they become `model` assets, the panel lists them under their own label, "create a layer" places a `model.3d` layer bound to the file, and an attached model tells the assistant where it is and how to place it.
 - **The plugins' geometry crosses the sandbox**: a node's outline is built in the sandbox with a recording Path2D and arrives with its picture as SVG path data (clips and the viewport rebuild it), its viewport handles come as plain data, and its vector export (`svg`, `lottie`) is computed in the sandbox and primed before a conversion reads it — none of the plugin's geometry code runs on the page.
 - **An archive's plugins are validated in the sandbox**: the import imports them in the per-project worker and validates the document against their declarations — the page never runs their code at import time (an accepted archive used to be imported on the page just to be validated).
