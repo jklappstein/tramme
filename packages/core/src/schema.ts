@@ -17,7 +17,7 @@ const token = z.strictObject({
 });
 
 const asset = z.strictObject({
-  type: z.enum(['image', 'font', 'audio', 'video', 'module', 'json']),
+  type: z.enum(['image', 'font', 'audio', 'video', 'module', 'json', 'model']),
   src: z.string().min(1),
   name: z.string().optional(),
   family: z.string().optional(),

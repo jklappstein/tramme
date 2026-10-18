@@ -1057,6 +1057,9 @@
     "depthMap": "{name} · profondeur",
     "photo25dDone": "{name} bouge désormais en 2.5D : profondeur, caméra et cadrage posés."
   },
+  "model": {
+    "placed": "{name} posé comme modèle 3D."
+  },
   "events": {
     "saved": "Liste d'événements enregistrée : {count} événement(s){totals}. Affichez-la avec /event-counter, /event-tags et /event-receipt.",
     "listLabel": "Liste d'événements {name}",
@@ -1383,6 +1386,18 @@
     "Pan": "Panoramique",
     "paper and ink, a burnt orange accent, unhurried curves": "papier et encre, un accent orange brûlé, des courbes posées",
     "Particles": "Particules",
+    "3D model": "Modèle 3D",
+    "A .glb model (glTF 2.0) drawn in 3D: its parts animate rigidly, it may spin slowly, its materials show by their base colour. Skinned meshes draw at rest.": "Un modèle .glb (glTF 2.0) dessiné en 3D : ses parties s'animent rigidement, il peut tourner lentement, ses matières montrent leur couleur de base. Les personnages skinnés restent au repos.",
+    "Explode": "Éclatement",
+    "Height": "Hauteur",
+    "Light": "Lumière",
+    "Model": "Modèle",
+    "Pitch": "Tangage",
+    "Spin": "Rotation",
+    "Yaw": "Lacet",
+    "a turntable spin, degrees per second, from the layer’s start": "une rotation de plateau, en degrés par seconde, depuis le début du calque",
+    "the parts drift away from the centre": "les parties s'écartent du centre",
+    "the square frame the model is drawn in": "le carré dans lequel le modèle est dessiné",
     "particles already present at the in point": "particules déjà présentes au point d'entrée",
     "Path": "Tracé",
     "Perspective": "Perspective",

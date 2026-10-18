@@ -23,6 +23,7 @@ export const NODE_NOTES: Record<string, AiNotes> = {
   comp: { when: 'reusing an animated block several times, time remapping, loops; build the block in its own composition; time remap gives speed ramps, the block keeps its own timing' },
   particles: { when: 'sparks, dust, confetti, snow, bokeh; deterministic: change seed for variety', avoid: 'rate over about 300 with long lifetimes (slow previews); hard white dots: lower opacity, vary size', example: { rate: 60, life: 1.8, speed: 260, spread: 50, gravity: [0, 400] } },
   shader: { when: 'animated backgrounds, gradients that move, noise textures, abstract looks; keep it subtle behind text; drift slowly, a period of 5 s or more' },
+  'model.3d': { when: 'a .glb model (product, object, logo in 3D) joined to the project; the model tool places it; spin for a slow turntable, explode keys for a reveal of the parts; it draws even where WebGL effects are refused', avoid: 'very heavy files (over a few MB drag the first frame); skinned characters: they draw at rest', example: { height: 420, spin: 12 } },
   follow: { when: 'secondary motion: a dot, a cursor or a highlight lagging behind a moving element and settling; leave its own transform at rest (it draws in composition space)', example: { target: 'logo', frequency: 2.2, damping: 0.35, trail: 12 } },
   code: { when: 'last resort for existing drawing code; prefer a node plugin for anything reusable' },
   audio: { when: 'music, voice over and sound effects placed on the timeline; gain in dB (-12 to -18 for a music bed under a voice)' },

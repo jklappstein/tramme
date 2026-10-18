@@ -54,7 +54,7 @@ export interface Token {
   description?: string;
 }
 
-export type AssetType = 'image' | 'font' | 'audio' | 'video' | 'module' | 'json';
+export type AssetType = 'image' | 'font' | 'audio' | 'video' | 'module' | 'json' | 'model';
 export interface Asset {
   type: AssetType;
   /** path relative to the document, or an absolute URL path served by the host */

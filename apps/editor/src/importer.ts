@@ -272,7 +272,7 @@ export async function importSources(items: Picked[], progress?: Progress, opts: 
       sent += file.size;
       for (const n of namesOf(from)) if (!moved.has(n)) moved.set(n, path);
       const kind = kindOf(file), base = file.name.replace(/\.[^.]+$/, '');
-      if (kind === 'image' || kind === 'video' || kind === 'audio') doc.assets[freshId(doc.assets, slug(base).slice(0, 40) || kind)] = { type: kind, src: path, name: base };
+      if (kind === 'image' || kind === 'video' || kind === 'audio' || kind === 'model') doc.assets[freshId(doc.assets, slug(base).slice(0, 40) || kind)] = { type: kind, src: path, name: base };
     }
     if (found) {
       applyKit(doc, found.kit, moved);

@@ -21,7 +21,7 @@ import { t } from './i18n/index.ts';
 /** where the sources a project was made from are kept (pictures, videos, sounds, documents) */
 export const SOURCES_DIR = 'assets/sources/';
 
-export type FileKind = 'image' | 'audio' | 'video' | 'document' | 'file';
+export type FileKind = 'image' | 'audio' | 'video' | 'document' | 'model' | 'file';
 
 /** what a file holds, by its type or its extension: a picture, a sound, a video, a document (PDF, markdown) */
 export function kindOf(f: { name: string; type?: string }): FileKind {
@@ -30,6 +30,7 @@ export function kindOf(f: { name: string; type?: string }): FileKind {
   if (type.startsWith('audio/') || ['wav', 'mp3', 'ogg', 'm4a', 'flac'].includes(ext)) return 'audio';
   if (type.startsWith('video/') || ['mp4', 'webm', 'mov'].includes(ext)) return 'video';
   if (type === 'application/pdf' || ext === 'pdf' || ext === 'md' || ext === 'markdown') return 'document';
+  if (ext === 'glb' || ext === 'gltf') return 'model';
   return 'file';
 }
 

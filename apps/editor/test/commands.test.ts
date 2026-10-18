@@ -28,7 +28,7 @@ describe('the / menu', () => {
   const list = listCommands(reg);
 
   it('lists the editor\'s tools and workflows with the plugins\' ones', () => {
-    expect(list.filter((c) => c.kind === 'tool').map((c) => c.name)).toEqual(['captions', 'title', 'keyword', 'lower-third', 'film-guide', 'film', 'film-review', 'kinetic-title', 'bar-chart', 'stat', 'transition', 'kit', 'pointer', 'terrain', 'keys', 'riffle', 'events', 'event-counter', 'event-tags', 'event-receipt', 'beats', 'shots', 'subjects', 'palette', 'track', 'callout', 'cutout', 'depth', 'photo-2.5d', 'check', 'motion', 'cues', 'sfx', 'sound-find', 'synth', 'generate-sound', 'voices', 'duck', 'sound-keep', 'credits', 'mix', 'generate-image', 'shorts', 'sources', 'block-add', 'block-use', 'brief', 'library-add', 'library-use', 'demo.stars']);
+    expect(list.filter((c) => c.kind === 'tool').map((c) => c.name)).toEqual(['captions', 'title', 'keyword', 'lower-third', 'film-guide', 'film', 'film-review', 'kinetic-title', 'bar-chart', 'stat', 'transition', 'kit', 'pointer', 'terrain', 'keys', 'riffle', 'events', 'event-counter', 'event-tags', 'event-receipt', 'beats', 'shots', 'subjects', 'palette', 'track', 'callout', 'cutout', 'depth', 'photo-2.5d', 'model', 'check', 'motion', 'cues', 'sfx', 'sound-find', 'synth', 'generate-sound', 'voices', 'duck', 'sound-keep', 'credits', 'mix', 'generate-image', 'shorts', 'sources', 'block-add', 'block-use', 'brief', 'library-add', 'library-use', 'demo.stars']);
     expect(list.filter((c) => c.kind === 'prompt').map((c) => `${c.name}:${c.from}`)).toEqual(['film:tramme', 'analyze:tramme', 'dress:tramme', 'review:tramme', 'polish:tramme', 'sound-design:tramme', 'shorts:tramme', 'night:sky']);
   });
 
@@ -74,5 +74,19 @@ describe('the dressings as tools', () => {
     const doc = project();
     const out = editorRegistry().tool('captions').tool.run({}, ctxOf(doc)) as { ops: { value?: { props?: { transcript?: string } } }[] };
     expect(out.ops.find((o) => o.value?.props?.transcript)?.value?.props?.transcript).toBe('transcription-talk-edit');
+  });
+
+  it('places a .glb asset as a model.3d layer that validates', () => {
+    const reg = editorRegistry();
+    let doc = project();
+    doc.assets.beetle = { type: 'model', src: 'assets/chat/beetle.glb', name: 'beetle' };
+    const out = reg.tool('model').tool.run({ at: 1, duration: 3 }, ctxOf(doc, 4)) as { ops: never[] };
+    doc = applyOps(doc, out.ops).doc;
+    expect(validate(doc, reg)).toEqual([]);
+    const c = doc.compositions[doc.root];
+    const [id, l] = Object.entries(c.layers).find(([, l]) => l.type === 'model.3d')!;
+    expect(l.props?.source).toBe('beetle');
+    expect(c.order).toContain(id);
+    expect(l.in).toBe(1);
   });
 });

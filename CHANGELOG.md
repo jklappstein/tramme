@@ -10,6 +10,8 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- A **3D model** node (`model.3d`) and its `model` tool: a .glb (glTF 2.0) joined to the project is drawn in 3D on the node's own WebGL2 context — rigid animation of its parts, a turntable spin, an animatable explode, studio, sun or flat light — with a lean parser of the format (`packages/nodes/src/gltf.ts`, no skinning: skinned meshes draw at rest). Model files join a message or the sources like any material.
+
 - A **WebGL2 service for node plugins** (`render.gl`): a node gets a context of its own, kept from frame to frame (its compiled programs, its uploaded meshes), sized to its bounds and drawn into the layer; a failure lands in the error bar like any node's.
 
 - **Depth** (`depth` tool): the depth map of a photo or a video, read in the browser (Depth Anything v2 small, WebGPU or the processor), saved as a grey file (bright where near) played by a hidden layer, and wired: `fx.parallax` moves the layer the way the composition camera would, a photo also takes `fx.depthBlur`.

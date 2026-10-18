@@ -154,6 +154,7 @@ Each layer type declares its property schema; the inspector and the validator us
 | `comp` | `comp` (id of another composition), `time` (local time, animatable), `size`: nested composition |
 | `particles` | deterministic emitter: `rate`, `life`, `speed`, `spread`, `gravity`, `size`, `color`, `seed` |
 | `shader` | `shader` (fragment GLSL), `size`, `params`: an image made by a shader |
+| `model.3d` | `source` (.glb asset), `height` (px), `spin` (deg/s), `yaw`, `pitch`, `explode` (animatable), `light` (`studio`, `sun`, `flat`): a glTF 2.0 model drawn in 3D on its own WebGL2 service, its parts rigidly animated, framed square by `height` (the `model` tool places it) |
 | `follow` | `target` (a layer), `frequency` (Hz), `damping`, `size`, `color`, `trail` (frames): a dot following another layer on a spring, drawn in composition space |
 | `code` | `module` (JS asset), `entry`, `params`: free drawing by existing code |
 | `audio` | `audio` (asset), `start`, `gain` (dB, animatable), `fadeIn`, `fadeOut` (s), `lowCut` (Hz, animatable), `highCut` (Hz, 0 for none), `eqLow`/`eqMid`/`eqHigh` (dB, the equaliser: a shelf at 120 Hz, a bell at `eqMidFreq` Hz, a shelf at 8 kHz), `reverb` (0 to 1), `rate` (speed and pitch, 1 as recorded), `role` (`effect`, `music`, `voice`, `ambience`), `weight` (`support`, `hero`), `visual` (what it underlines: `cut`, `move`, `land`, `appear`): a sound placed at the layer's in point |

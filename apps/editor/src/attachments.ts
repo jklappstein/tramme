@@ -45,8 +45,7 @@ export async function attachFiles(files: File[]) {
         const doc = S.doc.peek();
         asset = freshId(doc.assets, safeName(f.name).replace(/\.[^.]+$/, '').slice(0, 40) || kind);
         commit(t('attachments.attachmentName', { name: f.name }), [{ op: 'add', path: pointer('assets', asset), value: { type: kind, src: path, name: f.name.replace(/\.[^.]+$/, '') } }]);
-      }
-      pending.value = [...pending.peek(), { path, name: f.name, kind, size: f.size, asset }];
+      }      pending.value = [...pending.peek(), { path, name: f.name, kind, size: f.size, asset }];
     } catch (e) {
       toast(`${f.name} : ${(e as Error).message}`, 'error');
     } finally {
@@ -87,7 +86,9 @@ export function describe(atts: Attachment[], doc: TrammeDoc): string[] {
       lines.push(`- ${a.kind === 'video' ? 'video' : 'sound'} ${a.name} (${where}, ${mb(a.size)}): ${state}. Read what is said with get_transcript, see the video with media_frame.`);
     } else if (a.kind === 'document') {
       const md = /\.(md|markdown)$/i.test(a.name);
-      lines.push(`- document ${a.name} (${where}, ${mb(a.size)}): read it ${md ? 'whole' : 'page by page'} with use_tool "sources" (source "${a.path}").`);
+      lines.push(`- document ${a.name} (${where}): read it ${md ? 'whole' : 'page by page'} with use_tool "sources" (source "${a.path}").`);
+    } else if (a.kind === 'model') {
+      lines.push(`- 3D model ${a.name} (${where}, ${mb(a.size)}): place it with the model tool (asset "${a.asset}"); it draws with the model.3d node.`);
     }
     else lines.push(`- file ${a.name} (${where}): readable with read_file.`);
   }

@@ -1057,6 +1057,9 @@
     "depthMap": "{name} · depth",
     "photo25dDone": "{name} now moves in 2.5D: depth, camera and framing set."
   },
+  "model": {
+    "placed": "{name} placed as a 3D model."
+  },
   "events": {
     "saved": "Event list saved: {count} event(s){totals}. Show it with /event-counter, /event-tags and /event-receipt.",
     "listLabel": "Event list {name}",
