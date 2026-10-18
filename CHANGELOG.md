@@ -8,6 +8,8 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-18
+
 ### Added
 
 - **Fonts in the style kits**: each built-in kit names its typeface (Newsreader for Editorial, IBM Plex Mono for Hairline, Archivo Black for Punchy, Karla for Calm, Space Grotesk for Neon). Applying a kit fetches its woff2 once, keeps it in the project as a font asset, and the recipes write in it; the project keeps its own font if it has one.
@@ -44,7 +46,8 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 - The home screen's cards keep one thumbnail ratio (16/10, the film filling its box cropped): the rows stand as tall as each other whatever the film's format, where a vertical film used to stretch its whole row.
 - The lines between the atelier's panels show at rest instead of hiding in the gutters, each says what it does (the chat's: "drag: the chat grows or shrinks"), and the tours' "The tricks" has a step on them.
 - The tours' "The tricks" also tells the clips' thumbs and fades, the crossfade and the loop, the videos' speed, the markers at the keyboard and the versions.
-- Under the hood: the free space tool reads its video straight at the grid's size instead of decoding a full frame for a handful of cells, glTF meshes are parsed once per node (three reads before), a node's own WebGL canvas is capped at 2048 px (a zoomed node used to ask the GPU for a canvas as big as the frame), the transcript the tools read is picked in one shared helper, and document attachments tell the assistant their size.
+- Under the hood: the free space tool reads its video straight at the grid's size instead of decoding a full frame for a handful of cells, glTF meshes are parsed once per node (three reads before), a node's own WebGL canvas is capped at 2048 px (a zoomed node used to ask the GPU for a canvas as big as the frame) and only grows, shared by the type's layers at their own sizes instead of reallocating its buffers every frame, a photo's depth map is saved at 1024 px at most (4096 held no more depth than the model reads), the kits' fonts are pinned to one version so every film gets the same file, the transcript the tools read is picked in one shared helper, and document attachments tell the assistant their size.
+- The cloth's **Sway** is a period in seconds, 1.6 by default: the rhythm the wind had before it was read as one.
 
 ### Fixed
 
@@ -55,11 +58,15 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 - **Lip sync**: a mouth holds its shape for the word instead of snapping shut between letters (each key now holds until the next), the mouth closes again after the last word, and the transcript's language drives the phonemes, so a French line is no longer mouthed as English.
 - The free space analysis measures its grid's border cells too (the frame's edges were read one cell off, held at nothing).
 - The recipes' hidden pieces do their work again: the logo reveal's iris and wipe really apply their mask (it was left out of the matte), the map journey's line is revealed by its rectangle, and a kit whose typeface cannot be fetched still applies its colours. The wipes and the timeline line grow from their starting edge, and the journey reveals from where it starts, whatever way it runs.
-- The **crossfade** fades the layer that ends first, whichever of the pair it is.
-- **Depth**: a depth video follows its source's trim and speed (it played the file from its start, ignoring the clip's start and rate), the layers the tool adds copy the source's playback settings, and photo 2.5D no longer grows the photo a little more every time it runs.
-- A **looped section** sounds and previews as it should: the mixes wrap what plays past the section back into it (the raw offset used to run on into the file's remainder), and the preview seeks inside the section at the clip's speed.
-- The tools that pick a media by default (logo reveal, split screen, background removal, 3D model) no longer take an asset a tool made beside it (a depth map, a cut-out) in its place.
-- The timeline's filmstrip no longer hangs the tab on a clip narrower than one thumb (it asked for thousands of canvas slots), and it reads a video layer's static start instead of breaking on it.
+- The **crossfade** fades the layer that ends first, whichever of the pair it is; it is not offered when one clip holds the other (either would vanish while it plays alone), and it works on a layer without a transform of its own.
+- Three of the five kits' fonts (Newsreader, Karla, Space Grotesk) could never be fetched: the font CDN keeps variable fonts under another address.
+- The recipes' entrances squeeze before their fade out when time is short (a slow kit, a one-second piece): their keys used to come out of order and the whole piece was refused.
+- **Depth**: a depth video follows its source's trim and speed (it played the file from its start, ignoring the clip's start and rate), the layers the tool adds copy the source's playback settings, and photo 2.5D no longer grows the photo a little more every time it runs. A photo's depth of field reads the hidden map layer (it named the map's file, which the document refused, so it never drew), its parallax survives the depth of field joining it, and its framing is its own scale times the margin, once, whichever tool runs first (an inset stays an inset).
+- A **looped section** sounds and previews as it should: the mixes wrap what plays past the section back into it (the raw offset used to run on into the file's remainder), and the preview seeks inside the section at the clip's speed. A section that starts past its file's end no longer fails the mix.
+- The tools that pick a media by default (logo reveal, split screen, background removal, 3D model) no longer take an asset a tool made beside it (a depth map, a cut-out) in its place, and they take the selected layer's own media, a 3D model's included. The depth tools no longer skip a layer of yours whose name holds "-depth".
+- The timeline's filmstrip no longer hangs the tab on a clip narrower than one thumb (it asked for thousands of canvas slots), and it reads a video layer's static start instead of breaking on it. It no longer decodes forever when the clips on screen ask for more thumbs than its memory holds, and the last thumbs of a batch show without waiting for another repaint.
+- The free space's clear margins measure inward from each edge (they counted cells along it), and the text-over-subject and text-over-detail checks read a video at its speed and its loop.
+- Running **background removal** again refreshes the cut-out it placed instead of adding a second one.
 - The **versions**: restoring one no longer meets the "unsaved changes" guard on reload, and a version pushed out by the thirty kept is deleted from the project instead of piling up unseen.
 - **3D models**: meshes without index buffers load (their vertices are read in order), the whole model's bounds follow each part's transform, so a rotated, scaled or offset part no longer falls outside the frame, the turntable spin turns the model about its own centre (one authored away from the origin used to orbit instead of spinning in place), and a replaced model file is read again.
 - The **simulated nodes**: the rope reaches its target from wherever its own layer sits (the target was read in the composition while the rope lives in its layer) and `length 0` keeps the distance it starts with instead of tracking the target's every move; the cloth's wind breathes at the period the field promises (it played as a frequency, too fast at the default).
@@ -297,7 +304,8 @@ First public release.
 
 - Cloudflare Worker serving the editor and the API, projects stored in R2, access protected by Cloudflare Access.
 
-[Unreleased]: ../../compare/v0.7.1...HEAD
+[Unreleased]: ../../compare/v0.8.0...HEAD
+[0.8.0]: ../../compare/v0.7.1...v0.8.0
 [0.7.1]: ../../compare/v0.7.0...v0.7.1
 [0.7.0]: ../../compare/v0.6.0...v0.7.0
 [0.6.0]: ../../compare/v0.5.0...v0.6.0
