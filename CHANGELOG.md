@@ -10,6 +10,8 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- A **WebGL2 service for node plugins** (`render.gl`): a node gets a context of its own, kept from frame to frame (its compiled programs, its uploaded meshes), sized to its bounds and drawn into the layer; a failure lands in the error bar like any node's.
+
 - **Depth** (`depth` tool): the depth map of a photo or a video, read in the browser (Depth Anything v2 small, WebGPU or the processor), saved as a grey file (bright where near) played by a hidden layer, and wired: `fx.parallax` moves the layer the way the composition camera would, a photo also takes `fx.depthBlur`.
 - **Photo in 2.5D** (`photo-2.5d` tool): one pass that reads the depth of a still photo, adds the composition camera with a slow drift and scales the photo past the relief's widest stretch, so nothing shows at its edges.
 - Two layer effects behind them: **Depth parallax** (`fx.parallax`, a per-pixel relief from the map, linked to the camera) and **Depth blur** (`fx.depthBlur`, a depth of field with an animatable focus for focus pulls).

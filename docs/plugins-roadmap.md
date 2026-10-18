@@ -117,7 +117,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 
 ### Step 7. 3D and camera
 
-- [ ] A WebGL node service for plugins (own context, drawn into the layer).
+- [x] A WebGL node service for plugins: `render.gl(g, props, host, area)` on a node (`packages/render/src/gpu.ts`, `nodeContext`): one context per node type, kept from frame to frame (programs cached per source, meshes uploaded once), sized to the node's bounds and drawn into the layer; failures land in the error bar.
 - [ ] glTF models with animation, studio lighting, turntables, exploded views.
 - [x] A virtual camera for 2.5D: `camera` on the composition (pan, zoom, perspective, focus, blur) and `transform.depth` on layers: parallax and depth blur, in the inspector and the schema.
 - [x] Photo to 2.5D from a depth map (step 4's depth): the `photo-2.5d` tool reads the depth, adds the composition camera with a slow drift and scales the photo past the relief's widest stretch.

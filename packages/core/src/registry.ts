@@ -155,7 +155,29 @@ export interface NodeType<P = any> {
   export?: { svg?(props: P): string; lottie?(props: P): unknown[] };
   render: {
     canvas2d?(ctx: CanvasRenderingContext2D, props: P, host: Host): void;
+    /**
+     * A WebGL2 service of the node's own: `g` is the node type's context, kept
+     * from frame to frame (uploaded meshes, compiled programs), sized to the
+     * area in canvas pixels (`area` in composition pixels, its top left at the
+     * origin of the layer's local space). What `g.canvas` holds is drawn into
+     * the layer after the call, over `area`.
+     */
+    gl?(g: NodeGL, props: P, host: Host, area: Rect): void;
   };
+}
+
+/**
+ * One node type's WebGL2 drawing service: its own canvas and context (lost
+ * contexts are restored transparently), programs cached per source, textures
+ * made and released by the node.
+ */
+export interface NodeGL {
+  canvas: HTMLCanvasElement | OffscreenCanvas;
+  gl: WebGL2RenderingContext;
+  /** a compiled program for this fragment (and vertex) source, made once */
+  program(frag: string, vert?: string): WebGLProgram;
+  /** a texture of a picture, linear, clamped; the node deletes it when done */
+  texture(src: TexImageSource): WebGLTexture;
 }
 
 export interface Handle {

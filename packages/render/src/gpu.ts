@@ -38,11 +38,18 @@ void main() { fragColor = effect(vUv); }`;
 interface GL { canvas: OffscreenCanvas | HTMLCanvasElement; gl: WebGL2RenderingContext; programs: Map<string, WebGLProgram | Error>; vao: WebGLVertexArrayObject; textures: WebGLTexture[] }
 let shared: GL | null = null;
 
+/** a canvas for WebGL2, where the platform makes one (null in a bare runtime) */
+function glCanvas(): OffscreenCanvas | HTMLCanvasElement | null {
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(4, 4);
+  if (typeof document !== 'undefined') return document.createElement('canvas');
+  return null;
+}
+
 function context(): GL {
   if (shared && !shared.gl.isContextLost()) return shared;
-  const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(4, 4) : document.createElement('canvas');
-  const gl = canvas.getContext('webgl2', { premultipliedAlpha: true, antialias: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' }) as WebGL2RenderingContext | null;
-  if (!gl) throw new Error('WebGL2 unavailable for GPU effects');
+  const canvas = glCanvas();
+  const gl = canvas?.getContext('webgl2', { premultipliedAlpha: true, antialias: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' }) as WebGL2RenderingContext | null;
+  if (!canvas || !gl) throw new Error('WebGL2 unavailable for GPU effects');
   shared = { canvas, gl, programs: new Map(), vao: gl.createVertexArray()!, textures: [] };
   return shared;
 }
@@ -106,6 +113,33 @@ function texture(gl: WebGL2RenderingContext, src: TexImageSource): WebGLTexture 
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   return t;
+}
+
+// ── the nodes' WebGL2 service ────────────────────────────────
+
+interface GLState { canvas: OffscreenCanvas | HTMLCanvasElement; gl: WebGL2RenderingContext; programs: Map<string, WebGLProgram | Error>; program(frag: string, vert?: string): WebGLProgram; texture(src: TexImageSource): WebGLTexture }
+/** one node type's context, kept from frame to frame (its uploaded meshes, its programs) */
+const nodes = new Map<string, GLState>();
+
+/**
+ * The WebGL2 service of one node type: its own canvas and context (a lost
+ * context is made again, and the node's `load` may run again), the programs
+ * cached per source. Sized by the caller to the area to fill.
+ */
+export function nodeContext(key: string): import('@tramme/core').NodeGL {
+  const has = nodes.get(key);
+  if (has && !has.gl.isContextLost()) return has;
+  const canvas = glCanvas();
+  const gl = canvas?.getContext('webgl2', { premultipliedAlpha: true, antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' }) as WebGL2RenderingContext | null;
+  if (!canvas || !gl) throw new Error('WebGL2 unavailable for this node');
+  const state: GLState = { canvas, gl, programs: new Map(), program: (frag, vert) => program(state, frag, vert), texture: (src) => texture(gl, src) };
+  nodes.set(key, state);
+  return state;
+}
+
+/** sizes a node's canvas to the area to fill, in canvas pixels */
+export function resizeNode(g: import('@tramme/core').NodeGL, w: number, h: number) {
+  if (g.canvas.width !== w || g.canvas.height !== h) { g.canvas.width = Math.max(1, w); g.canvas.height = Math.max(1, h); }
 }
 
 /**

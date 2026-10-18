@@ -11,7 +11,7 @@
 // fails is drawn as a red frame and reported; the rest of the frame renders.
 
 import { layerMatrix, type BlendMode, type EvaluatedFrame, type EvaluatedLayer, type EvaluatedTransform, type Host, type Registry } from '@tramme/core';
-import { glPass } from './gpu.ts';
+import { glPass, nodeContext, resizeNode } from './gpu.ts';
 
 const BLEND: Record<BlendMode, GlobalCompositeOperation> = {
   normal: 'source-over', multiply: 'multiply', screen: 'screen', overlay: 'overlay',
@@ -81,6 +81,25 @@ function drawContent(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: Draw
     }
     ctx.restore();
   }
+  const glo = L.node.render.gl;
+  if (glo) {
+    // the node's own WebGL2 context, sized to its bounds; the picture lands on the layer over the area
+    const k = env.scale ? (env.scale[0] + env.scale[1]) / 2 : 1;
+    const b = L.node.bounds?.(L.props, env.host(L.id)) ?? { x: -60, y: -60, w: 120, h: 120 };
+    const w = Math.max(1, Math.round(b.w * k)), h = Math.max(1, Math.round(b.h * k));
+    ctx.save();
+    try {
+      const g = nodeContext(L.node.type);
+      resizeNode(g, w, h);
+      glo(g, L.props, env.host(L.id), { x: 0, y: 0, w: b.w, h: b.h });
+      ctx.drawImage(g.canvas as CanvasImageSource, b.x, b.y, b.w, b.h);
+    } catch (e) {
+      if (!env.onError) throw e;
+      drawFailure(ctx, L, env);
+      env.onError(L.id, e as Error);
+    }
+    ctx.restore();
+  }
   for (const child of L.children) drawLayer(ctx, child, env);
 }
 
@@ -97,7 +116,7 @@ function layerPicture(like: CanvasRenderingContext2D, id: string, env: DrawEnv):
 
 function drawLayer(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: DrawEnv) {
   if (L.transform.opacity <= 0) return;
-  if (!L.node.render.canvas2d && !L.children.length) return;
+  if (!L.node.render.canvas2d && !L.node.render.gl && !L.children.length) return;
   ctx.save();
   if (L.clip?.node.path) {
     const outline = L.clip.node.path(L.clip.props, env.host(L.clip.id));
