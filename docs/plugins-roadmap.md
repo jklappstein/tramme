@@ -71,7 +71,7 @@ Done when: a project plugin exports a tool, the assistant finds it with `list_no
 ### Step 2. Recipes and style kits
 
 - [x] Recipes are tools that return operations, expanded into ordinary layers and keyframes that stay editable (`apps/editor/src/recipes.ts`): `kinetic-title` (rise, pop, slide, blur), `bar-chart`, `stat` (rolling figure), `transition` (wipe, circle, bars, flash).
-- [ ] More recipes: map journey, word-by-word quote, logo reveal, list, timeline, split screen.
+- [x] More recipes: map journey (a line travelling stop to stop, revealed in step with the dot), word-by-word quote, logo reveal (iris, wipe or rise), list (tick, number or dash markers), timeline, split screen.
 - [x] The built-in templates (captions, title, keyword, lower third) are also tools of the editor's vocabulary, with the same API. `apply_template` stays for the assistant.
 - [x] `kits` export: a motion language as tokens (`plate`, `ink`, `accent`, `accent2`, `enter`, `exit`, `pace`, `stagger`) applied by the `kit` tool and read by the recipes. Built-in kits: editorial, punchy, calm, neon.
 - [ ] Fonts in kits (a font file per kit, loaded with the project).

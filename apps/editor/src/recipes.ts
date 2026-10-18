@@ -243,6 +243,292 @@ const transition: ToolType<TransitionArgs> = {
   },
 };
 
+// ── a quote, word by word ────────────────────────────────────
+/** the words of a text wrapped into lines no wider than maxFrac of the frame */
+export function wrapWords(doc: TrammeDoc, text: string, size: number, weight: number, font: string | null, maxFrac: number, width: number): string[][] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const space = measure(doc, ' ', size, weight, font), max = width * maxFrac;
+  const lines: string[][] = [[]];
+  let lineW = 0;
+  for (const word of words) {
+    const w = measure(doc, word, size, weight, font);
+    if (lines.at(-1)!.length && lineW + space + w > max) { lines.push([]); lineW = 0; }
+    lineW += (lines.at(-1)!.length ? space : 0) + w;
+    lines.at(-1)!.push(word);
+  }
+  return lines;
+}
+
+const quote: ToolType<{ text: string; author?: string; at?: number; duration?: number; place?: 'top' | 'center' | 'bottom'; emphasis?: number }> = {
+  name: 'quote', title: 'Word-by-word quote', description: 'a quotation that appears word by word, quietly, with its author line and one word in the accent colour',
+  input: {
+    type: 'object',
+    properties: {
+      text: { type: 'string', title: 'Quote' },
+      author: { type: 'string', title: 'Author' },
+      emphasis: { type: 'integer', minimum: 1, title: 'Word in colour', description: 'its rank in the quote (1: the first)' },
+      at: { type: 'number', minimum: 0, title: 'Start (s)' },
+      duration: { type: 'number', minimum: 1, title: 'Duration (s)' },
+      place: { enum: ['top', 'center', 'bottom'], title: 'Place' },
+    },
+    required: ['text'],
+  },
+  ai: { when: 'a said or written sentence worth dwelling on: testimonial, epigraph, interview pull', avoid: 'more than 25 words, or quotes that need two voices' },
+  run(a, ctx) {
+    const doc = ctx.doc, c = compOf(ctx), s = style(doc), at = atOf(ctx, a.at), end = r(at + (a.duration ?? 5));
+    const u = Math.min(c.width, c.height), size = a.text.length > 120 ? Math.round(u * 0.062) : Math.round(u * 0.075), weight = 500;
+    const lines = wrapWords(doc, a.text, size, weight, s.font, 0.74, c.width);
+    const words = lines.flat();
+    if (!words.length) throw new Error('quote: text is empty');
+    const lh = size * 1.34, y = a.place === 'top' ? c.height * 0.26 : a.place === 'bottom' ? c.height * 0.62 : c.height * 0.42;
+    const { add, done } = adder(doc, ctx.compId);
+    const children: string[] = [];
+    children.push(add('quote-mark', { type: 'text', name: 'Quote mark', transform: { position: [0, r(-(lines.length * lh) / 2 - size * 0.28)], opacity: { $k: [{ t: at, v: 0, ease: s.enter }, { t: r(at + s.pace), v: 1 }] } }, props: { text: '“', size: Math.round(size * 2.4), weight: 900, align: 'left', baseline: 'alphabetic', color: s.accent, ...(s.font ? { font: s.font } : {}) } }, false));
+    let rank = 0;
+    const space = measure(doc, ' ', size, weight, s.font);
+    lines.forEach((line, li) => {
+      const total = line.reduce((t, wd) => t + measure(doc, wd, size, weight, s.font), 0) + space * (line.length - 1);
+      let x = -total / 2;
+      for (const word of line) {
+        const w = measure(doc, word, size, weight, s.font), t0 = r(at + 0.25 + rank * s.stagger * 1.6), cy = r(li * lh - ((lines.length - 1) * lh) / 2);
+        children.push(add(`quote-word-${rank + 1}`, { type: 'text', name: word, transform: { anchor: [0, 0], position: [r(x), cy], opacity: { $k: [{ t: t0, v: 0, ease: s.enter }, { t: r(t0 + s.pace * 0.9), v: 1 }] } }, props: { text: word, size, weight, align: 'left', baseline: 'top', color: a.emphasis === rank + 1 ? s.accent : s.ink, ...(s.font ? { font: s.font } : {}) } }, false));
+        x += w + space;
+        rank++;
+      }
+    });
+    if (a.author) children.push(add('quote-author', { type: 'text', name: a.author, transform: { position: [0, r((lines.length * lh) / 2 + size * 0.6)], opacity: { $k: [{ t: r(at + 0.25 + rank * s.stagger * 1.6 + s.pace * 0.4), v: 0, ease: s.enter }, { t: r(at + 0.25 + rank * s.stagger * 1.6 + s.pace * 1.2), v: 1 }] } }, props: { text: `— ${a.author}`, size: Math.round(size * 0.42), weight: 600, align: 'center', baseline: 'top', tracking: 0.04, color: s.ink, ...(s.font ? { font: s.font } : {}) } }, false));
+    add('quote', { type: 'group', name: clip(a.text, 39), in: at, out: end, transform: { position: [r(c.width / 2), r(y)], opacity: { $k: [{ t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] } }, children });
+    return { ops: done(), label: `Quote${a.author ? ` — ${a.author}` : ''}`, text: `Quote of ${words.length} word(s) on ${lines.length} line(s), one word every ${r(s.stagger * 1.6)} s from ${at} s, on screen until ${end} s.` };
+  },
+};
+
+// ── a logo that reveals itself ───────────────────────────────
+const logoReveal: ToolType<{ logo?: string; name?: string; style?: 'iris' | 'wipe' | 'rise'; at?: number; duration?: number }> = {
+  name: 'logo-reveal', title: 'Logo reveal', description: 'a logo (an image asset) that appears with an iris, a wipe or a rise, and holds: the intro card of a film',
+  input: {
+    type: 'object',
+    properties: {
+      logo: { type: 'string', format: 'asset', assetType: 'image', title: 'Logo' },
+      name: { type: 'string', title: 'Name', description: 'a line of text under the logo' },
+      style: { enum: ['iris', 'wipe', 'rise'], title: 'Style' },
+      at: { type: 'number', minimum: 0, title: 'Start (s)' },
+      duration: { type: 'number', minimum: 1, title: 'Duration (s)' },
+    },
+  },
+  ai: { when: 'opening or closing a film with a brand: iris for a modern tone, wipe for a bold one, rise for a calm one', avoid: 'more than one reveal in the same film' },
+  run(a, ctx) {
+    const doc = ctx.doc, c = compOf(ctx), s = style(doc), at = atOf(ctx, a.at), end = r(at + (a.duration ?? 3));
+    const u = Math.min(c.width, c.height);
+    const images = Object.entries(doc.assets).filter(([, x]) => x.type === 'image');
+    const id = a.logo ?? images.find(([aid]) => ctx.selection.includes(aid))?.[0] ?? images.at(-1)?.[0];
+    if (!id) throw new Error('logo-reveal: the project has no picture for the logo: join one to a message and run again');
+    const { add, done } = adder(doc, ctx.compId);
+    const box = u * 0.34, y = a.name ? c.height * 0.44 : c.height * 0.48, kind = a.style ?? 'iris';
+    const hold = { $k: [{ t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] };
+    const transform: Record<string, unknown> = { position: [r(c.width / 2), r(y)], opacity: hold };
+    const effects: unknown[] = [];
+    if (kind === 'iris') {
+      add('logo-mask', { type: 'shape.ellipse', name: 'Logo · iris', visible: false, in: at, out: end, transform: { position: [r(c.width / 2), r(y)], scale: { $k: [{ t: at, v: [0, 0], ease: s.emphasized }, { t: r(at + s.pace * 1.6), v: [1, 1] }] } }, props: { size: [r(box * 1.6), r(box * 1.6)], fill: '#FFFFFF' } });
+      effects.push({ id: 'reveal', type: 'fx.matte', props: { source: 'logo-mask', mode: 'alpha' } });
+    } else if (kind === 'wipe') {
+      add('logo-mask', { type: 'shape.rect', name: 'Logo · wipe', visible: false, in: at, out: end, transform: { anchor: [0, r(box / 2)], position: [r(c.width / 2 - box / 2), r(y)], scale: { $k: [{ t: at, v: [0, 1], ease: s.emphasized }, { t: r(at + s.pace * 1.6), v: [1, 1] }] } }, props: { size: [r(box), r(box)], fill: '#FFFFFF' } });
+      effects.push({ id: 'reveal', type: 'fx.matte', props: { source: 'logo-mask', mode: 'alpha' } });
+    } else {
+      transform.position = { $k: [{ t: at, v: [r(c.width / 2), r(y + u * 0.05)], ease: s.enter }, { t: r(at + s.pace * 1.4), v: [r(c.width / 2), r(y)] }] };
+      transform.opacity = { $k: [{ t: at, v: 0, ease: s.enter }, { t: r(at + s.pace), v: 1 }, { t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] };
+    }
+    add('logo', { type: 'image', name: doc.assets[id].name ?? id, in: at, out: end, ...(effects.length ? { effects } : {}), transform, props: { image: id, size: [r(box), r(box)], fit: 'contain' } });
+    if (a.name) add('logo-name', { type: 'text', name: a.name, in: at, out: end, transform: { position: [r(c.width / 2), r(y + box * 0.72)], opacity: { $k: [{ t: r(at + s.pace * 0.8), v: 0, ease: s.enter }, { t: r(at + s.pace * 1.5), v: 1 }, { t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] } }, props: { text: a.name, size: Math.round(u * 0.035), weight: 600, align: 'center', baseline: 'top', tracking: 0.18, color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+    return { ops: done(), label: `Logo reveal (${kind})`, text: `Logo "${id}" revealed with an ${kind === 'iris' ? 'iris' : kind} from ${at} s, holding until ${end} s${a.name ? `, with the name under it` : ''}.` };
+  },
+};
+
+// ── a list that ticks in ─────────────────────────────────────
+const listRecipe: ToolType<{ items: string; title?: string; marker?: 'check' | 'number' | 'dash'; at?: number; duration?: number }> = {
+  name: 'list', title: 'List', description: 'lines that enter one after the other, each with a marker (a tick, a number or a dash): steps, arguments, ingredients',
+  input: {
+    type: 'object',
+    properties: {
+      items: { type: 'string', title: 'Items', description: 'separated by commas or line breaks' },
+      title: { type: 'string', title: 'Title' },
+      marker: { enum: ['check', 'number', 'dash'], title: 'Marker' },
+      at: { type: 'number', minimum: 0, title: 'Start (s)' },
+      duration: { type: 'number', minimum: 1, title: 'Duration (s)' },
+    },
+    required: ['items'],
+  },
+  ai: { when: '3 to 5 points said one by one in the voice-over; the marker ties them together', avoid: 'more than 6 items, or items longer than about 8 words' },
+  run(a, ctx) {
+    const items = a.items.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
+    if (!items.length) throw new Error('list: no item in items');
+    if (items.length > 8) throw new Error('list: 8 items at most');
+    const doc = ctx.doc, c = compOf(ctx), s = style(doc), at = atOf(ctx, a.at), end = r(at + (a.duration ?? 5));
+    const u = Math.min(c.width, c.height), size = Math.round(u * 0.05), lh = size * 2.2, marker = a.marker ?? 'check';
+    const mw = size * 1.05, step = Math.max(s.stagger * 2, 0.14);
+    const maxText = Math.max(...items.map((item) => measure(doc, item, size, 600, s.font)));
+    const blockW = mw * 1.9 + maxText, top = c.height * (a.title ? 0.4 : 0.44) - ((items.length - 1) * lh) / 2;
+    const { add, done } = adder(doc, ctx.compId);
+    const fadeOut = { $k: [{ t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] };
+    if (a.title) add('list-title', { type: 'text', name: a.title, in: at, out: end, transform: { position: [r(c.width / 2), r(top - lh * 0.9)], opacity: { $k: [{ t: at, v: 0, ease: s.enter }, { t: r(at + s.pace), v: 1 }, ...fadeOut.$k] } }, props: { text: a.title, size: Math.round(u * 0.06), weight: 800, align: 'center', baseline: 'middle', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+    const children: string[] = [];
+    items.forEach((item, i) => {
+      const t0 = r(at + 0.2 + i * step), y = r(i * lh), x0 = -blockW / 2;
+      if (marker === 'number') {
+        children.push(add(`list-dot-${i + 1}`, { type: 'shape.ellipse', name: `Dot ${i + 1}`, transform: { position: [r(x0 + mw / 2), y], scale: { $k: [{ t: t0, v: [0, 0], ease: POP }, { t: r(t0 + s.pace * 0.6), v: [1, 1] }] } }, props: { size: [r(mw), r(mw)], fill: s.accent } }, false));
+        children.push(add(`list-num-${i + 1}`, { type: 'text', name: String(i + 1), transform: { position: [r(x0 + mw / 2), y], opacity: { $k: [{ t: r(t0 + s.pace * 0.3), v: 0, ease: s.enter }, { t: r(t0 + s.pace * 0.7), v: 1 }] } }, props: { text: String(i + 1), size: Math.round(mw * 0.62), weight: 800, align: 'center', baseline: 'middle', color: s.ink, ...(s.font ? { font: s.font } : {}) } }, false));
+      } else if (marker === 'dash') {
+        children.push(add(`list-dash-${i + 1}`, { type: 'shape.rect', name: `Dash ${i + 1}`, transform: { position: [r(x0 + mw / 2), y], scale: { $k: [{ t: t0, v: [0, 1], ease: s.enter }, { t: r(t0 + s.pace * 0.5), v: [1, 1] }] } }, props: { size: [r(mw), r(Math.max(2, size * 0.08))], fill: s.accent } }, false));
+      } else {
+        children.push(add(`list-tick-${i + 1}`, { type: 'shape.path', name: `Tick ${i + 1}`, transform: { position: [r(x0 + mw / 2), y], scale: { $k: [{ t: t0, v: [0, 0], ease: POP }, { t: r(t0 + s.pace * 0.6), v: [1, 1] }] } }, props: { path: { v: [[-mw * 0.32, 0], [-mw * 0.08, mw * 0.26], [mw * 0.34, -mw * 0.24]], closed: false }, stroke: s.accent, strokeWidth: r(Math.max(2.5, size * 0.11)), lineCap: 'round', lineJoin: 'round' } }, false));
+      }
+      children.push(add(`list-text-${i + 1}`, { type: 'text', name: item, transform: { anchor: [0, 0], position: [r(x0 + mw * 1.9), y], opacity: { $k: [{ t: r(t0 + s.pace * 0.25), v: 0, ease: s.enter }, { t: r(t0 + s.pace * 0.9), v: 1 }] } }, props: { text: item, size, weight: 600, align: 'left', baseline: 'middle', color: s.ink, ...(s.font ? { font: s.font } : {}) } }, false));
+    });
+    add('list', { type: 'group', name: clip(a.title ?? 'List', 39), in: at, out: end, transform: { position: [r(c.width / 2), r(top)], opacity: fadeOut }, children });
+    return { ops: done(), label: `List of ${items.length} item(s)`, text: `List of ${items.length} item(s) (${marker} markers), one every ${r(step)} s from ${at} s, on screen until ${end} s.` };
+  },
+};
+
+// ── a timeline that draws itself ─────────────────────────────
+/** "2020: Launch, 2022: Series B" (or line breaks): the label before the colon, the fact after */
+export function parseEvents(data: string): { label: string; text: string }[] {
+  return data.split(/[,;\n]/).map((part) => {
+    const m = /^\s*([^:：]+)[:：]?\s*(.*)$/.exec(part);
+    return m ? { label: m[1].trim(), text: m[2].trim() } : null;
+  }).filter((x): x is { label: string; text: string } => !!x && !!x.label);
+}
+
+const timeline: ToolType<{ data: string; title?: string; at?: number; duration?: number }> = {
+  name: 'timeline', title: 'Timeline', description: 'a line that draws itself across the frame, with a dot for each event: its label by the dot and the fact under it',
+  input: {
+    type: 'object',
+    properties: {
+      data: { type: 'string', title: 'Events', description: '"Label: fact" separated by commas, in order, e.g. "2020: Launch, 2022: Series B"' },
+      title: { type: 'string', title: 'Title' },
+      at: { type: 'number', minimum: 0, title: 'Start (s)' },
+      duration: { type: 'number', minimum: 1, title: 'Duration (s)' },
+    },
+    required: ['data'],
+  },
+  ai: { when: 'a history, a roadmap or the steps of a process, in order; 3 to 5 events stay readable', avoid: 'more than 6 events, or facts longer than about 6 words' },
+  run(a, ctx) {
+    const events = parseEvents(a.data);
+    if (events.length < 2) throw new Error('timeline: two events at least (expected "2020: Launch, 2022: Series B")');
+    if (events.length > 8) throw new Error('timeline: 8 events at most');
+    const doc = ctx.doc, c = compOf(ctx), s = style(doc), at = atOf(ctx, a.at), end = r(at + (a.duration ?? 5));
+    const u = Math.min(c.width, c.height), lineY = c.height * (a.title ? 0.5 : 0.48), span = c.width * 0.78;
+    const labelSize = Math.round(u * 0.036), textSize = Math.round(u * 0.03);
+    const { add, done } = adder(doc, ctx.compId);
+    const fadeOut = { $k: [{ t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] };
+    if (a.title) add('timeline-title', { type: 'text', name: a.title, in: at, out: end, transform: { position: [r(c.width / 2), r(lineY - u * 0.22)], opacity: { $k: [{ t: at, v: 0, ease: s.enter }, { t: r(at + s.pace), v: 1 }, ...fadeOut.$k] } }, props: { text: a.title, size: Math.round(u * 0.06), weight: 800, align: 'center', baseline: 'middle', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+    add('timeline-line', { type: 'shape.rect', name: 'Line', in: at, out: end, transform: { anchor: [0, r(Math.max(2, u * 0.004) / 2)], position: [r(c.width * 0.11), r(lineY)], scale: { $k: [{ t: at, v: [0, 1], ease: s.enter }, { t: r(at + s.pace * 2), v: [1, 1] }] }, opacity: fadeOut }, props: { size: [r(span), r(Math.max(2, u * 0.004))], fill: s.ink } });
+    events.forEach((ev, i) => {
+      const t0 = r(at + 0.25 + (i * s.pace * 1.6)), x = r(c.width * 0.11 + (span * (i + 0.5)) / events.length), above = i % 2 === 0;
+      add(`timeline-dot-${i + 1}`, { type: 'shape.ellipse', name: ev.label, in: at, out: end, transform: { position: [x, r(lineY)], scale: { $k: [{ t: t0, v: [0, 0], ease: POP }, { t: r(t0 + s.pace * 0.6), v: [1, 1] }] }, opacity: fadeOut }, props: { size: [r(u * 0.03), r(u * 0.03)], fill: i === events.length - 1 ? s.accent : s.ink } });
+      add(`timeline-label-${i + 1}`, { type: 'text', name: `${ev.label} · label`, in: at, out: end, transform: { position: [x, r(lineY + (above ? -u * 0.05 : u * 0.05))], opacity: { $k: [{ t: t0, v: 0, ease: s.enter }, { t: r(t0 + s.pace * 0.7), v: 1 }, ...fadeOut.$k] } }, props: { text: ev.label, size: labelSize, weight: 800, align: 'center', baseline: above ? 'bottom' : 'top', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+      if (ev.text) add(`timeline-text-${i + 1}`, { type: 'text', name: ev.text, in: at, out: end, transform: { position: [x, r(lineY + (above ? -u * 0.05 - labelSize * 1.35 : u * 0.05 + labelSize * 1.35))], opacity: { $k: [{ t: r(t0 + s.pace * 0.3), v: 0, ease: s.enter }, { t: r(t0 + s.pace * 0.9), v: 1 }, ...fadeOut.$k] } }, props: { text: ev.text, size: textSize, weight: 500, align: 'center', baseline: above ? 'bottom' : 'top', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+    });
+    return { ops: done(), label: `Timeline of ${events.length} event(s)`, text: `Timeline of ${events.length} event(s), the line drawn from ${at} to ${r(at + s.pace * 2)} s, one dot every ${r(s.pace * 1.6)} s, on screen until ${end} s.` };
+  },
+};
+
+// ── a split screen ───────────────────────────────────────────
+const splitScreen: ToolType<{ assets?: string[]; layout?: 'half' | 'thirds'; gap?: number; at?: number; duration?: number }> = {
+  name: 'split-screen', title: 'Split screen', description: 'two or three pictures or videos side by side, their panels sliding in one after the other with a gap between them',
+  input: {
+    type: 'object',
+    properties: {
+      assets: { type: 'array', items: { type: 'string', format: 'asset', assetType: ['image', 'video'] }, title: 'Media', description: 'two or three assets; picked from the selection or the project otherwise' },
+      layout: { enum: ['half', 'thirds'], title: 'Layout' },
+      gap: { type: 'number', title: 'Gap (px)' },
+      at: { type: 'number', minimum: 0, title: 'Start (s)' },
+      duration: { type: 'number', minimum: 1, title: 'Duration (s)' },
+    },
+  },
+  ai: { when: 'comparing two takes, a before and an after, or three faces of the same story; keep the panels the same length', avoid: 'more than three panels, or a portrait film with three of them' },
+  run(a, ctx) {
+    const doc = ctx.doc, c = compOf(ctx), s = style(doc), at = atOf(ctx, a.at), end = r(Math.min(at + (a.duration ?? c.duration - at), c.duration));
+    const media = Object.entries(doc.assets).filter(([, x]) => x.type === 'image' || x.type === 'video');
+    const picked = a.assets?.length ? a.assets : [...ctx.selection.filter((id) => media.some(([mid]) => mid === id)), ...media.map(([mid]) => mid)].filter((id, i, all) => all.indexOf(id) === i);
+    const n = a.layout === 'thirds' ? 3 : 2;
+    const ids = picked.slice(0, n);
+    if (ids.length !== n) throw new Error(`split-screen: ${n} media are needed (${ids.length} found)`);
+    const u = Math.min(c.width, c.height), gap = r(a.gap ?? Math.max(3, u * 0.008));
+    const cellW = (c.width - gap * (n - 1)) / n;
+    const { add, done } = adder(doc, ctx.compId);
+    add('split-bg', { type: 'shape.rect', name: 'Split · background', in: at, out: end, transform: { position: [r(c.width / 2), r(c.height / 2)] }, props: { size: [c.width, c.height], fill: doc.tokens?.plate?.type === 'color' ? '@plate' : '#000000' } });
+    ids.forEach((id, i) => {
+      const kind = doc.assets[id].type as 'image' | 'video';
+      const x0 = r(cellW * (i + 0.5) + gap * i), t0 = r(at + i * Math.max(s.stagger * 2, 0.12));
+      const from: Vec2 = x0 < c.width / 2 ? [r(x0 - c.width), r(c.height / 2)] : [r(x0 + c.width), r(c.height / 2)];
+      const props: Record<string, unknown> = kind === 'image' ? { image: id, size: [r(cellW), c.height], fit: 'cover' } : { video: id, size: [r(cellW), c.height], fit: 'cover', muted: i > 0 };
+      add(`split-panel-${i + 1}`, { type: kind, name: doc.assets[id].name ?? id, in: at, out: end, transform: { position: { $k: [{ t: t0, v: from, ease: s.emphasized }, { t: r(t0 + s.pace * 1.8), v: [x0, r(c.height / 2)] }] } }, props });
+    });
+    return { ops: done(), label: `Split screen (${n} panels)`, text: `Split screen of ${n} panel(s) (${ids.join(', ')}), sliding in from ${at} s every ${r(Math.max(s.stagger * 2, 0.12))} s, until ${end} s. The first panel keeps its sound, the others are muted.` };
+  },
+};
+
+// ── a journey on a map ───────────────────────────────────────
+/** "0.2,0.3 0.5,0.6 0.8,0.4": the stops as fractions of the frame, in order */
+export function parseStops(stops: string): Vec2[] {
+  return stops.split(/\s+/).filter(Boolean).map((pair) => {
+    const m = /^\s*([0-9.]+)\s*[,;]\s*([0-9.]+)\s*$/.exec(pair);
+    return m ? [Number(m[1]), Number(m[2])] as Vec2 : null;
+  }).filter((x): x is Vec2 => !!x && x.every((v) => Number.isFinite(v)));
+}
+
+const mapJourney: ToolType<{ stops: string; names?: string; map?: string; at?: number; duration?: number }> = {
+  name: 'map-journey', title: 'Map journey', description: 'a line that travels from stop to stop on a map (or a picture), a dot marking each stop: the route of a trip, a delivery, a story',
+  input: {
+    type: 'object',
+    properties: {
+      stops: { type: 'string', title: 'Stops', description: '"x,y" pairs as fractions of the frame, in order, e.g. "0.18,0.32 0.5,0.62 0.82,0.38"' },
+      names: { type: 'string', title: 'Names', description: 'one name per stop, separated by commas' },
+      map: { type: 'string', format: 'asset', assetType: 'image', title: 'Map' },
+      at: { type: 'number', minimum: 0, title: 'Start (s)' },
+      duration: { type: 'number', minimum: 1, title: 'Duration (s)' },
+    },
+    required: ['stops'],
+  },
+  ai: { when: 'telling a route: a trip, a tour, a delivery; two to five stops stay readable', avoid: 'more than six stops, or stops outside the frame' },
+  run(a, ctx) {
+    const stops = parseStops(a.stops);
+    if (stops.length < 2) throw new Error('map-journey: two stops at least (expected "0.18,0.32 0.5,0.62")');
+    if (stops.length > 6) throw new Error('map-journey: six stops at most');
+    const doc = ctx.doc, c = compOf(ctx), s = style(doc), at = atOf(ctx, a.at);
+    const u = Math.min(c.width, c.height), pts = stops.map(([fx, fy]) => [r(fx * c.width), r(fy * c.height)] as Vec2);
+    const names = (a.names ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+    const plate = doc.tokens?.plate?.type === 'color' ? '@plate' : '#FFFFFF';
+    // the dot's ride: the whole trip lasts pace×1.8 s a leg, shared between the legs by their length
+    const lens = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
+    const start = r(at + 0.3), totalLen = Math.max(lens.reduce((t, l) => t + l, 0), 1e-9), travel = Math.max(1.2, s.pace * 1.8 * (pts.length - 1));
+    const arriveAt = [start];
+    let t = start;
+    const dotKeys: Record<string, unknown>[] = [{ t: start, v: pts[0] }];
+    pts.slice(1).forEach((p, i) => {
+      t = r(t + travel * (lens[i] / totalLen));
+      arriveAt.push(t);
+      dotKeys.push({ t, v: p, ease: s.enter });
+    });
+    // the last name needs a breath before the whole thing fades
+    const end = r(Math.max(at + (a.duration ?? 5), t + 0.8));
+    const { add, done } = adder(doc, ctx.compId);
+    const fadeOut = { $k: [{ t: r(end - 0.35), v: 1, ease: s.exit }, { t: end, v: 0 }] };
+    if (a.map) add('journey-map', { type: 'image', name: doc.assets[a.map].name ?? a.map, in: at, out: end, transform: { position: [r(c.width / 2), r(c.height / 2)], scale: { $k: [{ t: at, v: [1, 1], ease: s.standard }, { t: end, v: [1.05, 1.05] }] }, opacity: fadeOut }, props: { image: a.map, size: [c.width, c.height], fit: 'cover' } });
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), pad = u * 0.06;
+    const bx = Math.min(...xs) - pad, by = Math.min(...ys) - pad, bw = Math.max(...xs) - bx + pad, bh = Math.max(...ys) - by + pad;
+    // the line is revealed by a hidden rectangle that grows across its bounds, in step with the dot
+    add('journey-reveal', { type: 'shape.rect', name: 'Journey · reveal', visible: false, in: at, out: end, transform: { anchor: [0, r(bh / 2)], position: [r(bx), r(by + bh / 2)], scale: { $k: [{ t: start, v: [0, 1], ease: s.standard }, { t, v: [1, 1] }] } }, props: { size: [r(bw), r(bh)], fill: '#FFFFFF' } });
+    add('journey-path', { type: 'shape.path', name: 'Journey · route', in: at, out: end, transform: { position: [0, 0], opacity: fadeOut }, effects: [{ id: 'reveal', type: 'fx.matte', props: { source: 'journey-reveal', mode: 'alpha' } }], props: { path: { v: pts, closed: false }, stroke: s.accent, strokeWidth: r(Math.max(3, u * 0.012)), lineCap: 'round', lineJoin: 'round' } });
+    add('journey-dot', { type: 'shape.ellipse', name: 'Journey · dot', in: at, out: end, transform: { position: { $k: dotKeys }, opacity: fadeOut }, props: { size: [r(u * 0.03), r(u * 0.03)], fill: s.accent2 } });
+    pts.forEach(([x, y], i) => {
+      add(`journey-stop-${i + 1}`, { type: 'shape.ellipse', name: `Stop ${i + 1}`, in: at, out: end, transform: { position: [x, y], scale: { $k: [{ t: r(arriveAt[i] - 0.15), v: [0, 0], ease: POP }, { t: r(arriveAt[i] + s.pace * 0.5), v: [1, 1] }] }, opacity: fadeOut }, props: { size: [r(u * 0.022), r(u * 0.022)], fill: plate } });
+      if (names[i]) add(`journey-name-${i + 1}`, { type: 'text', name: names[i], in: at, out: end, transform: { position: [x, r(y + u * 0.035)], opacity: { $k: [{ t: r(arriveAt[i]), v: 0, ease: s.enter }, { t: r(arriveAt[i] + s.pace * 0.6), v: 1 }, ...fadeOut.$k] } }, props: { text: names[i], size: Math.round(u * 0.032), weight: 700, align: 'center', baseline: 'top', color: s.ink, ...(s.font ? { font: s.font } : {}) } });
+    });
+    return { ops: done(), label: `Map journey (${stops.length} stops)`, text: `Map journey of ${stops.length} stop(s)${names.length ? ` (${names.join(', ')})` : ''}, the line drawn from ${start} s, on screen until ${end} s${a.map ? `, over "${a.map}"` : ''}.` };
+  },
+};
+
+
 // ── style kits ───────────────────────────────────────────────
 const tok = (type: 'color' | 'ease' | 'number', value: unknown, description?: string) => ({ type, value, ...(description ? { description } : {}) });
 
@@ -274,4 +560,4 @@ const kit: ToolType<{ kit: string; background?: boolean }> = {
   },
 };
 
-export const RECIPE_TOOLS: ToolType[] = [kineticTitle, barChart, stat, transition, kit];
+export const RECIPE_TOOLS: ToolType[] = [kineticTitle, barChart, stat, transition, quote, logoReveal, listRecipe, timeline, splitScreen, mapJourney, kit];

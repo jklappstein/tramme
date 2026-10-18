@@ -10,6 +10,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- Six **new recipes**, laid out as ordinary editable layers like the others: a **map journey** (a line travelling stop to stop on a map, revealed in step with the riding dot), a **word-by-word quote** with its author line, a **logo reveal** (iris, wipe or rise) that holds, a **list** that ticks in (tick, number or dash markers), a **timeline** that draws itself across the frame, and a **split screen** of two or three sliding panels.
 - A **background removal** tool (`remove-bg`): the U²-Net matte run once on a picture becomes the alpha of a PNG saved as a new image asset, placed as its own layer — titles and graphics pass behind the subject.
 - A **free space** tool (`space`): a frame read as a small grid of how busy each cell is (edges, robustly scaled), saved as data with the clear sides and the largest clear rectangle in fractions of the frame — where a title or a caption block fits without covering what matters.
 

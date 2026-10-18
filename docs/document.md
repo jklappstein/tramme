@@ -262,7 +262,7 @@ export const checks = [{
 
 Each sample is `{ t, layers }`; a placed layer has `id`, `layer`, `node`, `props`, `opacity` (with its parents'), `box` (composition pixels) and, for text, `text` and `textSize` (the height of the type on screen).
 
-A plugin may also export `kits`: style kits applied by the `kit` tool, as design tokens. The recipes (`kinetic-title`, `bar-chart`, `stat`, `transition`) and the dressings read these token names: `plate`, `ink`, `accent`, `accent2` (colours), `enter`, `exit` (curves), `pace` (seconds of an entrance), `stagger` (seconds between siblings).
+A plugin may also export `kits`: style kits applied by the `kit` tool, as design tokens. The recipes (`kinetic-title`, `bar-chart`, `stat`, `transition`, `quote`, `logo-reveal`, `list`, `timeline`, `split-screen`, `map-journey`) and the dressings read these token names: `plate`, `ink`, `accent`, `accent2` (colours), `enter`, `exit` (curves), `pace` (seconds of an entrance), `stagger` (seconds between siblings).
 
 ```js
 export const kits = [{
