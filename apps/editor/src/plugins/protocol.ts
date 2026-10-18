@@ -67,6 +67,64 @@ export interface CheckCtxData {
   samples: unknown[];
 }
 
+// ── the sandboxed drawing (stage 2) ───────────────────────────
+
+/** a composition's layer as the sandboxed draw code may read it (host.layer) */
+export interface LayerSnapshot {
+  id: string;
+  props: unknown;
+  transform: { anchor: [number, number]; position: [number, number]; scale: [number, number]; rotation: number; opacity: number };
+  in: number;
+  out: number;
+}
+
+/** the document's side of the sandbox, shipped when it changes */
+export interface SandboxDoc {
+  doc: unknown;
+  docUrl: string;
+  /** the loaded pictures of the document's image assets (copied, not transferred) */
+  images: Record<string, unknown>;
+  /** the parsed json assets */
+  json: Record<string, unknown>;
+  /** the fonts, loaded in the sandbox's own realm */
+  fonts: { url: string; family: string; weight?: string }[];
+}
+
+/** one sandboxed layer to draw for a frame */
+export interface DrawItem {
+  /** the layer id */
+  id: string;
+  /** the node type */
+  type: string;
+  /** the evaluated props at this instant */
+  props: unknown;
+  /** the simulation state at this frame, when the node simulates (the state stays computed on the page) */
+  state?: unknown;
+  /** composition time and frame index */
+  t: number;
+  frame: number;
+}
+
+/** a frame's drawing order: what every item's host may read */
+export interface DrawPayload {
+  frame: number;
+  comp: { width: number; height: number; duration: number; fps: number };
+  /** the composition's layers at this instant (host.layer) */
+  layers: LayerSnapshot[];
+  items: DrawItem[];
+}
+
+/** what one item drew: its picture (over its bounds), or why it failed */
+export interface DrawResult {
+  id: string;
+  ok: boolean;
+  /** the picture, of area's size in pixels (or of w × h for gl nodes) */
+  bitmap?: unknown;
+  /** the bounds the picture covers, in the layer's local space */
+  area?: { x: number; y: number; w: number; h: number };
+  err?: string;
+}
+
 // ── the messages ──────────────────────────────────────────────
 
 /** the page asks, the sandbox answers or asks back */
@@ -74,6 +132,8 @@ export type ToWorker =
   | { kind: 'load'; plugins: { id: string; url: string }[] }
   | { kind: 'tool'; name: string; input: unknown; ctx: ToolCtxData; call: number }
   | { kind: 'check'; name: string; ctx: CheckCtxData; call: number }
+  | { kind: 'doc'; doc: SandboxDoc }
+  | { kind: 'draw'; call: number; payload: DrawPayload }
   | { kind: 'abort'; call: number }
   | { kind: 'answer'; id: number; ok?: unknown; err?: string };
 
@@ -82,6 +142,7 @@ export type FromWorker =
   | { kind: 'loaded'; plugins: PluginDecl[] }
   | { kind: 'loadFailed'; id: string; message: string }
   | { kind: 'result'; call: number; ok?: unknown; err?: string }
+  | { kind: 'drawn'; call: number; frame: number; results: DrawResult[] }
   | { kind: 'ask'; id: number; call: number; q: Ask }
   | { kind: 'progress'; call: number; done: number; total: number; step?: string };
 

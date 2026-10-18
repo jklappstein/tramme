@@ -5,7 +5,7 @@
 // registry carries — plugins/vocabulary.ts puts them there).
 
 import { toolOutput, type CheckContext, type NodeType, type PlacedLayer, type QualityIssue, type ToolContext, type ToolOutput } from '@tramme/core';
-import type { Ask, FromWorker, PluginDecl, ToWorker } from './protocol.ts';
+import type { Ask, DrawPayload, DrawResult, FromWorker, PluginDecl, SandboxDoc, ToWorker } from './protocol.ts';
 
 /** the schema of a node without its code: what a check's samples may cross */
 const schemaOf = (n: NodeType) => ({ type: n.type, title: n.title, category: n.category, description: n.description, ai: n.ai, props: n.props, ...(n.container ? { container: true } : {}) });
@@ -17,6 +17,10 @@ export interface PluginHost {
   runTool(name: string, input: unknown, ctx: ToolContext): Promise<ToolOutput>;
   /** run a plugin's check against the page's context */
   runCheck(name: string, ctx: CheckContext): Promise<QualityIssue[]>;
+  /** the document's side of the sandbox (assets, fonts): sent when it changes */
+  setDoc(doc: SandboxDoc): void;
+  /** draw a frame's sandboxed layers; resolves with one result per item */
+  draw(payload: DrawPayload): Promise<DrawResult[]>;
   dispose(): void;
 }
 
@@ -74,6 +78,13 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
       else w.resolve(m.ok);
       return;
     }
+    if (m.kind === 'drawn') {
+      const w = waits.get(m.call);
+      if (!w) return;
+      waits.delete(m.call);
+      w.resolve(m.results);
+      return;
+    }
     if (m.kind === 'progress') {
       const ctx = bridges.get(m.call);
       if (ctx && 'progress' in ctx) (ctx as ToolContext).progress?.(m.done, m.total, m.step);
@@ -89,9 +100,9 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
     }
   };
 
-  const run = (msg: ToWorker & { call: number }, ctx: ToolContext | CheckContext, signal?: AbortSignal): Promise<unknown> => {
+  const run = (msg: ToWorker & { call: number }, ctx?: ToolContext | CheckContext, signal?: AbortSignal): Promise<unknown> => {
     const c = msg.call;
-    bridges.set(c, ctx);
+    if (ctx) bridges.set(c, ctx);
     const stop = () => send({ kind: 'abort', call: c });
     signal?.addEventListener('abort', stop, { once: true });
     send(msg);
@@ -121,6 +132,12 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
       const samples = ctx.samples.map((s) => ({ ...s, layers: s.layers.map((p: PlacedLayer) => ({ ...p, node: schemaShipped(p.node) })) }));
       const out = await run({ kind: 'check', name, call: ++call, ctx: { doc: ctx.doc, compId: ctx.compId, comp: ctx.comp, step: ctx.step, samples } }, ctx);
       return Array.isArray(out) ? out as QualityIssue[] : [];
+    },
+    setDoc(doc) {
+      send({ kind: 'doc', doc });
+    },
+    async draw(payload) {
+      return await run({ kind: 'draw', call: ++call, payload }) as DrawResult[];
     },
     dispose() {
       for (const [, w] of waits) w.reject(new Error('the plugin sandbox is closed'));

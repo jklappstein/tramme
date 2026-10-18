@@ -7,16 +7,23 @@
 
 import type { PluginModule, Registry, TrammeDoc } from '@tramme/core';
 import type { PluginHost } from './host.ts';
+import { sandboxNode, sandboxable } from './sandbox-draw.ts';
 
 /**
- * What the page's registry takes from a plugin module: everything but the
- * tools and checks, which the sandbox owns. The module itself still loads on
- * the page for its render-time code (stage 2 moves that); its authoring-time
- * code is reached only through the sandbox's copy.
+ * What the page's registry takes from a plugin module: the tools and checks
+ * go to the sandbox (stage 1), and the nodes that need no synchronous
+ * geometry on the page draw from the sandbox too (stage 2) — the ones with a
+ * `path`, `handles` or vector `export` stay whole and trusted, their
+ * geometry is read by the page between frames. The module itself still loads
+ * on the page for those; its authoring-time code is reached only through the
+ * sandbox's copy.
  */
 export function filterModule(mod: PluginModule): PluginModule {
   const { tools: _tools, checks: _checks, ...rest } = mod;
-  return rest;
+  return {
+    ...rest,
+    nodes: rest.nodes?.map((n) => (sandboxable(n) ? sandboxNode(n) : n)),
+  };
 }
 
 /** the plugins whose isolated entries a registry already carries */

@@ -5,11 +5,13 @@
 // check receives plain data only, and the sandbox's realm lets no network
 // beyond its own origin.
 
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { newProject, type Manifest } from '@tramme/project';
-import { Registry, toolOutput, type PluginModule, type ToolContext, type CheckContext, type TrammeDoc } from '@tramme/core';
-import { connectHost } from '../src/plugins/host.ts';
-import { guardRealm, startWorkerSide } from '../src/plugins/worker-side.ts';
+import { Registry, toolOutput, type Host, type PluginModule, type ToolContext, type CheckContext, type TrammeDoc } from '@tramme/core';
+import { connectHost, type PluginHost } from '../src/plugins/host.ts';
+import { guardRealm, startWorkerSide, type SandboxDrawSide } from '../src/plugins/worker-side.ts';
+import { bindSandbox, resetSandbox, sandboxNode, sandboxable } from '../src/plugins/sandbox-draw.ts';
+import type { DrawPayload, DrawResult, SandboxDoc } from '../src/plugins/protocol.ts';
 import { attachIsolated, filterModule } from '../src/plugins/vocabulary.ts';
 
 const DOC_URL = 'https://tramme.test/p1/document.tramme.json';
@@ -43,7 +45,7 @@ const plugin = (): PluginModule => ({
 });
 
 /** the host and the sandbox wired as a pair (what postMessage does) */
-function pair(fixtures: Map<string, PluginModule>, onImport?: (url: string) => void) {
+function pair(fixtures: Map<string, PluginModule>, onImport?: (url: string) => void, sandbox?: (modules: Map<string, PluginModule>) => SandboxDrawSide) {
   const side = startWorkerSide({
     post: (m) => queueMicrotask(() => receive(m)),
     importModule: async (url) => {
@@ -52,8 +54,10 @@ function pair(fixtures: Map<string, PluginModule>, onImport?: (url: string) => v
       if (!mod) throw new Error(`no such module: ${url}`);
       return mod;
     },
+    ...(sandbox ? { sandbox } : {}),
   });
   const { host, receive } = connectHost((m) => queueMicrotask(() => side.receive(m)), () => DOC_URL);
+  void receive;
   return { host };
 }
 
@@ -194,5 +198,94 @@ describe('the plugin sandbox', () => {
     expect(filtered.checks).toBeUndefined();
     expect(filtered.nodes).toHaveLength(1);
     expect(filtered.meta?.name).toBe('stars');
+    // the sandboxable node is wrapped: its draw belongs to the sandbox, its schema and simulation stay
+    const n = filtered.nodes![0];
+    expect(n.path).toBeUndefined();
+    expect(n.render.gl).toBeUndefined();
+    expect(typeof (n.render as { canvas2d?: unknown }).canvas2d).toBe('function');
+    expect(n.simulate).toBeDefined();
+    expect(n.props).toBeDefined();
+    // a node the page must read geometry from stays whole
+    const withPath = { ...plugin().nodes![0], path: () => null } as never;
+    expect(sandboxable(plugin().nodes![0] as never)).toBe(true);
+    expect(sandboxable(withPath)).toBe(false);
+    expect(filterModule({ nodes: [withPath] }).nodes![0]).toHaveProperty('path');
+  });
+});
+
+describe('the sandboxed drawing', () => {
+  beforeEach(() => resetSandbox());
+
+  it('draws a frame in the sandbox and hands the pictures to the page', async () => {
+    const docs: SandboxDoc[] = [], payloads: DrawPayload[] = [];
+    const bitmap = { width: 20, height: 20 } as unknown as ImageBitmap;
+    const sandbox: SandboxDrawSide = {
+      setDoc: (d) => { docs.push(d); },
+      draw: async (p) => {
+        payloads.push(p);
+        return { results: p.items.map((i): DrawResult => ({ id: i.id, ok: true, bitmap, area: { x: -10, y: -10, w: 20, h: 20 } })), transfer: [bitmap] };
+      },
+    };
+    const { host } = pair(new Map([['blob:stars', plugin()]]), undefined, () => sandbox);
+    await host.ensure([{ id: 'stars', url: 'blob:stars' }]);
+    host.setDoc({ doc: { assets: { moon: { type: 'image', src: 'assets/moon.png' } } }, docUrl: DOC_URL, images: {}, json: {}, fonts: [] });
+    const results = await host.draw({ frame: 3, comp: { width: 100, height: 100, duration: 2, fps: 30 }, layers: [{ id: 'moon', props: {}, transform: { anchor: [0, 0], position: [50, 50], scale: [1, 1], rotation: 0, opacity: 1 }, in: 0, out: 2 }], items: [{ id: 'moon', type: 'sky.moon', props: { radius: 5 }, t: 0.1, frame: 3 }] });
+    expect(results[0]).toMatchObject({ id: 'moon', ok: true, area: { w: 20 } });
+    expect(payloads).toHaveLength(1);
+    expect(payloads[0].items[0].type).toBe('sky.moon');
+    expect(docs).toHaveLength(1);
+  });
+
+  it('the wrapper defers, then draws the picture over its bounds; a later frame keeps the last one', async () => {
+    const drawn: unknown[][] = [];
+    const ctx = { drawImage: (...a: unknown[]) => drawn.push(a) } as unknown as CanvasRenderingContext2D;
+    const deferred: Promise<unknown>[] = [];
+    let resolveDraw: (r: DrawResult[]) => void = () => {};
+    const fakeHost = {
+      ensure: async () => new Map(),
+      runTool: async () => ({}),
+      runCheck: async () => [],
+      setDoc: () => {},
+      draw: () => new Promise<DrawResult[]>((res) => { resolveDraw = res; }),
+      dispose: () => {},
+    } as unknown as PluginHost;
+    bindSandbox({ host: () => fakeHost, context: () => ({ doc: doc().doc, docUrl: DOC_URL, loaded: () => null }) });
+    const node = sandboxNode(plugin().nodes![0]);
+    const layer = { layerId: 'moon', t: 0.1, frame: 3, fps: 30, width: 100, height: 100, duration: 2, defer: (p: Promise<unknown>) => deferred.push(p), state: () => undefined } as unknown as Host;
+    // first pass: nothing is drawn, the draw is deferred (renderComplete will wait for it)
+    node.render.canvas2d!(ctx, { radius: 5 }, layer);
+    expect(drawn).toHaveLength(0);
+    expect(deferred).toHaveLength(1);
+    resolveDraw([{ id: 'moon', ok: true, bitmap: { width: 20 } as unknown as CanvasImageSource, area: { x: -10, y: -10, w: 20, h: 20 } }]);
+    await deferred[0];
+    // second pass at the same frame: the picture lands over its bounds
+    node.render.canvas2d!(ctx, { radius: 5 }, layer);
+    expect(drawn).toHaveLength(1);
+    expect(drawn[0].slice(1)).toEqual([-10, -10, 20, 20]);
+    // a later frame: the last picture stands in while the fresh one is in flight
+    (layer as { frame: number }).frame = 4;
+    node.render.canvas2d!(ctx, { radius: 5 }, layer);
+    expect(drawn).toHaveLength(2);
+    expect(deferred).toHaveLength(2);
+  });
+
+  it('a failing draw reads as a failed node', async () => {
+    const ctx = { drawImage: () => {} } as unknown as CanvasRenderingContext2D;
+    let resolveDraw: (r: DrawResult[]) => void = () => {};
+    const fakeHost = {
+      ensure: async () => new Map(),
+      runTool: async () => ({}),
+      runCheck: async () => [],
+      setDoc: () => {},
+      draw: () => new Promise<DrawResult[]>((res) => { resolveDraw = res; }),
+      dispose: () => {},
+    } as unknown as PluginHost;
+    bindSandbox({ host: () => fakeHost, context: () => ({ doc: doc().doc, docUrl: DOC_URL, loaded: () => null }) });
+    const node = sandboxNode(plugin().nodes![0]);
+    const layer = { layerId: 'moon', t: 0, frame: 1, fps: 30, width: 100, height: 100, duration: 2, defer: () => {} } as unknown as Host;
+    node.render.canvas2d!(ctx, {}, layer);
+    resolveDraw([{ id: 'moon', ok: false, err: 'boom in the sandbox' }]);
+    await new Promise((r) => setTimeout(r, 5));
+    expect(() => node.render.canvas2d!(ctx, {}, layer)).toThrow(/boom in the sandbox/);
   });
 });

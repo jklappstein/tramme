@@ -5,18 +5,28 @@
 // project is a message answered by the page. Nothing here touches the DOM.
 
 import { Registry, type CheckContext, type CheckType, type EffectType, type ModifierType, type NodeType, type PluginModule, type QualityIssue, type ToolContext, type ToolOutput } from '@tramme/core';
-import type { Ask, CheckCtxData, FromWorker, PluginDecl, SchemaEffect, SchemaModifier, SchemaNode, ToWorker, ToolCtxData } from './protocol.ts';
+import type { Ask, CheckCtxData, DrawPayload, DrawResult, FromWorker, PluginDecl, SandboxDoc, SchemaEffect, SchemaModifier, SchemaNode, ToWorker, ToolCtxData } from './protocol.ts';
 
 export interface WorkerSide {
   /** a message from the page */
   receive(m: ToWorker): void;
 }
 
+/** the sandboxed drawing of stage 2, injected so the protocol runs (and tests) without a canvas */
+export interface SandboxDrawSide {
+  /** the document's side: assets, fonts */
+  setDoc(d: SandboxDoc): void | Promise<void>;
+  /** draw a frame's sandboxed layers; the pictures may be transferred back */
+  draw(p: DrawPayload): Promise<{ results: DrawResult[]; transfer?: Transferable[] }>;
+}
+
 export interface WorkerSideOptions {
   /** speak to the page */
-  post(m: FromWorker): void;
+  post(m: FromWorker, transfer?: Transferable[]): void;
   /** import a plugin module (the worker's own import, version-busted by the caller) */
   importModule(url: string): Promise<PluginModule>;
+  /** the drawing of sandboxed nodes (the browser worker passes the real raster; tests pass a fake), built with the loaded modules */
+  sandbox?: (modules: Map<string, PluginModule>) => SandboxDrawSide;
 }
 
 const schemaNode = (n: NodeType): SchemaNode => ({ type: n.type, title: n.title, category: n.category, description: n.description, ai: n.ai, props: n.props, ...(n.container ? { container: true } : {}) });
@@ -40,8 +50,9 @@ function schemaRegistryOf(mods: PluginModule[]): Registry {
   return reg;
 }
 
-export function startWorkerSide({ post, importModule }: WorkerSideOptions): WorkerSide {
+export function startWorkerSide({ post, importModule, sandbox: makeSandbox }: WorkerSideOptions): WorkerSide {
   const modules = new Map<string, PluginModule>();
+  const sandbox = makeSandbox ? makeSandbox(modules) : undefined;
   /** one abort controller per running tool or check */
   const controllers = new Map<number, AbortController>();
   /** the asks this side is waiting on: id -> settle */
@@ -115,6 +126,20 @@ export function startWorkerSide({ post, importModule }: WorkerSideOptions): Work
             } catch (e) { post({ kind: 'loadFailed', id, message: (e as Error).message }); }
           }
           if (loaded.length) post({ kind: 'loaded', plugins: loaded });
+        })();
+        return;
+      }
+      if (m.kind === 'doc') {
+        void sandbox?.setDoc(m.doc);
+        return;
+      }
+      if (m.kind === 'draw') {
+        if (!sandbox) { post({ kind: 'drawn', call: m.call, frame: m.payload.frame, results: m.payload.items.map((i) => ({ id: i.id, ok: false, err: 'the sandbox cannot draw here' })) }); return; }
+        void (async () => {
+          let results: DrawResult[] = [], transfer: Transferable[] | undefined;
+          try { ({ results, transfer } = await sandbox.draw(m.payload)); }
+          catch (e) { results = m.payload.items.map((i) => ({ id: i.id, ok: false, err: (e as Error).message })); }
+          post({ kind: 'drawn', call: m.call, frame: m.payload.frame, results }, transfer);
         })();
         return;
       }

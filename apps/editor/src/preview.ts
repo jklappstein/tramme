@@ -19,6 +19,7 @@ import { editorRegistry } from './vocabulary.ts';
 import { clipChain, masterGainDb, mixBus, playClip, Renderer } from '@tramme/render';
 import { comp, compIdOf, S, setRegistry, setTime, toast, viewDoc } from './state.ts';
 import { attachIsolated, filterModule, pluginHost } from './plugins/index.ts';
+import { bindSandbox, resetSandbox, type SandboxContext } from './plugins/sandbox-draw.ts';
 import { t } from './i18n/index.ts';
 import { prefs } from './settings.ts';
 import { syncPluginTours } from './tours/index.ts';
@@ -68,6 +69,21 @@ class Preview {
   }
 
   async start() {
+    // a new project on the same page: what crossed for the old one is dropped
+    resetSandbox();
+    // every sandboxed draw goes through the open project's sandbox, fed with this preview's document and assets
+    bindSandbox({
+      host: () => pluginHost(new URL(S.docUrl.peek(), location.href).href),
+      context: (): SandboxContext | null => {
+        const r = this.renderer;
+        if (!r) return null;
+        return {
+          doc: this.applied ?? S.doc.peek(),
+          docUrl: new URL(S.docUrl.peek(), location.href).href,
+          loaded: (id) => { try { return r.assets.get(id); } catch { return null; } },
+        };
+      },
+    });
     try {
       this.renderer = await Renderer.open(S.doc.peek(), editorRegistry(), new URL(S.docUrl.peek(), location.href).href, this.canvas, { compId: compIdOf(S.doc.peek()), raster: 'gpu', scale: S.previewScale.peek(), preserve: false, isolate: true, pluginModule: filterModule });
       this.applied = S.doc.peek();

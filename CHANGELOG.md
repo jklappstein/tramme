@@ -10,10 +10,15 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
-- The **editor runs the plugins' tools and checks in the sandbox**: the preview, the stills and the browser exports load plugin modules with their authoring code left out, and the registry carries sandbox-backed entries instead — `use_tool`, the `/` menu and the checks call them the same way, with no page rights on the other side. Nodes, effects and modifiers still draw in the page, and the command line keeps its own rule (stage 2 of [docs/plugin-isolation.md](docs/plugin-isolation.md)).
+- **The sandbox draws the plugins' nodes**: a node that needs no synchronous geometry on the page (no `path`, `handles` or vector `export`) is drawn in the per-project worker — evaluated props, frame numbers, simulation states and the other layers' data cross as plain messages, and one transferred picture comes back per layer over its bounds; the first pass of a frame defers, so stills and exports keep waiting for the exact picture while the preview keeps the last one. Modifiers, Canvas2D effects, simulation stepping and geometry nodes stay on the page, documented (stage 2 of [docs/plugin-isolation.md](docs/plugin-isolation.md)).
+- The **editor runs the plugins' tools and checks in the sandbox**: the preview, the stills and the browser exports load plugin modules with their authoring code left out, and the registry carries sandbox-backed entries instead — `use_tool`, the `/` menu and the checks call them the same way, with no page rights on the other side (stage 1 of [docs/plugin-isolation.md](docs/plugin-isolation.md)).
 - A **plugin sandbox**: a per-project browser worker where plugin modules can be imported and their tools and checks run with no page rights — the protocol, the worker (its own bundle, its network narrowed to its own origin), the page-side host that bridges files, writes, stills, transcripts and aborts, and the registry wrappers, with end-to-end tests of the pair ([docs/plugin-isolation.md](docs/plugin-isolation.md), stage 1).
 - The **code question names what each plugin brings**: the import's inventory reads each plugin module's text (without running it) for its declared exports — nodes, effects, modifiers, tools, workflows, checks, kits, presets, tours — and the dialog lists them per plugin file, so what is accepted is known before it runs.
 - A **design note** on isolating untrusted plugins ([docs/plugin-isolation.md](docs/plugin-isolation.md)): the options (the main thread as today, a dedicated worker with OffscreenCanvas, a strict CSP with a reduced API, a Wasm/QuickJS sandbox), their costs, what each takes from the plugin API, and a staged recommendation — the code moves only once the author picks.
+
+### Fixed
+
+- **3D models** come in by every door: the Assets panel imports .glb and .gltf files (they were refused as an unsupported format) and lists them under 3D models, with "Create a layer" placing a `model.3d` sized to the composition; the chat's and the home screen's file pickers offer them too.
 
 ## [0.9.0] - 2026-10-18
 
