@@ -10,6 +10,8 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- Three **simulated nodes**: a **rope** (tied to the layer's origin, pulled towards another layer, swinging in the wind), a **cloth** (pinned along its top edge, falling and catching a wind that breathes) and a **flock** (boids that steer together across the frame, deterministic on its seed). Stepped frame by frame from the layer's in point, so exports and previews agree.
+
 - A **3D model** node (`model.3d`) and its `model` tool: a .glb (glTF 2.0) joined to the project is drawn in 3D on the node's own WebGL2 context — rigid animation of its parts, a turntable spin, an animatable explode, studio, sun or flat light — with a lean parser of the format (`packages/nodes/src/gltf.ts`, no skinning: skinned meshes draw at rest). Model files join a message or the sources like any material.
 
 - A **WebGL2 service for node plugins** (`render.gl`): a node gets a context of its own, kept from frame to frame (its compiled programs, its uploaded meshes), sized to its bounds and drawn into the layer; a failure lands in the error bar like any node's.

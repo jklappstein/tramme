@@ -2,7 +2,7 @@
 
 Where the plugin system goes, and in what order. The goal is not only a richer vocabulary of layers: it is to give the built-in assistant what it needs to produce impressive videos on its own. The editor gets the same abilities, since the editor and the assistant share one API.
 
-Status: steps 1 to 3, 6 and 9 done; steps 4, 5, 7 and 10 mostly done (pose, phonemes, plugin isolation and audio processing left; glTF is done, lean: no skinning); steps 7b and 8 wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: steps 1 to 3, 6, 7 and 9 done (glTF is lean: no skinning; rope, cloth and flock are done — fluid and rigid shapes left); steps 4, 5 and 10 mostly done (pose, phonemes, plugin isolation and audio processing left); steps 7b and 8 wait for decisions (a 3D library, the providers). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -113,7 +113,7 @@ Built-in plugins whose tools analyse the material at authoring time and save the
 - [x] Deterministic simulations: `simulate: { init, step }` on a node; the renderer steps from the in point, keeps a checkpoint every 10 frames and the last frame, and starts over after any change of the document. A frame rendered directly is byte-identical to the same frame reached after others (checked with the CLI).
 - [x] `host.layer(id)`: evaluated props and transform of another layer; `host.state()` for the simulation.
 - [x] Built-in `follow` node: a dot following another layer on a spring, with a trail.
-- [ ] More simulated nodes: rope, cloth, flock, fluid, physics of rigid shapes.
+- [x] More simulated nodes: `rope` (Verlet points, tied to the layer origin, pulled towards a layer, wind), `cloth` (a grid pinned along its top, gravity and a breathing wind, filled mesh or wireframe), `flock` (boids — separation, alignment, cohesion — seeded, held at their pace, turning back before the edges). Fluid and rigid shapes left.
 
 ### Step 7. 3D and camera
 

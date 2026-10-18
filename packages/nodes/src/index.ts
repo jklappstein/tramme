@@ -11,6 +11,9 @@ import { callout } from './callout.ts';
 import { captions } from './captions.ts';
 import { receipt, tag } from './events.ts';
 import { follow } from './follow.ts';
+import { rope } from './rope.ts';
+import { cloth } from './cloth.ts';
+import { flock } from './flock.ts';
 import { audio, code, group } from './misc.ts';
 import { adjust } from './adjust.ts';
 import { ellipse, path, rect } from './shapes.ts';
@@ -19,7 +22,7 @@ import { EFFECT_NOTES, NODE_NOTES } from './notes.ts';
 
 export { canvasPaint, fillStroke, toPath2D } from './paint.ts';
 export type { CodeEntry } from './misc.ts';
-export const NODES = [rect, ellipse, path, image, model, sequence, video, text, captions, counter, tag, receipt, callout, group, comp, adjust, particles, shader, follow, code, audio];
+export const NODES = [rect, ellipse, path, image, model, sequence, video, text, captions, counter, tag, receipt, callout, group, comp, adjust, particles, shader, follow, rope, cloth, flock, code, audio];
 export const EFFECTS = [vignette, grain, bloom, exposure, chromatic, grade, blur, shadow, glow, color, tint, matte, displace, parallax, depthBlur];
 // notes for the assistant (list_nodes)
 for (const n of NODES) n.ai ??= NODE_NOTES[n.type];
