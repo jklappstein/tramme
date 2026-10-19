@@ -209,6 +209,13 @@
   .transport .seg button { padding: 0 6px; }
   .transport .seg button svg.i { display: none; }
 }
+/* a phone: first and last frame go (the timecode reaches them), the tabs keep their icons alone */
+@container (max-width: 480px) {
+  .transport .controls .icon-btn:is([data-step="start"], [data-step="end"]) { display: none; }
+  .transport .seg button svg.i { display: block; }
+  .transport .seg .seg-label { display: none; }
+  .transport .seg button { padding: 0 9px; }
+}
 
 /* the zoom slider: a pill track and a round thumb */
 .tl-zoom { display: flex; align-items: center; gap: 4px; }
@@ -219,6 +226,9 @@
 .timeline { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--names, 150px) minmax(0, 1fr); grid-template-rows: 26px 1fr; position: relative; }
 .tl-corner { display: flex; align-items: center; padding: 0 4px 0 12px; gap: 6px; color: var(--text-3); font-size: var(--fs-xs); }
 .tl-corner .grow { flex: 1; }
+/* a narrow column: the count shortens, the fold buttons stay */
+.tl-corner > svg.i, .tl-corner > :not(.grow):not(.tl-count) { flex: none; }
+.tl-count { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-ruler { position: relative; overflow: hidden; cursor: ew-resize; }
 .tl-ruler .tick { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line-strong); }
 .tl-ruler .tick.minor { top: 20px; border-color: var(--line); }
@@ -399,22 +409,35 @@ svg.i.flip { transform: rotate(180deg); }
 .export-pop { width: 320px; display: flex; flex-direction: column; gap: 10px; }
 .export-pop .row { display: grid; grid-template-columns: 90px 1fr; gap: 8px; align-items: center; }
 
-/* ── narrow screens: tabs in a floating pill above the safe area ── */
+/* ── narrow screens: tabs in a bar along the bottom, above the safe area ── */
 .mobile-tabs { display: none; }
 @media (max-width: 900px) {
   .topbar .settings .hide-sm, .topbar .project .save-state span, .topbar .brand > span:not(.brand-mark) { display: none; }
   .topbar { gap: 8px; }
 }
+/* the top bar on a phone (both views): the name takes what is left; the format, frame rate,
+   versions, help and settings move to the ⋯ menu (TopBar.tsx); export is an icon */
+@media (max-width: 760px) {
+  .topbar { gap: 4px; padding: 0 6px 0 10px; }
+  .topbar > .sep, .topbar > .grow, .topbar .settings, .topbar [data-tour="help"], .topbar [data-tour="settings"], .topbar [data-tour="versions"] { display: none; }
+  .topbar .more-btn { display: grid; place-items: center; }
+  .topbar .project { flex: 1 1 0; min-width: 0; gap: 2px; }
+  .project input.title { flex: 1 1 0; min-width: 0; max-width: none; width: 0 !important; field-sizing: fixed; text-overflow: ellipsis; }
+  .topbar .btn.primary { width: 36px; padding: 0; justify-content: center; }
+  .topbar .btn.primary .label { display: none; }
+}
 @media (max-width: 760px) {
   html, body, .app { max-width: 100vw; overflow: hidden; }
-  /* one column that can shrink: a wide timeline must not stretch the page (and push the header's buttons off screen) */
-  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 52px auto auto minmax(0, 1fr); height: 100dvh; }
+  /* one column that can shrink: a wide timeline must not stretch the page (and push the header's buttons off screen);
+     the last row stops above the tab bar */
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 52px auto auto minmax(0, 1fr); height: 100dvh; padding-bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); --tabs-h: 58px; }
   .workspace { display: contents; }
   .workspace > .resizer, .center > .resizer, .col.right > .resizer { display: none; }
   .col.left, .col.right { display: none; }
   .center { display: contents; }
-  .viewport { height: 40vh; height: 40dvh; min-height: 200px; flex: none; grid-row: 2; border-radius: 0; }
-  .viewport .toolbar { top: 8px; }
+  /* the atelier's viewport only: the studio's fills its stage */
+  .app .viewport { height: 40vh; height: 40dvh; min-height: 200px; flex: none; grid-row: 2; border-radius: 0; }
+  .app .viewport .toolbar { top: 8px; }
   .bottom { grid-row: 3 / 5; height: auto !important; min-height: 0; border-radius: 0; }
   .app:not([data-tab=viewport]):not([data-tab=timeline]) .bottom { display: none; }
   .app[data-tab=timeline] .viewport { display: none; }
@@ -425,23 +448,24 @@ svg.i.flip { transform: rotate(180deg); }
   /* !important over the panel's inline size (desktop): it must shrink, or the message box ends up under the tabs */
   .app[data-tab=ai] .col.right .assistant { height: auto !important; flex: 1 1 0 !important; }
   .app[data-tab=inspector] .col.right .inspector-wrap { flex: 1; }
-  .timeline { --names: 120px; grid-template-columns: var(--names) minmax(0, 1fr); }
-  /* the tabs: a floating pill over the safe area */
+  /* the names' column: a fixed share of the screen, whatever width the desktop remembered (the inline --names) */
+  .timeline { grid-template-columns: min(132px, 36%) minmax(0, 1fr); }
+  /* the tabs: one bar across the bottom, each tab its icon over its name */
   .mobile-tabs {
-    position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 40;
-    display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: var(--r-pill);
-    background: var(--float); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: var(--shadow-2);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; height: calc(var(--tabs-h) + env(safe-area-inset-bottom));
+    display: flex; align-items: stretch; padding: 4px 6px env(safe-area-inset-bottom);
+    background: var(--float); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 -1px 0 var(--line);
   }
-  .mobile-tabs button { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--text-3); font: 500 var(--fs-xs)/1 var(--ui); }
-  .mobile-tabs button.on { background: var(--field-active); color: var(--text); }
+  .mobile-tabs button {
+    flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    padding: 0 2px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-3); font: 500 var(--fs-xs)/1.1 var(--ui);
+  }
+  .mobile-tabs button svg.i { width: 18px; height: 18px; flex: none; }
+  .mobile-tabs button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-tabs button.on { color: var(--text); }
   .mobile-tabs button.on svg.i { color: var(--accent-text); }
-  .app .toasts { bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .app .toasts { bottom: calc(var(--tabs-h) + 8px + env(safe-area-inset-bottom)); }
   .assistant.full { inset: 52px 0 0 0; }
-}
-/* phones: export as an icon, the name keeps the room */
-@media (max-width: 440px) {
-  .topbar .btn.primary { width: 36px; padding: 0; }
-  .topbar .btn.primary .label { display: none; }
 }
 
 /* ── touch ─────────────────────────────────────────────────── */

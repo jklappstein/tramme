@@ -23,6 +23,7 @@ import { Overlays } from './shell.tsx';
 import { HelpButton } from './Help.tsx';
 import { WindowControls, windowBar } from './WindowControls.tsx';
 import { personal } from '../mode.ts';
+import { install, installable } from '../install.ts';
 import { offerTours } from '../tours/index.ts';
 import { settingsOpen } from '../settings.ts';
 import { IDEAS } from '../ideas.ts';
@@ -315,6 +316,7 @@ export function Home() {
       <header class="home-top" {...windowBar}>
         <div class="brand"><LogoMark /><span>tramme</span></div>
         <span class="grow" />
+        {installable.value && <button class="btn outline sm" title={t('home.installAppHint')} onClick={install}><Icon name="download" /><span class="label">{t('home.installApp')}</span></button>}
         <HelpButton page="home" />
         <button class="icon-btn" data-tour="settings" title={t('common.settingsCtrl')} onClick={() => { settingsOpen.value = true; }}><Icon name="gear" /></button>
         {/* the other ways in: a blank project, a video to dress, a file to open */}

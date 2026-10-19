@@ -200,7 +200,7 @@ button.ctx-chip:hover { background: var(--field-hover); color: var(--text); }
 
 /* ── narrow screens: the film, the storyboard, the notes; the bar at the thumb ── */
 @media (max-width: 1180px) { .studio-body { grid-template-columns: minmax(0, 1fr) var(--gutter) min(var(--side-w, 330px), 420px); } }
-@media (max-width: 1020px) { .topbar .seg button span { display: none; } .topbar .seg button { padding: 0 9px; } }
+@media (max-width: 1020px) { .topbar .seg .seg-label { display: none; } .topbar .seg button { padding: 0 9px; } }
 /* the format moves to the bar's menu */
 @media (max-width: 900px) { .topbar .format-pill { display: none; } }
 @media (max-width: 760px) {

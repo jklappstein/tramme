@@ -50,7 +50,7 @@ function Atelier() {
       </div>
       <nav class="mobile-tabs">
         {TABS.map(([id, label, icon]) => (
-          <button key={id} class={S.mobileTab.value === id ? 'on' : ''} onClick={() => { S.mobileTab.value = id; }}><Icon name={icon} />{label}</button>
+          <button key={id} class={S.mobileTab.value === id ? 'on' : ''} onClick={() => { S.mobileTab.value = id; }}><Icon name={icon} /><span>{label}</span></button>
         ))}
       </nav>
       <Overlays />

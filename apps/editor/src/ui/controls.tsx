@@ -382,7 +382,8 @@ export function Seg({ value, options, onChange, size, role, ariaLabel }: { value
             role={role === 'tablist' ? 'tab' : 'radio'} aria-selected={role === 'tablist' ? on : undefined} aria-checked={role === 'tablist' ? undefined : on}
             title={typeof opt.label === 'string' ? opt.label : undefined}
             onClick={() => onChange(opt.value)}>
-            {opt.icon && <Icon name={opt.icon} />}{opt.label}{opt.count !== undefined && opt.count > 0 && <span class="count">{opt.count}</span>}
+            {/* the label in its own element: a narrow bar keeps the icons alone (screens/*.css) */}
+            {opt.icon && <Icon name={opt.icon} />}{opt.label ? <span class="seg-label">{opt.label}</span> : null}{opt.count !== undefined && opt.count > 0 && <span class="count">{opt.count}</span>}
           </button>
         );
       })}

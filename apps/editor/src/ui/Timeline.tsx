@@ -46,11 +46,11 @@ export function Transport() {
   return (
     <div class="transport" data-tour="transport" onContextMenu={noBrowserMenu}>
       <div class="controls">
-        <button class="icon-btn" title={t('timeline.startHome')} onClick={() => setTime(0)}><Icon name="start" /></button>
+        <button class="icon-btn" data-step="start" title={t('timeline.startHome')} onClick={() => setTime(0)}><Icon name="start" /></button>
         <button class="icon-btn" title={t('timeline.previousFrame')} onClick={() => frameStep(-1)}><Icon name="prev" /></button>
         <button class="icon-btn play" title={t('timeline.playSpace')} onClick={() => { S.playing.value = !playing; }}><Icon name={playing ? 'pause' : 'play'} /></button>
         <button class="icon-btn" title={t('timeline.nextFrame')} onClick={() => frameStep(1)}><Icon name="next" /></button>
-        <button class="icon-btn" title={t('timeline.endEnd')} onClick={() => setTime(c.duration)}><Icon name="end" /></button>
+        <button class="icon-btn" data-step="end" title={t('timeline.endEnd')} onClick={() => setTime(c.duration)}><Icon name="end" /></button>
         <button class={`icon-btn${S.loop.value ? ' on' : ''}`} title={t('timeline.loop')} onClick={() => { S.loop.value = !S.loop.value; }}><Icon name="loop" /></button>
       </div>
       <div class="timecode">
@@ -377,7 +377,7 @@ export function Timeline() {
 
   return (
     <div class="timeline" data-tour="timeline" style={{ '--names': `${namesW}px` }} onWheel={onWheel} onContextMenu={onMenu}>
-      <div class="tl-corner"><Icon name="layers" size={13} />{t('timeline.nLayers', { n: Object.keys(c.layers).length })}<span class="grow" /><FoldButtons /></div>
+      <div class="tl-corner"><Icon name="layers" size={13} /><span class="tl-count">{t('timeline.nLayers', { n: Object.keys(c.layers).length })}</span><span class="grow" /><FoldButtons /></div>
       <div class="tl-ruler" onPointerDown={scrubFrom}>
         <div style={{ position: 'absolute', inset: 0, transform: `translateX(${-scroll}px)` }}>
           {ticks.map((tk) => (

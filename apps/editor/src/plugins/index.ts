@@ -6,9 +6,9 @@ import { browserHost, type PluginHost } from './host.ts';
 
 let current: { docUrl: string; host: PluginHost } | null = null;
 
-/** the sandbox of the open project (recreated when another project opens on the same page) */
+/** the sandbox of the open project (recreated when another project opens on the same page, or when its worker failed) */
 export function pluginHost(docUrl: string): PluginHost {
-  if (current?.docUrl !== docUrl) {
+  if (current?.docUrl !== docUrl || current.host.closed()) {
     current?.host.dispose();
     current = { docUrl, host: browserHost(docUrl) };
   }

@@ -530,6 +530,8 @@
     "replayEverythingAsThe": "Replay everything as the first time"
   },
   "home": {
+    "installApp": "Install the app",
+    "installAppHint": "tramme in its own window, from your home screen or your computer's apps",
     "landscape": "Landscape",
     "vertical": "Vertical",
     "portrait": "Portrait",

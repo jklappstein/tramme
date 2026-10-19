@@ -26,32 +26,39 @@ export function filterModule(mod: PluginModule): PluginModule {
   };
 }
 
-/** the plugins whose isolated entries a registry already carries */
-const attached = new WeakMap<Registry, Set<string>>();
+/** the plugins (id and url) a registry already carries from a sandbox, or was refused */
+const attached = new WeakMap<Registry, { host: PluginHost; done: Set<string> }>();
 
 /**
  * Give the registry the plugin's tools and checks as sandbox-backed entries
- * (idempotent: a registry that already carries a plugin is left alone). The
- * urls come from the renderer's asset store, so an edited plugin file (its
- * url re-versioned) is loaded again in the sandbox.
+ * (idempotent: a plugin already attached at its url, or refused at it, is left
+ * alone; another sandbox attaches them all again). The urls come from the
+ * renderer's asset store, so an edited plugin file (its url re-versioned) is
+ * loaded again. One plugin that cannot load keeps none of the others out;
+ * the refusals are thrown together once all the others are attached.
  */
 export async function attachIsolated(registry: Registry, host: PluginHost, doc: TrammeDoc, urlOf: (id: string) => string | null): Promise<void> {
   const list = (doc.plugins ?? []).map((id) => ({ id, url: urlOf(id) })).filter((p): p is { id: string; url: string } => !!p.url);
   if (!list.length) return;
-  let done = attached.get(registry);
-  if (!done) attached.set(registry, done = new Set());
-  const missing = list.filter((p) => !done.has(p.id));
+  let seen = attached.get(registry);
+  if (seen?.host !== host) attached.set(registry, seen = { host, done: new Set() });
+  const { done } = seen;
+  const missing = list.filter((p) => !done.has(`${p.id}\n${p.url}`));
   if (!missing.length) return;
-  const decls = await host.ensure(missing);
-  for (const { id } of missing) {
-    done.add(id);
-    const d = decls.get(id);
-    if (!d) throw new Error(`plugin ${id} did not load in the sandbox`);
-    noteSandboxDeclaration(d);
-    if (!d.tools.length && !d.checks.length) continue;
-    registry.use({
-      tools: d.tools.map((t) => ({ ...t, run: (input, ctx) => host.runTool(t.name, input, ctx) })),
-      checks: d.checks.map((c) => ({ ...c, run: (ctx) => host.runCheck(c.name, ctx) })),
-    }, id);
-  }
+  const refused: string[] = [];
+  await Promise.all(missing.map(async (p) => {
+    try {
+      const d = (await host.ensure([p])).get(p.id)!;
+      noteSandboxDeclaration(d);
+      if (d.tools.length || d.checks.length) {
+        registry.use({
+          tools: d.tools.map((t) => ({ ...t, run: (input, ctx) => host.runTool(t.name, input, ctx) })),
+          checks: d.checks.map((c) => ({ ...c, run: (ctx) => host.runCheck(c.name, ctx) })),
+        }, p.id);
+      }
+    } catch (e) { refused.push((e as Error).message); }
+    // said once per url: the same file is not tried again at each edit of the document
+    done.add(`${p.id}\n${p.url}`);
+  }));
+  if (refused.length) throw new Error(refused.join('; '));
 }

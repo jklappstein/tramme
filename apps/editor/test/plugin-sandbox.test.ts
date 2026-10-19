@@ -181,6 +181,47 @@ describe('the plugin sandbox', () => {
     expect(second.get('stars')?.tools[0].name).toBe('sky.stars2');
   });
 
+  it('waits for a load under way when asked again meanwhile (a turn resumed as the project opens)', async () => {
+    let imports = 0;
+    const { host } = pair(new Map([['blob:stars', plugin()]]), () => { imports++; });
+    const { doc: d } = doc();
+    d.plugins = ['stars'];
+    d.assets.stars = { type: 'module', src: 'plugins/stars.js' };
+    const reg = new Registry();
+    // the preview's start and a reload, both before the sandbox answered
+    await Promise.all([attachIsolated(reg, host, d, () => 'blob:stars'), attachIsolated(new Registry(), host, d, () => 'blob:stars')]);
+    expect(reg.tool('sky.stars').from).toBe('stars');
+    expect(imports).toBe(1);
+  });
+
+  it('says why a plugin did not load, tries it again on the next call, and keeps the others', async () => {
+    const fixtures = new Map<string, PluginModule>([['blob:stars', plugin()]]);
+    const { host } = pair(fixtures);
+    await expect(host.ensure([{ id: 'late', url: 'blob:late' }])).rejects.toThrow('plugin late: no such module: blob:late');
+    fixtures.set('blob:late', { tools: [{ name: 'late.tool', description: 'late', run: () => 'ok' }] });
+    expect((await host.ensure([{ id: 'late', url: 'blob:late' }])).get('late')?.tools[0].name).toBe('late.tool');
+    // one broken plugin beside a sound one: the sound one is attached, the broken one named
+    const { doc: d } = doc();
+    d.plugins = ['ghost', 'stars'];
+    d.assets.ghost = { type: 'module', src: 'plugins/ghost.js' };
+    d.assets.stars = { type: 'module', src: 'plugins/stars.js' };
+    const reg = new Registry();
+    await expect(attachIsolated(reg, host, d, (id) => `blob:${id}`)).rejects.toThrow(/plugin ghost: no such module/);
+    expect(reg.hasTool('sky.stars')).toBe(true);
+    // said once: the next edit of the document does not ask the same file again
+    await expect(attachIsolated(reg, host, d, (id) => `blob:${id}`)).resolves.toBeUndefined();
+  });
+
+  it('refuses what waits when the sandbox stops, with the reason', async () => {
+    const side = startWorkerSide({ post: () => {}, importModule: () => new Promise(() => {}) });
+    const { host } = connectHost((m) => side.receive(m), () => DOC_URL);
+    const p = host.ensure([{ id: 'stars', url: 'blob:stars' }]);
+    expect(host.closed()).toBe(false);
+    host.dispose('Uncaught SyntaxError');
+    await expect(p).rejects.toThrow('the plugin sandbox stopped: Uncaught SyntaxError');
+    expect(host.closed()).toBe(true);
+  });
+
   it('narrows the realm it runs in: own origin only, no sockets', async () => {
     const calls: string[] = [];
     const realm: { fetch?: typeof fetch; WebSocket?: unknown; location?: { href: string } } = {

@@ -8,6 +8,7 @@
 //   node apps/editor/build.ts --dev --personal    the same in personal mode: projects in the browser, the vault on 127.0.0.1
 
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -22,9 +23,11 @@ const DIST = process.env.TRAMME_DIST ? path.resolve(process.env.TRAMME_DIST) : p
 const dev = process.argv.includes('--dev');
 const personal = process.argv.includes('--personal');
 
-// the app's icon and its link preview (scripts/og-image.ts), shared with the site (apps/site)
+// the app's icon and its link preview (scripts/og-image.ts), shared with the site (apps/site);
+// its PNGs for an installed app (scripts/app-icons.ts)
 const ICON = fs.readFileSync(path.join(HERE, 'icon.svg'), 'utf8').trim();
 const OG = path.join(HERE, 'og.jpg');
+const ICONS = path.join(HERE, 'icons');
 
 /** a page of the build: its bundle and stylesheet, its title, and what its head adds */
 const page = (js: string, css: string | undefined, title: string, head: string) => `<!doctype html>
@@ -44,7 +47,7 @@ const EDITOR_ABOUT = 'Make motion design in the browser: layers, keyframes, shad
  * add: apps/worker/src/personal.ts)
  */
 const EDITOR_HEAD = `<meta name="theme-color" content="#0b0f12">
-<link rel="manifest" href="/manifest.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="tramme">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="tramme">
 <meta name="description" content="${EDITOR_ABOUT}">
 <meta property="og:type" content="website"><meta property="og:site_name" content="tramme"><meta property="og:title" content="${EDITOR_TITLE}"><meta property="og:description" content="${EDITOR_ABOUT}">
 <meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="tramme: motion design, written as data. The editor, with a composition, its layers and its timeline.">
@@ -138,12 +141,27 @@ const options: esbuild.BuildOptions = {
   legalComments: 'linked',
 };
 
-/** the service worker of the personal mode: one classic script at the root, so it serves every page */
-const workerOptions: esbuild.BuildOptions = {
+/**
+ * the service worker of the personal mode: one classic script at the root, so
+ * it serves every page; it keeps the editor's own files for the app to open
+ * offline (`__SHELL__`, in a cache named after `__BUILD__`; none in dev)
+ */
+const workerOptions = (shell: string[], build: string): esbuild.BuildOptions => ({
   entryPoints: [path.join(HERE, 'src/sw.ts')], outfile: path.join(DIST, 'sw.js'),
   bundle: true, format: 'iife', platform: 'browser', target: 'chrome120',
   minify: !dev && !process.env.TRAMME_NOMINIFY, sourcemap: 'linked', logLevel: 'warning', legalComments: 'none',
-};
+  define: { __SHELL__: JSON.stringify(shell), __BUILD__: JSON.stringify(build) },
+});
+
+/** what the installed app needs to open offline: the page, its bundles and fonts, the sandbox, the icons; and a name for this set */
+function shellOf(meta: esbuild.Metafile): { shell: string[]; build: string } {
+  const bundles = Object.keys(meta.outputs).map((p) => `/${path.relative(DIST, path.resolve(ROOT, p)).split(path.sep).join('/')}`).filter((p) => !/\.(map|txt)$/.test(p) && !p.startsWith('/assets/vault-'));
+  const icons = fs.readdirSync(ICONS).map((f) => `/icons/${f}`);
+  const shell = ['/', '/manifest.webmanifest', '/icon.svg', '/plugin-worker.js', ...icons, ...bundles.sort()];
+  // the bundles' names carry their hash; the sandbox's file does not: its bytes are counted in
+  const hash = createHash('sha256').update(shell.join('\n')).update(fs.readFileSync(path.join(DIST, 'plugin-worker.js'))).digest('hex').slice(0, 12);
+  return { shell, build: hash };
+}
 
 /** the plugin sandbox: a module worker at a fixed address (src/plugins/worker.ts), its own bundle */
 const sandboxOptions: esbuild.BuildOptions = {
@@ -157,13 +175,21 @@ fs.mkdirSync(DIST, { recursive: true });
 for (const f of fs.readdirSync(DIST)) fs.rmSync(path.join(DIST, f), { recursive: true, force: true });
 fs.mkdirSync(path.join(DIST, 'assets'), { recursive: true });
 fs.writeFileSync(path.join(DIST, '_headers'), HEADERS);
-// installable on a phone's home screen: opens full screen, in the editor's colours
+// installable as an app (a phone's home screen, a computer's): opens full screen, in the editor's colours,
+// with the icons each system asks for (scripts/app-icons.ts)
 fs.writeFileSync(path.join(DIST, 'icon.svg'), ICON);
+fs.cpSync(ICONS, path.join(DIST, 'icons'), { recursive: true });
 fs.copyFileSync(OG, path.join(DIST, 'og.jpg'));
 fs.writeFileSync(path.join(DIST, 'robots.txt'), ROBOTS);
 fs.writeFileSync(path.join(DIST, 'manifest.webmanifest'), JSON.stringify({
-  name: 'tramme', short_name: 'tramme', start_url: '/', scope: '/', display: 'standalone', background_color: '#0b0f12', theme_color: '#0b0f12',
-  icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+  id: '/', name: 'tramme', short_name: 'tramme', description: EDITOR_ABOUT, categories: ['design', 'productivity', 'video'],
+  start_url: '/', scope: '/', display: 'standalone', background_color: '#0b0f12', theme_color: '#0b0f12',
+  icons: [
+    { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+  ],
 }, null, 2));
 const examples = writeExamples();
 // the sound library shipped with the editor (CC0 recordings and their catalog, scripts/sound-library.ts)
@@ -198,8 +224,11 @@ function personalDevConfig(): string {
 
 if (!dev) {
   const t0 = performance.now();
-  const [r] = await Promise.all([esbuild.build(options), esbuild.build(workerOptions), esbuild.build(sandboxOptions)]);
+  const [r] = await Promise.all([esbuild.build(options), esbuild.build(sandboxOptions)]);
   writePage(r.metafile!);
+  // the service worker last: it names the files just written
+  const { shell, build } = shellOf(r.metafile!);
+  await esbuild.build(workerOptions(shell, build));
   const size = Object.values(r.metafile!.outputs).reduce((n, o) => n + o.bytes, 0);
   console.log(`editor built in ${path.relative(process.cwd(), DIST)} in ${((performance.now() - t0) / 1000).toFixed(1)} s (${(size / 1e6).toFixed(1)} MB with source maps, ${examples} example(s))`);
 } else {
@@ -207,7 +236,8 @@ if (!dev) {
     ...options,
     plugins: [{ name: 'page', setup: (b) => b.onEnd((r) => { if (r.metafile && !r.errors.length) { writePage(r.metafile); console.log(`[build] ${new Date().toLocaleTimeString('en-GB')} editor up to date`); } }) }],
   });
-  const sw = await esbuild.context(workerOptions);
+  // in dev the service worker keeps nothing: the files change at every save
+  const sw = await esbuild.context(workerOptions([], 'dev'));
   const sandbox = await esbuild.context(sandboxOptions);
   await Promise.all([ctx.rebuild(), sw.rebuild(), sandbox.rebuild()]);
   await Promise.all([ctx.watch(), sw.watch(), sandbox.watch()]);

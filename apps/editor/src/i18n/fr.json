@@ -530,6 +530,8 @@
     "replayEverythingAsThe": "Tout revoir comme la première fois"
   },
   "home": {
+    "installApp": "Installer l'app",
+    "installAppHint": "tramme dans sa propre fenêtre, depuis l'écran d'accueil ou les applications de l'ordinateur",
     "landscape": "Paysage",
     "vertical": "Vertical",
     "portrait": "Portrait",

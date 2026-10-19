@@ -257,8 +257,8 @@ function formatItems(o: FormatChoice): MenuItem[] {
   return items;
 }
 
-/** format, frame rate, compositions, view, help and settings, for the narrow bar */
-function moreMenu(e: MouseEvent, o: FormatChoice) {
+/** format, frame rate, compositions, view, versions, help and settings, for the narrow bar; `versions` opens their list under the button */
+function moreMenu(e: MouseEvent, o: FormatChoice, versions: (anchor: HTMLElement) => void) {
   const btn = e.currentTarget as HTMLElement, r = btn.getBoundingClientRect();
   openMenu({ clientX: r.right, clientY: r.bottom + 4 }, [
     ...formatItems(o),
@@ -266,6 +266,7 @@ function moreMenu(e: MouseEvent, o: FormatChoice) {
     { section: t('views.view') },
     ...VIEWS.map((id): MenuItem => ({ label: t(VIEW_LABEL[id]), icon: prefs.value.view === id ? 'check' : undefined, onClick: () => setView(id) })),
     'sep',
+    { label: t('topbar.versions'), icon: 'clock', onClick: () => versions(btn) },
     { label: t('common.helpAndGuidedTours'), icon: 'help', onClick: () => helpMenu({ currentTarget: btn } as unknown as MouseEvent, 'editor') },
     { label: t('common.settings'), icon: 'gear', onClick: () => { settingsOpen.value = true; } },
   ]);
@@ -327,7 +328,7 @@ export function TopBar() {
         setExp(exp ? null : (e.currentTarget as HTMLElement));
       }}><Icon name="download" />{doneWaiting && <i class="export-dot" />}<span class="label">{t('common.export')}</span></button>
       {/* narrow screens: what no longer fits in the bar moves here */}
-      <button class="icon-btn more-btn" title={t('topbar.moreOptions')} aria-label={t('topbar.moreOptions')} onClick={(e) => moreMenu(e as unknown as MouseEvent, choice)}><Icon name="more" /></button>
+      <button class="icon-btn more-btn" title={t('topbar.moreOptions')} aria-label={t('topbar.moreOptions')} onClick={(e) => moreMenu(e as unknown as MouseEvent, choice, setVer)}><Icon name="more" /></button>
       <WindowControls />
       {exp && <ExportPop anchor={exp} onClose={() => setExp(null)} />}
     </header>

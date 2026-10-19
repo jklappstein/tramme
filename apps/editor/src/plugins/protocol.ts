@@ -167,8 +167,9 @@ export type ToWorker =
 
 /** the sandbox speaks */
 export type FromWorker =
-  | { kind: 'loaded'; plugins: PluginDecl[] }
-  | { kind: 'loadFailed'; id: string; message: string }
+  /** urls[i]: the address plugins[i] was loaded from (a plugin may be asked again at another one meanwhile) */
+  | { kind: 'loaded'; plugins: PluginDecl[]; urls: string[] }
+  | { kind: 'loadFailed'; id: string; url: string; message: string }
   | { kind: 'result'; call: number; ok?: unknown; err?: string }
   | { kind: 'drawn'; call: number; frame: number; results: DrawResult[] }
   | { kind: 'rendered'; call: number; bitmap?: unknown; err?: string }

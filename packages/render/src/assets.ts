@@ -7,6 +7,8 @@ import { VideoFrames } from './video.ts';
 
 /** the longest side, in pixels, of an SVG drawn without a size of its own */
 const SVG_RASTER = 2048;
+/** how long the page's own fonts (its CSS) are waited for once the document's are loaded */
+const FONTS_WAIT_MS = 3000;
 
 /** the proportions of an SVG from its viewBox (1:1 when it has none) */
 export function viewBoxSize(svg: string): [number, number] {
@@ -39,6 +41,8 @@ export class AssetStore {
   private base: string;
   /** bumped when a module reloads, so a changed plugin file is imported again */
   private version = 0;
+  /** a font of the page stayed loading past FONTS_WAIT_MS: not waited for again */
+  private pageFontsStuck = false;
   /** the sandbox owns the project's plugin modules: sync skips them, their code never loads here */
   sandboxModules = false;
 
@@ -86,7 +90,12 @@ export class AssetStore {
         throw new Error(`asset "${id}" (${a.src}): ${(e as Error).message}`);
       }
     }));
-    await document.fonts.ready;
+    // the document's fonts are loaded above, one by one; the page's own (its
+    // CSS) are waited for a moment only: Chrome may leave one of them loading
+    // for good, and the preview would never open (nor wait again at each edit)
+    if (this.pageFontsStuck) return;
+    const settled = await Promise.race([document.fonts.ready.then(() => true), new Promise<false>((r) => setTimeout(() => r(false), FONTS_WAIT_MS))]);
+    if (!settled) this.pageFontsStuck = true;
   }
 
   private async load(id: string, a: Asset): Promise<unknown> {

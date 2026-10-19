@@ -5,6 +5,8 @@
 // started first.
 
 import { render } from 'preact';
+// first: the browser's offer to install the app comes early
+import './install.ts';
 import '@fontsource-variable/geist';
 import '@fontsource-variable/geist-mono';
 import { DOCUMENT } from '@tramme/project';

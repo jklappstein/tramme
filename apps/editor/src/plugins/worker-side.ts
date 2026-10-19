@@ -124,14 +124,15 @@ export function startWorkerSide({ post, importModule, sandbox: makeSandbox }: Wo
     receive(m) {
       if (m.kind === 'load') {
         void (async () => {
-          const loaded: PluginDecl[] = [];
+          const loaded: PluginDecl[] = [], urls: string[] = [];
           for (const { id, url } of m.plugins) {
             try {
               modules.set(id, await importModule(url));
               loaded.push(declare(id, modules.get(id)!));
-            } catch (e) { post({ kind: 'loadFailed', id, message: (e as Error).message }); }
+              urls.push(url);
+            } catch (e) { post({ kind: 'loadFailed', id, url, message: (e as Error).message }); }
           }
-          if (loaded.length) post({ kind: 'loaded', plugins: loaded });
+          if (loaded.length) post({ kind: 'loaded', plugins: loaded, urls });
         })();
         return;
       }

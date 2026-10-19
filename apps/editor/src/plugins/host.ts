@@ -11,7 +11,11 @@ import type { Ask, DrawPayload, DrawResult, FramePayload, FromWorker, PluginDecl
 const schemaOf = (n: NodeType) => ({ type: n.type, title: n.title, category: n.category, description: n.description, ai: n.ai, props: n.props, ...(n.container ? { container: true } : {}) });
 
 export interface PluginHost {
-  /** the declarations of the loaded plugins (a known url is not loaded again) */
+  /**
+   * the declarations of the loaded plugins, once these ones are (a known url
+   * is not loaded again; a load under way is waited for); rejects with the
+   * sandbox's reason when one cannot load, which the next call tries again
+   */
   ensure(plugins: { id: string; url: string }[]): Promise<Map<string, PluginDecl>>;
   /** run a plugin's tool against the page's context; rejects on error or abort */
   runTool(name: string, input: unknown, ctx: ToolContext): Promise<ToolOutput>;
@@ -25,7 +29,10 @@ export interface PluginHost {
   exportOf(type: string, props: unknown): Promise<{ svg?: string; lottie?: unknown; err?: string }>;
   /** a whole composition evaluated and drawn in the sandbox; one picture comes back */
   renderFrame(payload: FramePayload): Promise<{ bitmap?: unknown; err?: string }>;
-  dispose(): void;
+  /** stop: every call waiting is refused, with `reason` when there is one */
+  dispose(reason?: string): void;
+  /** disposed (its worker stopped): the next project's or call's sandbox is a new one */
+  closed(): boolean;
 }
 
 /**
@@ -34,11 +41,14 @@ export interface PluginHost {
  * the sandbox resolves asset and file urls against.
  */
 export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): { host: PluginHost; receive: (m: FromWorker) => void } {
-  let call = 0;
+  let call = 0, closed = false;
   const decls = new Map<string, PluginDecl>();
-  const urls = new Map<string, string>();
   const waits = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
-  const loads = new Map<number, { resolve: (d: Map<string, PluginDecl>) => void; reject: (e: Error) => void; wanted: Set<string> }>();
+  /** each plugin's latest load: its url, settled by the sandbox's answer (a failed one is forgotten, to be tried again) */
+  const loads = new Map<string, { url: string; done: Promise<PluginDecl> }>();
+  /** the answers awaited, by plugin and url (an older url's answer may still come) */
+  const answers = new Map<string, { resolve: (d: PluginDecl) => void; reject: (e: Error) => void }>();
+  const answerKey = (id: string, url: string) => `${id}\n${url}`;
   /** the page context of a running call, asked for files, stills, data */
   const bridges = new Map<number, ToolContext | CheckContext>();
   /** a node type's schema, computed once (checks ship many samples of the same types) */
@@ -60,17 +70,19 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
 
   const receive = (m: FromWorker) => {
     if (m.kind === 'loaded') {
-      for (const d of m.plugins) decls.set(d.id, d);
-      for (const [c, w] of [...loads]) {
-        if (![...w.wanted].every((id) => decls.has(id))) continue;
-        loads.delete(c);
-        w.resolve(decls);
-      }
+      m.plugins.forEach((d, i) => {
+        const url = m.urls[i];
+        // an older url's answer: its waiters have it, the plugin keeps the latest
+        if (loads.get(d.id)?.url === url) decls.set(d.id, d);
+        answers.get(answerKey(d.id, url))?.resolve(d);
+        answers.delete(answerKey(d.id, url));
+      });
       return;
     }
     if (m.kind === 'loadFailed') {
-      const first = [...loads.entries()][0];
-      if (first) { loads.delete(first[0]); first[1].reject(new Error(`plugin ${m.id}: ${m.message}`)); }
+      if (loads.get(m.id)?.url === m.url) loads.delete(m.id);
+      answers.get(answerKey(m.id, m.url))?.reject(new Error(`plugin ${m.id}: ${m.message}`));
+      answers.delete(answerKey(m.id, m.url));
       return;
     }
     if (m.kind === 'result') {
@@ -133,15 +145,22 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
   };
 
   const host: PluginHost = {
-    ensure(plugins) {
-      const fresh = plugins.filter((p) => urls.get(p.id) !== p.url);
-      if (!fresh.length) return Promise.resolve(new Map(decls));
-      for (const p of fresh) urls.set(p.id, p.url);
-      return new Promise((resolve, reject) => {
-        const c = ++call;
-        loads.set(c, { resolve, reject, wanted: new Set(fresh.map((p) => p.id)) });
-        send({ kind: 'load', plugins: fresh });
+    async ensure(plugins) {
+      const fresh: { id: string; url: string }[] = [];
+      const pending = plugins.map((p) => {
+        let load = loads.get(p.id);
+        if (load?.url !== p.url) {
+          const done = new Promise<PluginDecl>((resolve, reject) => answers.set(answerKey(p.id, p.url), { resolve, reject }));
+          // refused with the others of a call that stopped at the first refusal: not an unhandled one
+          done.catch(() => {});
+          loads.set(p.id, load = { url: p.url, done });
+          fresh.push(p);
+        }
+        return load.done;
       });
+      if (fresh.length) send({ kind: 'load', plugins: fresh });
+      await Promise.all(pending);
+      return new Map(decls);
     },
     async runTool(name, input, ctx) {
       const out = await run({ kind: 'tool', name, input, call: ++call, ctx: { doc: ctx.doc, compId: ctx.compId, time: ctx.time, selection: ctx.selection, docUrl: docUrl() } }, ctx, ctx.signal);
@@ -167,11 +186,15 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
       const r = await run({ kind: 'render', call: ++call, payload });
       return (r ?? {}) as { bitmap?: unknown; err?: string };
     },
-    dispose() {
-      for (const [, w] of waits) w.reject(new Error('the plugin sandbox is closed'));
+    dispose(reason) {
+      closed = true;
+      const e = new Error(reason ? `the plugin sandbox stopped: ${reason}` : 'the plugin sandbox is closed');
+      for (const w of [...waits.values(), ...answers.values()]) w.reject(e);
       waits.clear();
+      answers.clear();
       loads.clear();
     },
+    closed: () => closed,
   };
 
   return { host, receive };
@@ -181,10 +204,9 @@ export function connectHost(send: (m: ToWorker) => void, docUrl: () => string): 
 export function browserHost(docUrl: string): PluginHost {
   const worker = new Worker('/plugin-worker.js', { type: 'module' });
   const { host, receive } = connectHost((m) => worker.postMessage(m), () => docUrl);
+  const dispose = (reason?: string) => { host.dispose(reason); worker.terminate(); };
   worker.onmessage = (e: MessageEvent) => receive(e.data as FromWorker);
-  worker.onerror = () => host.dispose();
-  return {
-    ...host,
-    dispose() { host.dispose(); worker.terminate(); },
-  };
+  // the worker failed (its script, or an error nothing caught): what waits is told why, the next call gets a new one (plugins/index.ts)
+  worker.onerror = (e: ErrorEvent) => dispose(e.message || 'the worker could not start');
+  return { ...host, dispose };
 }
