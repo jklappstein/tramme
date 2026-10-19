@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Until 1.0.0, the document format and the APIs may still change between minor versions.
 
+## [Unreleased]
+
+## [0.11.0] - 2026-10-19
+
+### Added
+
+- **The editor installs as an app**: PNG icons (192 and 512, a maskable one for Android, Apple's) drawn from `icon.svg` by `scripts/app-icons.ts`, a complete manifest, and an "Install the app" button on the home screen when the browser offers it (Chrome, Edge, Android; on an iPhone, Share → Add to Home Screen).
+- **The installed app opens offline** (personal mode): the service worker keeps the editor's own files of each build — the page, its bundles and fonts, the sandbox, the icons — in a cache named after the build, the previous builds' dropped. The projects are in the browser already.
+- **Each settings section says what it is for**, under its title, as the Preview's did.
+
+### Changed
+
+- **The editor fits a phone**: the top bar keeps the name, the view, undo, redo and export (as an icon), and moves the format, the frame rate, the versions, the help and the settings to its ⋯ menu, which was never shown; the atelier's tabs are one bar across the bottom, the panels stopping above it; the transport drops the first and last frame buttons and its Timeline and Curves tabs keep their icons; the timeline's names take a share of the screen, not the width remembered on a computer.
+- The settings' search shows a whole section when its title matches; its description no longer counts.
+
+### Fixed
+
+- **The preview could stay black, never starting**: the renderer waited for every font of the page, and Chrome sometimes leaves one of the interface's (Geist Mono) loading for good. The page's fonts are now waited for 3 s at most, once; the document's own fonts are still loaded one by one.
+- **"plugin … did not load in the sandbox"** on opening a project: a second load asked while the first was under way (a turn resuming as the project opens) found the plugin already asked and failed. A load under way is now waited for, a refusal gives the sandbox's reason once and is tried again when the file changes, one broken plugin no longer keeps the others out, and a sandbox whose worker failed is made again.
+- **The providers' settings in personal mode** follow the editor's theme and language: the vault's page read its preferences before the editor's were kept (the production build puts them in a chunk shared with the editor). Its background, its titles and its empty state now match the other panes.
+- The labels of the segmented controls (the view switch among them) hide on narrow bars as intended: the label was bare text the rule could not reach.
+- On a phone, the studio's picture fills its stage: a rule of the atelier shortened it and left an empty band.
+- `npm run dev:personal` works again: `wrangler dev` gave every request the address of the deployment's routes, so the Worker could not tell the editor from the vault. The dev server runs on a copy of the config without them.
+
 ## [0.10.0] - 2026-10-18
 
 ### Added
@@ -340,7 +364,9 @@ First public release.
 
 - Cloudflare Worker serving the editor and the API, projects stored in R2, access protected by Cloudflare Access.
 
-[Unreleased]: ../../compare/v0.9.0...HEAD
+[Unreleased]: ../../compare/v0.11.0...HEAD
+[0.11.0]: ../../compare/v0.10.0...v0.11.0
+[0.10.0]: ../../compare/v0.9.0...v0.10.0
 [0.9.0]: ../../compare/v0.8.0...v0.9.0
 [0.8.0]: ../../compare/v0.7.1...v0.8.0
 [0.7.1]: ../../compare/v0.7.0...v0.7.1
