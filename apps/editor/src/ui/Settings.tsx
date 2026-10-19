@@ -84,7 +84,7 @@ function ThemeCards({ value, onPick }: { value: Preferences['theme']; onPick: (i
 function Appearance() {
   const p = prefs.value;
   return (
-    <Section title={t('settings.appearance')}>
+    <Section title={t('settings.appearance')} hint={t('settings.appearanceHint')}>
       <Row label={t('settings.language')} hint={t('settings.automaticTheBrowserS')}>
         <Seg value={p.language} options={[['auto', t('common.automatic')], ...LOCALES]} onChange={(v) => setLanguage(v as Preferences['language'])} />
       </Row>
@@ -233,7 +233,7 @@ function VoicePicker() {
 function Sound() {
   const p = prefs.value;
   return (
-    <Section title={t('settings.sound')}>
+    <Section title={t('settings.sound')} hint={t('settings.soundHint')}>
       <Row label={t('settings.previewVolume')} hint={t('settings.previewVolumeHint')}>
         <Level value={Math.round(p.previewVolume * 100)} min={0} max={100} step={5} unit="%" onChange={(v) => setPrefs({ previewVolume: v / 100 })} />
       </Row>
@@ -278,7 +278,7 @@ function Sound() {
 function Tours() {
   const st = toursState.value;
   return (
-    <Section title={t('common.guidedTours')}>
+    <Section title={t('common.guidedTours')} hint={t('settings.toursHint')}>
       <Row label={t('settings.offerToursOnOpening')} hint={t('settings.theFirstTimeThe')}>
         <Toggle on={st.auto} onChange={setAutoTours} />
       </Row>
@@ -298,7 +298,7 @@ const NOTIFY_HINT: Record<ReturnType<typeof notificationState>, string> = {
 
 function Model() {
   return (
-    <Section title={t('settings.model')}>
+    <Section title={t('settings.model')} hint={t('settings.modelHint')}>
       <Row label={t('settings.model')} hint={t('settings.claudeOpusForThe')}>
         <ModelPicker wide />
       </Row>
@@ -355,7 +355,7 @@ function Behavior() {
     if (on) allowNotifications().then(setPermission);
   };
   return (
-    <Section title={t('settings.behavior')}>
+    <Section title={t('settings.behavior')} hint={t('settings.behaviorHint')}>
       <Row label={t('settings.notifyDone')} hint={t(NOTIFY_HINT[permission])}>
         <Toggle on={a.notify} onChange={notifyOn} />
       </Row>
@@ -381,7 +381,7 @@ function Connection() {
   useEffect(() => { ensureStatus(); }, []);
   const labels = statusLabels(aiStatus.value);
   return (
-    <Section title={t('settings.connection')}>
+    <Section title={t('settings.connection')} hint={t('settings.connectionHint')}>
       <Row label={t('common.accessToClaude')} hint={t('settings.automaticTheLocalCompanion')}>
         <Seg value={a.prefer} options={[['auto', t('common.automatic')], ['companion', t('common.companion')], ['server', serverName()]]} onChange={(v) => setAiSettings({ prefer: v as typeof a.prefer })} />
       </Row>
@@ -413,7 +413,7 @@ function Storage() {
     }
   };
   return (
-    <Section title={t('settings.storage')}>
+    <Section title={t('settings.storage')} hint={t('settings.storageHint')}>
       <Row label={t('settings.projectsFolder')} hint={t('settings.projectsFolderHint')}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
           <span class="faint mono" style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={home}>{home}</span>

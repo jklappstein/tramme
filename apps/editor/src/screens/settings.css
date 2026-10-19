@@ -20,7 +20,7 @@
 .set-results:not(:has(.set-row))::after { content: attr(data-empty); color: var(--text-3); font-size: var(--fs-md); }
 .set-results .set-section:not(:has(.set-row)) { display: none; }
 .set-section { display: flex; flex-direction: column; gap: 12px; }
-.set-section h3 { margin: 0; font: 600 var(--fs-xl)/1.2 var(--ui); letter-spacing: -0.02em; }
+.set-section h3 { margin: 0; font: 600 var(--fs-xl)/1.2 var(--ui); letter-spacing: -0.02em; color: var(--text); }
 .set-section > p { margin: -4px 0 0; font-size: var(--fs-sm); line-height: 1.5; color: var(--text-3); }
 
 /* the rows of one section, grouped in a card */
@@ -31,6 +31,9 @@
 .set-label > span:first-child { font: 500 var(--fs-md)/1.3 var(--ui); color: var(--text); }
 .set-label .faint { font-size: var(--fs-sm); line-height: 1.45; color: var(--text-3); }
 .set-control { display: flex; justify-content: flex-end; }
+/* a line of a card that is not a setting: its empty state, an action under its rows */
+.set-note { margin: 0; padding: 14px 16px; font-size: var(--fs-sm); line-height: 1.45; color: var(--text-3); }
+.set-row + .set-note { box-shadow: 0 -1px 0 var(--line); }
 /* a choice to confirm, under its row */
 .set-confirm { display: flex; flex-direction: column; gap: 8px; margin: 0 16px 14px; padding: 10px 12px; border-radius: var(--r-md); background: var(--field); font-size: var(--fs-sm); line-height: 1.5; }
 .set-confirm-actions { display: flex; justify-content: flex-end; gap: 6px; }
@@ -69,9 +72,10 @@
 .theme-card.on { color: var(--text); font-weight: 600; }
 .theme-card.on .prev { box-shadow: 0 0 0 2px var(--accent); }
 
-/* the key vault's page (personal mode), framed in the providers pane: as tall as its content, on the pane's background */
-.vault-frame { display: block; width: 100%; border: 0; background: transparent; }
-html.vault, html.vault body { height: auto; overflow: visible; background: var(--bg); }
+/* the key vault's page (personal mode), framed in the providers pane: as tall as its content, on the dialog's background (.modal) */
+/* its page keeps a margin for the cards' edges (.vault-page): taken back, its titles line up with the other panes' */
+.vault-frame { display: block; width: calc(100% + 4px); margin: -1px -2px; border: 0; background: transparent; }
+html.vault, html.vault body { height: auto; overflow: visible; background: var(--raised); }
 /* the frame is narrower than the window: the rows follow the editor's layout (compact on a phone), told in the frame's address */
 html.vault:not(.compact) .set-row:not(.stack) { grid-template-columns: minmax(0, 1fr) auto; }
 html.vault:not(.compact) .set-row:not(.stack) .set-control { justify-content: flex-end; overflow-x: visible; }

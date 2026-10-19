@@ -795,6 +795,13 @@
       "system": "Système"
     },
     "settingsForThisComputer": "Réglages de cet ordinateur, gardés dans ce navigateur. Les exports sont toujours rendus en pleine qualité, quoi qu'il soit choisi ici.",
+    "appearanceHint": "L'allure de l'éditeur dans ce navigateur : sa langue, ses couleurs et la vue dans laquelle il s'ouvre.",
+    "soundHint": "Comment l'éditeur joue le son, et comment l'assistant place effets, musiques et voix off, payants compris.",
+    "toursHint": "De courtes visites de l'éditeur, proposées la première fois qu'un écran s'ouvre.",
+    "storageHint": "Les projets de cette appli, gardés en dossiers sur cet ordinateur.",
+    "modelHint": "L'IA avec laquelle l'assistant réfléchit, et l'effort qu'il met dans chaque message.",
+    "behaviorHint": "Ce que l'assistant fait de lui-même : vous prévenir quand il a fini, reprendre après une coupure réseau, appliquer ses changements.",
+    "connectionHint": "Le compagnon tourne sur cet ordinateur : l'assistant y passe par votre connexion Claude Code, plutôt que par une clé.",
     "limited": "Limité",
     "playAtTheComposition": "Lecture aux images de la composition",
     "likeTheExport24": "Comme l'export : 24 images par seconde pour une composition à 24 i/s, plutôt qu'une à chaque rafraîchissement de l'écran. Plus léger, sans perte.",

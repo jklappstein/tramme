@@ -175,6 +175,27 @@ fs.cpSync(path.join(ROOT, 'fonts'), path.join(DIST, 'fonts'), { recursive: true 
 // pdf.js parses documents (the sources of a project) in a worker of its own, at a fixed address (src/pdf.ts)
 fs.copyFileSync(createRequire(import.meta.url).resolve('pdfjs-dist/build/pdf.worker.min.mjs'), path.join(DIST, 'pdf.worker.mjs'));
 
+/**
+ * personal mode under `wrangler dev`: the Worker's config without the routes of
+ * the deployment, which would give every request their address
+ * (app.tramme.dev), so the Worker could not tell the editor from the vault;
+ * written beside the Worker, its paths made absolute
+ */
+function personalDevConfig(): string {
+  const worker = path.join(ROOT, 'apps/worker');
+  // JSON with comments: the strings kept, the comments dropped
+  const text = fs.readFileSync(path.join(worker, 'wrangler.jsonc'), 'utf8').replace(/"(?:\\.|[^"\\])*"|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (m) => (m[0] === '"' ? m : ''));
+  const config = JSON.parse(text);
+  delete config.$schema;
+  delete config.env.personal.routes;
+  config.main = path.join(worker, config.main);
+  for (const c of [config, config.env.personal]) c.assets.directory = DIST;
+  const file = path.join(worker, '.wrangler', 'personal-dev.json');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(config, null, 2));
+  return file;
+}
+
 if (!dev) {
   const t0 = performance.now();
   const [r] = await Promise.all([esbuild.build(options), esbuild.build(workerOptions), esbuild.build(sandboxOptions)]);
@@ -195,9 +216,9 @@ if (!dev) {
   const state = process.env.TRAMME_STATE ?? '.wrangler/state';
   // personal mode: the editor on localhost, the key vault on 127.0.0.1 (another origin, as cles.<domain> in production)
   const mode = personal
-    ? ['--env', 'personal', '--var', `APP_ORIGIN:http://localhost:${port}`, '--var', `VAULT_ORIGIN:http://127.0.0.1:${port}`]
-    : ['--var', 'DEV_OPEN:1'];
-  const wrangler = spawn('npx', ['wrangler', 'dev', '-c', 'apps/worker/wrangler.jsonc', '--port', port, ...mode, '--persist-to', state], { cwd: ROOT, stdio: 'inherit', shell: process.platform === 'win32' });
+    ? ['-c', personalDevConfig(), '--env', 'personal', '--var', `APP_ORIGIN:http://localhost:${port}`, '--var', `VAULT_ORIGIN:http://127.0.0.1:${port}`]
+    : ['-c', 'apps/worker/wrangler.jsonc', '--var', 'DEV_OPEN:1'];
+  const wrangler = spawn('npx', ['wrangler', 'dev', '--port', port, ...mode, '--persist-to', state], { cwd: ROOT, stdio: 'inherit', shell: process.platform === 'win32' });
   // the assistant's local companion, paired by itself with this editor (TRAMME_NO_COMPANION=1: without it)
   let companion: ReturnType<typeof spawn> | null = null, elsewhere = false;
   if (!process.env.TRAMME_NO_COMPANION) {

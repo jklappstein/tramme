@@ -126,8 +126,8 @@ export function Providers({ keys, actions, intro, relayed, forget }: { keys: Key
     <>
       <Section title={t('settings.connectedProviders')} hint={intro}>
         {keys === null
-          ? <span class="faint">{t('common.searching')}</span>
-          : !anything && <span class="faint">{t('settings.noProviderConnected')}</span>}
+          ? <p class="set-note">{t('common.searching')}</p>
+          : !anything && <p class="set-note">{t('settings.noProviderConnected')}</p>}
         {connected.map((p) => {
           const own = source(p.id) === 'settings';
           return (
@@ -142,7 +142,7 @@ export function Providers({ keys, actions, intro, relayed, forget }: { keys: Key
         {forget && anything && (forgetting
           ? <Confirm danger label={t('personal.forgetKeys')} question={t('personal.forgetKeysConfirm')} action={t('personal.forgetKeys')} onCancel={() => setForgetting(false)}
               onConfirm={() => forget().then(() => setForgetting(false), (e) => actions.notify((e as Error).message, 'error'))} />
-          : <div class="set-actions"><button class="btn ghost sm" onClick={() => setForgetting(true)}><Icon name="trash" />{t('personal.forgetKeys')}</button></div>)}
+          : <div class="set-note set-actions"><button class="btn ghost sm" onClick={() => setForgetting(true)}><Icon name="trash" />{t('personal.forgetKeys')}</button></div>)}
       </Section>
       <Section title={t('settings.addAProvider')}>
         {offered.map((p) => <ProviderRow key={p.id} name={p.name} hint={via(p.id, t(p.hint))} form={keyForm(p)} notify={actions.notify} />)}

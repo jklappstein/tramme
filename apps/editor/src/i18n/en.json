@@ -795,6 +795,13 @@
       "system": "System"
     },
     "settingsForThisComputer": "Settings for this computer, kept in this browser. Exports always render at full quality, whatever is chosen here.",
+    "appearanceHint": "How the editor looks in this browser: its language, its colours and the view it opens in.",
+    "soundHint": "How the editor plays the sound, and how the assistant places sound effects, music and voice-overs, paid ones included.",
+    "toursHint": "Short walks through the editor, offered the first time a screen opens.",
+    "storageHint": "The projects of this app, kept as folders on this computer.",
+    "modelHint": "The AI the assistant thinks with, and how hard it works on each message.",
+    "behaviorHint": "What the assistant does on its own: telling you it is done, starting again after a network failure, applying its changes.",
+    "connectionHint": "The companion runs on this computer: the assistant uses your Claude Code login through it, rather than a key.",
     "limited": "Limited",
     "playAtTheComposition": "Play at the composition's frames",
     "likeTheExport24": "Like the export: 24 frames per second for a 24 fps composition, rather than one at every screen refresh. Lighter, with no loss.",
