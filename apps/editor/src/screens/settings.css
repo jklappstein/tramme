@@ -92,8 +92,8 @@ html.vault:not(.compact) .set-row:not(.stack) .set-control { justify-content: fl
   /* on a phone: full screen, the navigation a row of chips that scrolls above the pane */
   .modal-body.settings { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); height: calc(100dvh - 90px); }
   .set-nav { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px; padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
-  /* the search and the reset on the first line, the sections under them */
-  .set-search { flex: 0 0 calc(100% - 40px); }
+  /* the search across the whole width, the reset and the sections under it */
+  .set-search { flex: 1 0 100%; margin-bottom: 0; }
   .set-nav > .btn { order: 1; flex: none; }
   .set-group { order: 2; flex-direction: row; gap: 4px; flex-wrap: wrap; }
   .set-group-title, .set-nav .grow { display: none; }

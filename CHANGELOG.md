@@ -8,6 +8,15 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-19
+
+### Fixed
+
+- The home screen's format choice (16:9, 9:16, 1:1, 4:5) drew each format's rectangle above its ratio instead of beside it, on a computer as on a phone: since 0.11.0 the label of a segmented control is an element of its own, and the rectangle inside it broke the line.
+- On a phone, a project of several shots pushed the name and the export out of the top bar: the composition picker stayed in it. It leaves the bar under 900 px with the format, and the ⋯ menu now shows from that width, so both stay at hand (between 760 and 900 px the format had no way back).
+- On a phone, the home screen's brief lines up with the films under it, and its format choice spans the box's width in four equal parts; it sat indented, the formats left-aligned under the other buttons.
+- On a phone, the settings' search spans the dialog's width.
+
 ## [0.11.0] - 2026-10-19
 
 ### Added
@@ -364,7 +373,8 @@ First public release.
 
 - Cloudflare Worker serving the editor and the API, projects stored in R2, access protected by Cloudflare Access.
 
-[Unreleased]: ../../compare/v0.11.0...HEAD
+[Unreleased]: ../../compare/v0.11.1...HEAD
+[0.11.1]: ../../compare/v0.11.0...v0.11.1
 [0.11.0]: ../../compare/v0.10.0...v0.11.0
 [0.10.0]: ../../compare/v0.9.0...v0.10.0
 [0.9.0]: ../../compare/v0.8.0...v0.9.0

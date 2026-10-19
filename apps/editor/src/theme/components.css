@@ -88,6 +88,8 @@ input[type=text].plain, input.plain { background: transparent; border: 0; outlin
 :root[data-theme="porcelain"] .seg button.on { background: var(--surface); }
 .seg button.on svg.i { color: var(--accent-text); }
 .seg button svg.i { width: 14px; height: 14px; }
+/* the label (Seg in controls.tsx): its pieces in one line, as the button's own (a format's rectangle and its ratio) */
+.seg .seg-label { display: inline-flex; align-items: center; gap: 6px; }
 .seg.lg button { height: 28px; padding: 0 14px; font-size: var(--fs-md); }
 /* the small rectangle of a format, in a segmented control */
 .seg button i.fmt { display: block; border: 1.5px solid currentColor; border-radius: 2px; flex: none; }

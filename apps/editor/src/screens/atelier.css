@@ -412,7 +412,9 @@ svg.i.flip { transform: rotate(180deg); }
 /* ── narrow screens: tabs in a bar along the bottom, above the safe area ── */
 .mobile-tabs { display: none; }
 @media (max-width: 900px) {
-  .topbar .settings .hide-sm, .topbar .project .save-state span, .topbar .brand > span:not(.brand-mark) { display: none; }
+  /* the composition and the format leave the bar: the ⋯ menu carries them (TopBar.tsx) */
+  .topbar .hide-sm, .topbar .project .save-state span, .topbar .brand > span:not(.brand-mark) { display: none; }
+  .topbar .more-btn { display: grid; place-items: center; }
   .topbar { gap: 8px; }
 }
 /* the top bar on a phone (both views): the name takes what is left; the format, frame rate,
@@ -420,7 +422,6 @@ svg.i.flip { transform: rotate(180deg); }
 @media (max-width: 760px) {
   .topbar { gap: 4px; padding: 0 6px 0 10px; }
   .topbar > .sep, .topbar > .grow, .topbar .settings, .topbar [data-tour="help"], .topbar [data-tour="settings"], .topbar [data-tour="versions"] { display: none; }
-  .topbar .more-btn { display: grid; place-items: center; }
   .topbar .project { flex: 1 1 0; min-width: 0; gap: 2px; }
   .project input.title { flex: 1 1 0; min-width: 0; max-width: none; width: 0 !important; field-sizing: fixed; text-overflow: ellipsis; }
   .topbar .btn.primary { width: 36px; padding: 0; justify-content: center; }

@@ -128,7 +128,10 @@ a.brand:hover { background: var(--hover); }
   .cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
   .examples { grid-template-columns: 1fr; }
   .presets { grid-template-columns: repeat(2, 1fr); }
-  .hero { padding-top: 18px; }
-  .brief-bar { flex-wrap: wrap; }
-  .brief-bar .seg { order: 3; }
+  /* the brief box lines up with the films under it: the page's margin only */
+  .hero { padding: 18px 0 8px; }
+  .brief-bar { flex-wrap: wrap; row-gap: 8px; }
+  /* the formats on a line of their own, the bar's whole width, four equal choices */
+  .brief-bar .seg { order: 3; flex: 1 0 100%; }
+  .brief-bar .seg button { flex: 1 1 0; min-width: 0; padding: 0 6px; }
 }
