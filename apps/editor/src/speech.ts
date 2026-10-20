@@ -17,6 +17,7 @@ import { safeName, takenPaths, upload } from './files.ts';
 import { askUser } from './confirm.ts';
 import { pipelineOf } from './perception.ts';
 import { chosenModel } from './settings.ts';
+import { madeBy } from './models.ts';
 import { commit, S, toast } from './state.ts';
 import { m, t } from './i18n/index.ts';
 
@@ -61,12 +62,13 @@ type Backend = 'server' | 'companion' | 'browser';
 type Asr = (audio: Float32Array, opts: Record<string, unknown>) => Promise<{ text: string; chunks?: { text: string; timestamp: [number, number | null] }[] }>;
 
 /** one chunk to words, by the server, or by the companion when the server cannot, or else in this browser */
-async function wordsOf(samples: Float32Array, language: string | undefined, prefer: Backend): Promise<{ words: TranscriptWord[]; language?: string; backend: Backend }> {
+async function wordsOf(samples: Float32Array, language: string | undefined, prefer: Backend): Promise<{ words: TranscriptWord[]; language?: string; backend: Backend; model?: string }> {
   const audio = prefer === 'browser' ? '' : base64(wav(samples, RATE));
   const viaBrowser = async () => {
-    const run = await pipelineOf<Asr>(chosenModel('transcription'), 'the transcription model');
+    const model = chosenModel('transcription');
+    const run = await pipelineOf<Asr>(model, 'the transcription model');
     const out = await run(samples, { return_timestamps: 'word', chunk_length_s: 30, ...(language ? { language } : {}), task: 'transcribe' });
-    return { words: asrWords(out), language, backend: 'browser' as const };
+    return { words: asrWords(out), language, backend: 'browser' as const, model: madeBy(model) };
   };
   const viaServer = async () => {
     const r = await reach('/api/transcribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ audio, language }) });
@@ -104,7 +106,7 @@ export async function transcribeUrl(url: string, opts: { language?: string; onPr
     const sink = new AudioBufferSink(track);
     const starts: number[] = [];
     for (let s = 0; s < duration; s += STEP) { starts.push(s); if (s + CHUNK >= duration) break; }
-    const chunks: { start: number; end: number; words: TranscriptWord[] }[] = [];
+    const chunks: { start: number; end: number; words: TranscriptWord[] }[] = [], models = new Set<string>();
     let language = opts.language, backend: Backend = 'server';
     for (const [i, start] of starts.entries()) {
       const end = Math.min(duration, start + CHUNK);
@@ -112,10 +114,11 @@ export async function transcribeUrl(url: string, opts: { language?: string; onPr
       const r = await wordsOf(await chunkAudio(sink, start, end), language, backend);
       backend = r.backend;
       language ??= r.language;
+      if (r.model) models.add(r.model);
       chunks.push({ start, end, words: r.words.map((w) => ({ w: w.w, s: +(start + w.s).toFixed(3), e: +(start + w.e).toFixed(3) })) });
     }
     opts.onProgress?.(starts.length, starts.length, m('speech.done'));
-    return { version: 1, language, duration: +duration.toFixed(3), words: mergeChunks(chunks) };
+    return { version: 1, language, duration: +duration.toFixed(3), words: mergeChunks(chunks), ...(models.size ? { madeBy: [...models] } : {}) };
   } finally {
     input.dispose();
   }
@@ -171,7 +174,7 @@ async function transcribe(assetId: string, language?: string): Promise<string> {
     const name = safeName(`${(a.src.split('/').pop() ?? assetId).replace(/\.[^.]+$/, '')}.json`);
     const path = await upload(await takenPaths(), `assets/transcripts/${name}`, new Blob([JSON.stringify(tr)], { type: 'application/json' }));
     const id = transcriptIdOf(assetId), had = !!S.doc.peek().assets[id];
-    commit(t('common.transcriptOfName', { name: a.name || assetId }), [{ op: had ? 'replace' : 'add', path: pointer('assets', id), value: { type: 'json', src: path, name: `${t('speech.transcript')} · ${a.name || assetId}` } }]);
+    commit(t('common.transcriptOfName', { name: a.name || assetId }), [{ op: had ? 'replace' : 'add', path: pointer('assets', id), value: { type: 'json', src: path, name: `${t('speech.transcript')} · ${a.name || assetId}`, ...(tr.madeBy ? { madeBy: tr.madeBy } : {}) } }]);
     toast(t('speech.transcriptReadyNWords', { n: tr.words.length, language: tr.language ?? t('speech.languageDetected') }));
     return id;
   } finally {

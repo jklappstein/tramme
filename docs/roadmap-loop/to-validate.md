@@ -78,3 +78,8 @@ its network policy) and has no GPU: no model was downloaded or run there.
   with `TRAMME_WHISPER_MODEL` set, that one instead. Then, in the desktop app
   or `npm run dev:personal` without a companion and without a server route,
   transcribe again: the progress says "in this browser" and the words come.
+- **Step 1 — what made an asset.** After a cut-out, a depth, a track of a
+  named object and a transcription, open `document.tramme.json`: each new
+  asset has `madeBy` (the cut-out of a person: the matte and the detector).
+  Change the model in the settings: the asset and its render stay as they
+  were until the tool runs again.

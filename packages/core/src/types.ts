@@ -68,6 +68,8 @@ export interface Asset {
   box?: [number, number, number, number];
   /** hash of the file's content, kept at import: a file already in the project is answered with this asset rather than imported again */
   hash?: string;
+  /** the models that made this file (a cut-out's matte, a depth map, a transcript), with their version: another model later never changes it */
+  madeBy?: string[];
 }
 
 export interface Transform {

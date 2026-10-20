@@ -28,6 +28,7 @@ A project is a JSON file `*.tramme.json`. It is the source of truth: the editor,
 
 - Editable collections (`tokens`, `assets`, `compositions`, `layers`) are maps keyed by id (letters, digits, `_`, `-`). A patch path therefore stays valid when other items are added or removed.
 - An asset may keep `hash`, the hash of its file's content written by the editor at import: importing the same file again (from the assets panel, as an attachment of the assistant, among the sources of a new project) gives back the asset that has it, and nothing is written twice.
+- An asset a model made (a cut-out's mask, a depth map, a transcript, a track, an analysis) keeps `madeBy`, the models and versions that made it (`["u2net-human-seg@e6d4c49…", "yolos-tiny@main"]`). Choosing another model in the settings never changes it; its tool, run again, writes it anew.
 - Order lives in arrays: `order` (root stack) and `children` (groups), **from bottom to top**: the last id is drawn on top.
 - Each layer appears exactly once in the tree.
 - Time is in seconds (composition time), space in composition pixels, rotations in degrees (clockwise), scale as a factor (1 = 100%), opacity from 0 to 1.

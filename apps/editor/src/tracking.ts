@@ -10,6 +10,8 @@ import { applyMat, Evaluator, following, grayFrame, invertMat, isTrack, layerMat
 import { t } from './i18n/index.ts';
 import { freshId, parentOf, siblingsOf, slug } from './model.ts';
 import { canvas, CUT, distance, histogram, objectsIn, readJson } from './perception.ts';
+import { madeBy } from './models.ts';
+import { chosenModel } from './settings.ts';
 import { compOf, r } from './recipes.ts';
 import { sheetOf } from './review.ts';
 
@@ -166,7 +168,8 @@ const track: ToolType<TrackArgs> = {
       const name = slug(a.name || what || 'object').slice(0, 24) || 'object', id = trackId(asset, name);
       const data: Track = { version: 1, kind: 'track', source: asset, name, width: W, height: H, frames: times.map((at, i) => ({ t: at, box: boxes[i] })) };
       const path = await ctx.writeFile(`assets/tracks/${asset}-${name}.json`, JSON.stringify(data));
-      const had = ctx.doc.assets[id], entry = { type: 'json' as const, src: path, name: `Track · ${name}` };
+      // a track started from an object named was found by the detector first
+      const had = ctx.doc.assets[id], entry = { type: 'json' as const, src: path, name: `Track · ${name}`, ...(!rect && a.region === undefined ? { madeBy: [madeBy(chosenModel('detection'))] } : {}) };
       // what was seen, in composition time (at the layer's speed, once per turn of a loop)
       const comp = (at: number) => mediaMoments(clock, at, vin, vout);
       const seen = times.filter((_, i) => boxes[i]).flatMap(comp).sort((x, y) => x - y).map(r), share = Math.round((100 * times.filter((_, i) => boxes[i]).length) / times.length);

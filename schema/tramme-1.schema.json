@@ -114,6 +114,12 @@
           },
           "hash": {
             "type": "string"
+          },
+          "madeBy": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

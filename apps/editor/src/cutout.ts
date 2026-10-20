@@ -13,7 +13,7 @@ import { AVC_FROM_STREAM } from './avc.ts';
 import { t } from './i18n/index.ts';
 import { freshId, linkedTransform, siblingsOf } from './model.ts';
 import { canvas, CUT, distance, histogram, onDemand, peopleIn } from './perception.ts';
-import type { ModelEntry, ModelTask } from './models.ts';
+import { madeBy, type ModelEntry, type ModelTask } from './models.ts';
 import { chosenModel } from './settings.ts';
 
 /** long side of the pictures the mattes are made at */
@@ -330,7 +330,7 @@ const cutout: ToolType<{ layer?: string; subject?: Subject; behind?: string; fro
     const { blob, frames, empty } = await matteVideo(ctx.assetUrl(asset), start + a - lin, start + b - lin, subject, every, ctx.signal, progress);
     const src = await ctx.writeFile(`assets/cutout/${source}.mp4`, blob);
     const had = !!ctx.doc.assets[mask];
-    const asAsset: Op = { op: had ? 'replace' : 'add', path: pointer('assets', mask), value: { type: 'video', src, name: t('perception.cutoutMask', { name: ctx.doc.assets[asset].name ?? asset }) } };
+    const asAsset: Op = { op: had ? 'replace' : 'add', path: pointer('assets', mask), value: { type: 'video', src, name: t('perception.cutoutMask', { name: ctx.doc.assets[asset].name ?? asset }), madeBy: [madeBy(matteModel(subject)), ...(subject === 'person' ? [madeBy(chosenModel('detection'))] : [])] } };
     const who = subject === 'person' ? 'person' : 'subject';
     return {
       ops: [asAsset, ...ops], reload: had ? [mask] : [], label: t('perception.cutoutLabel', { name: l.name ?? source }),

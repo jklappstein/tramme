@@ -7,7 +7,7 @@ import { ALL_FORMATS, AudioBufferSink, CanvasSink, Input, UrlSource } from 'medi
 import { analyseAudio, clearMargins, freeSides, largestFree, pointer, type Op, type ToolContext, type ToolType } from '@tramme/core';
 import { t } from './i18n/index.ts';
 import { freshId } from './model.ts';
-import type { ModelEntry } from './models.ts';
+import { madeBy, type ModelEntry } from './models.ts';
 import { chosenModel } from './settings.ts';
 
 const RATE = 16000;
@@ -87,12 +87,12 @@ export async function analyses(ctx: ToolContext): Promise<(id: string) => unknow
 }
 
 /** saves an analysis beside the media and declares it as an asset */
-async function save(ctx: ToolContext, asset: string, kind: string, data: unknown, name: string): Promise<{ id: string; ops: Op[]; reload: string[] }> {
+async function save(ctx: ToolContext, asset: string, kind: string, data: unknown, name: string, models?: string[]): Promise<{ id: string; ops: Op[]; reload: string[] }> {
   const id = `${kind}-${asset}`.slice(0, 64);
   // asset ids are letters, digits, _ and -: safe in a path as they are
   const path = await ctx.writeFile(`assets/analysis/${asset}-${kind}.json`, JSON.stringify(data));
   const had = !!ctx.doc.assets[id];
-  return { id, ops: [{ op: had ? 'replace' : 'add', path: pointer('assets', id), value: { type: 'json', src: path, name } }], reload: had ? [id] : [] };
+  return { id, ops: [{ op: had ? 'replace' : 'add', path: pointer('assets', id), value: { type: 'json', src: path, name, ...(models ? { madeBy: models } : {}) } }], reload: had ? [id] : [] };
 }
 
 const list = (xs: number[], max = 64) => `${xs.slice(0, max).map((x) => x.toFixed(2)).join(', ')}${xs.length > max ? ` … (${xs.length} in all)` : ''}`;
@@ -298,7 +298,7 @@ const subjects: ToolType<{ asset?: string; every?: number }> = {
       }
     }
     const data = { version: 1, kind: 'subjects', source: asset, width, height, frames };
-    const { id, ops, reload } = await save(ctx, asset, 'subjects', data, `People · ${a.name ?? asset}`);
+    const { id, ops, reload } = await save(ctx, asset, 'subjects', data, `People · ${a.name ?? asset}`, [madeBy(chosenModel('detection'))]);
     const seen = frames.filter((f) => f.boxes.length).length;
     return {
       ops, reload, label: `People in ${a.name ?? asset}`,

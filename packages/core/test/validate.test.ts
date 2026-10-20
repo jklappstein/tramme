@@ -13,6 +13,11 @@ describe('validation', () => {
     expect(validate(makeDoc(), registry())).toEqual([]);
   });
 
+  it('assets keep the hash of their file and the models that made them', () => {
+    expect(issuesOf((d) => { d.assets.mask = { type: 'video', src: 'assets/cutout/v.mp4', hash: 'sha256:aa', madeBy: ['u2net-human-seg@e6d4c49', 'yolos-tiny@main'] }; })).toEqual([]);
+    expect(issuesOf((d) => { d.assets.mask = { type: 'video', src: 'assets/cutout/v.mp4', madeBy: 'u2net' }; })[0].path).toBe('/assets/mask/madeBy');
+  });
+
   it('structure: unknown field, version, type', () => {
     expect(issuesOf((d) => { d.schema = 'tramme/0'; })[0].path).toBe('/schema');
     expect(issuesOf((d) => { d.compositions.main.layers.bg.postion = 1; })[0].path).toBe('/compositions/main/layers/bg');

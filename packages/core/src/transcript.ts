@@ -24,6 +24,8 @@ export interface Transcript {
   words: TranscriptWord[];
   /** after remapTranscript: the parts of the source kept, in order, laid end to end */
   keeps?: { from: number; to: number }[];
+  /** the models that wrote it ("workers-ai:@cf/openai/whisper-large-v3-turbo", "Xenova/whisper-base", "whisper-small@main") */
+  madeBy?: string[];
 }
 
 export function isTranscript(x: unknown): x is Transcript {

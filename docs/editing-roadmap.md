@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 under way (the Models section and its catalogue). What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -34,7 +34,8 @@ The models already in use are each fixed in their file: the cut-out's U²-Net (`
   `apps/editor/src/model-cache.ts`: each row says whether its model is in this browser and its weight, with Download now (the progress in bytes, in the precision the tool would take on this machine) or Delete; a last part lists what no row uses (an earlier choice, an older version) with the total. A model loaded in the page stays usable until the page reloads after its deletion.
 - [x] Transcription in the same row whichever path it takes: the model the companion runs (the environment variable stays as an override), and Whisper in the browser itself for the desktop app and the personal deployment when no companion runs. The Worker's route (Workers AI) keeps its model, named in the row.
   The editor sends the chosen model to the companion (`model`, a model hub id; `whisperModel` in `packages/cli/src/speech.ts`), which keeps one pipeline per model. With neither a server route nor a companion, the page runs the same model itself (`apps/editor/src/speech.ts`), the progress saying "in this browser". The row names the server's models (Workers AI's Whisper large v3 turbo, OpenAI's whisper-1). To check on a device: a transcription in the desktop app without a companion.
-- [ ] Each asset a model made records which model and which version made it. Changing the model never changes a render already made: the asset stays as it was, and the tool can be run again with the new model.
+- [x] Each asset a model made records which model and which version made it. Changing the model never changes a render already made: the asset stays as it was, and the tool can be run again with the new model.
+  `madeBy` on the asset (an addition to the format: a list, a cut-out of a person running the matte and the detector): `<model id>@<revision>` for the editor's models, the model hub id for the companion, `workers-ai:…` or `openai:whisper-1` for the server. Recorded by the cut-out, remove-bg, the depth, the people analysis, a track started from an object named, and transcripts (in the transcript file too).
 
 ### Step 2. Speed curves
 
