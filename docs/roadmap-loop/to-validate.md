@@ -361,3 +361,28 @@ its network policy) and has no GPU: no model was downloaded or run there.
   confuses. A project with plugins (drawn by the sandbox) exports at 8 bits
   with a warning.
 - **Not done (by design):** HDR (PQ, HLG) waits for Canvas 2D above 8 bits.
+
+## Installed plugins, steps 1 and 2
+
+- **Settings → Plugins**: drop a `.js` plugin, read the install question,
+  then install it. Check that it is listed with its version and what it
+  brings. Turn it off and on, then remove it. Checked here only in headless
+  Chromium with the browser's storage.
+- **A real folder (Chrome or Edge on a computer)**: Use a folder, then pick
+  an empty folder. Install a plugin and check that `<name>.js` appears in the
+  folder (a hidden `.tramme/` folder holds its etags). Copy another plugin's
+  `.js` into the folder by hand, come back to the window, and check that it is
+  listed. Reload the page: the folder is remembered, and Chrome may ask for
+  access again ("Allow again").
+- **The desktop app**: Plugins says "the app's folder"; "Open the folder"
+  opens `<home>/library/plugins` in Finder, Explorer or the file manager
+  (the Rust compiles; it was not run here).
+- **Safari or iOS**: the warning that the browser may clear the plugins shows
+  when persistence is not granted. Export all, then import the backup back.
+- **The private deployment**: the plugins are on the server's library
+  (`/api/library`), the same shelf `library-add` writes to.
+- **A `.trammeplugin`** (a zip with `plugin.js` and, for example, `fonts/x.woff2`):
+  it installs and shows "1 file"; the file is kept beside it as
+  `<name>--files.js`.
+- **Not done:** the system's share sheet and the installed web app's share
+  target; a plugin shared from another app does not land here yet.

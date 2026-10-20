@@ -2,7 +2,7 @@
 
 How a user installs a plugin once and uses it everywhere: imported from the settings, kept on their own device, offered in every project to them and to the assistant — then, once tramme has its API, found in a marketplace. Today a plugin lives in a project (`plugins/*.js`), and the shared library (`library-add`, `library-use`, `apps/editor/src/library.ts`) is reached only through commands, and only where a server or the desktop app answers `/api/library`.
 
-Status: nothing done yet. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: steps 1 and 2 done (the share target of step 2 waits). What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -32,19 +32,19 @@ Where the installed plugins live, per platform:
 | Private deployment | The server's bucket (R2 today), as the library is now | The settings, the same way |
 | Mobile app (Tauri, when it comes) | The app's own documents folder: on iOS made visible in the Files app (`UIFileSharingEnabled`, `LSSupportsOpeningDocumentsInPlace`), on Android the app's folder or one picked with the system's picker | A folder in the Files app on iOS; a folder on Android |
 
-- [ ] The folder storage for the web: the `Bucket` contract over a `FileSystemDirectoryHandle`, passing the contract suite in Chromium (the command line's headless Chrome runs it).
-- [ ] The storage chosen by what the platform allows, in the order of the table, and named in the settings so the user knows where their plugins are.
-- [ ] Persistence asked for where the storage is the browser's, and said plainly where it is not granted (Safari can clear a site's storage after weeks without a visit when it is not installed as an app): the settings then recommend installing the app and exporting a backup.
-- [ ] Every installed plugin exported as one file (an archive of the plugins) and imported back, so a phone or a browser without folders is never a dead end.
+- [x] The folder storage for the web: the `Bucket` contract over a `FileSystemDirectoryHandle`, passing the contract suite in Chromium (the command line's headless Chrome runs it). Done: `apps/editor/src/local/folder.ts` (`folderRecords`), passing the contract suite on a fake folder; in Chromium on a real folder it is a device check.
+- [x] The storage chosen by what the platform allows, in the order of the table, and named in the settings so the user knows where their plugins are. Done: `apps/editor/src/installed.ts`.
+- [x] Persistence asked for where the storage is the browser's, and said plainly where it is not granted (Safari can clear a site's storage after weeks without a visit when it is not installed as an app): the settings then recommend installing the app and exporting a backup.
+- [x] Every installed plugin exported as one file (an archive of the plugins) and imported back, so a phone or a browser without folders is never a dead end. Done: `packInstalled` and `unpackInstalled` (`packages/project/src/plugin.ts`).
 
 ### Step 2. The Plugins section of the settings
 
-- [ ] A "Plugins" section: the installed plugins with their name, version, description, size and what they bring (nodes, effects, modifiers, tools, workflows, checks, kits, presets), each one enabled or disabled, updated or removed.
-- [ ] Import by the file picker or by dropping files on the section (a `.js` module today, the package of step 7 later). On a phone the file picker reaches the Files app, the downloads and the cloud drives the system offers; a plugin shared to tramme from another app (the system's share sheet, the installed web app's share target) lands here too.
-- [ ] The install question before any code runs: what the plugin brings, read from the module's text as the code question already does (`apps/editor/src/importer.ts`), its declared permissions (step 5) and its API version. A plugin of a newer API is refused with the message `Registry.use` already gives.
-- [ ] An update is an import of a newer version of the same plugin: the section shows what changed in what it brings and in its permissions, and asks again only when the permissions grow.
-- [ ] On the desktop and on the web with a folder, "Open the folder", and the list follows what is added or removed there.
-- [ ] The shared library of today becomes this section: `library-add` installs a project's plugin, `library-use` stays for the assistant and the `/` menu, and the server's library is the private deployment's storage of step 1.
+- [x] A "Plugins" section: the installed plugins with their name, version, description, size and what they bring (nodes, effects, modifiers, tools, workflows, checks, kits, presets), each one enabled or disabled, updated or removed.
+- [x] Import by the file picker or by dropping files on the section (a `.js` module today, the package of step 7 later). On a phone the file picker reaches the Files app, the downloads and the cloud drives the system offers; a plugin shared to tramme from another app (the system's share sheet, the installed web app's share target) lands here too. Done for the picker and the drop; the share sheet and the installed web app's share target are not done yet.
+- [x] The install question before any code runs: what the plugin brings, read from the module's text as the code question already does (`apps/editor/src/importer.ts`), its declared permissions (step 5) and its API version. A plugin of a newer API is refused with the message `Registry.use` already gives.
+- [x] An update is an import of a newer version of the same plugin: the section shows what changed in what it brings and in its permissions, and asks again only when the permissions grow.
+- [x] On the desktop and on the web with a folder, "Open the folder", and the list follows what is added or removed there. Done: the list is read again when the window comes back.
+- [x] The shared library of today becomes this section: `library-add` installs a project's plugin, `library-use` stays for the assistant and the `/` menu, and the server's library is the private deployment's storage of step 1.
 
 ### Step 3. Installed plugins in every project
 

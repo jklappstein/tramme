@@ -7,6 +7,7 @@
 // chosen on the right; a search shows the settings matching it, whatever
 // their section.
 
+import { Plugins } from './PluginsSettings.tsx';
 import type { FunctionComponent } from 'preact';
 import { useContext, useEffect, useRef, useState } from 'preact/hooks';
 import type { SoundEntry } from '@tramme/core';
@@ -438,6 +439,7 @@ const GROUPS: { title: () => string; panes: Pane[] }[] = [
       { id: 'preview', icon: 'eye', title: () => t('common.preview'), body: Preview },
       { id: 'sound', icon: 'audio', title: () => t('settings.sound'), body: Sound },
       { id: 'models', icon: 'download', title: () => t('localModels.title'), body: LocalModels },
+      { id: 'plugins', icon: 'code', title: () => t('plugins.title'), body: Plugins },
       { id: 'tours', icon: 'help', title: () => t('common.guidedTours'), body: Tours },
       // the native app only: the projects live in a folder of this computer
       ...(tauri ? [{ id: 'storage' as SettingsSection, icon: 'folder', title: () => t('settings.storage'), body: Storage }] : []),

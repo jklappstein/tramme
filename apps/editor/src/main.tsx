@@ -30,6 +30,7 @@ import { startProject } from './start.ts';
 import { t } from './i18n/index.ts';
 import { boot } from './mode.ts';
 import { initDesktop } from './desktop.ts';
+import { startInstalled } from './installed.ts';
 
 const root = document.getElementById('app')!;
 
@@ -75,6 +76,8 @@ const m = location.pathname.match(/^\/p\/([a-z0-9][a-z0-9-]{2,63})\/?$/);
 boot().then(() => {
   // the native app: a .tramme handed by the system imports like a dropped one
   initDesktop();
+  // the plugins installed on this device, read once from where they are kept
+  startInstalled();
   if (m) {
     openProject(m[1]).catch((e) => {
       S.loadError.value = (e as Error).message;

@@ -252,10 +252,28 @@ export const PLUGIN_API = 1;
 /** a plugin's card: who it is and the API it was written for */
 export interface PluginMeta {
   name?: string;
+  /** semver; 0.0.0 when it says none */
   version?: string;
   description?: string;
   /** the plugin API it needs (1 by default) */
   api?: number;
+  /** a stable id, `author/name`: made from the name when it says none */
+  id?: string;
+  licence?: string;
+  author?: string;
+  homepage?: string;
+  /** what an installed plugin may reach (docs/installed-plugins-roadmap.md, step 5); none when it says none */
+  permissions?: PluginPermissions;
+}
+
+/** what an installed plugin may reach: none of it unless declared */
+export interface PluginPermissions {
+  /** origins it may fetch at authoring time (`https://api.example.com`) */
+  network?: string[];
+  /** provider routes it may call with the user's keys (through the editor, never the keys) */
+  providers?: string[];
+  /** project folders it may write beyond assets/ (`renders/`) */
+  files?: string[];
 }
 
 /** what a plugin module may export to extend the vocabulary */

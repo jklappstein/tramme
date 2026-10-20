@@ -32,7 +32,7 @@ export type Progress = (done: number, total: number, label: string) => void;
 export type CodeAsk = (inv: CodeInventory) => Promise<boolean>;
 
 /** the label of each kind a plugin can declare */
-const KIND_LABEL: Record<string, () => string> = {
+export const KIND_LABEL: Record<string, () => string> = {
   nodes: () => t('importer.kindNodes'),
   effects: () => t('importer.kindEffects'),
   modifiers: () => t('importer.kindModifiers'),

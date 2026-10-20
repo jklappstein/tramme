@@ -45,11 +45,13 @@ export interface Preferences {
   proxies: boolean;
   /** the model each local tool downloads and runs, per task: a model's id, or 'hub:owner/name'; missing, the default (models.ts) */
   models: Partial<Record<ModelTask, string>>;
+  /** installed plugins turned off on this device (their file names) */
+  pluginsOff: string[];
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   language: 'auto', theme: 'studio', view: 'studio', motion: 'auto', still: 'display', blur: 'document', exactFrames: true, sandboxPreview: false,
-  effectsDb: -8, musicDb: -14, duckDb: -12, varySounds: true, confirmPaid: true, paidPerTurn: 10, voiceProvider: 'auto', voice: '', voiceModel: '', previewVolume: 1, previewMuted: false, proxies: true, models: {},
+  effectsDb: -8, musicDb: -14, duckDb: -12, varySounds: true, confirmPaid: true, paidPerTurn: 10, voiceProvider: 'auto', voice: '', voiceModel: '', previewVolume: 1, previewMuted: false, proxies: true, models: {}, pluginsOff: [],
 };
 
 // ── themes and views ─────────────────────────────────────────
@@ -128,6 +130,7 @@ function load(): Preferences {
     p.proxies = p.proxies !== false;
     const models = p.models && typeof p.models === 'object' ? p.models : {};
     p.models = Object.fromEntries(MODEL_TASKS.filter((k) => typeof models[k] === 'string').map((k) => [k, models[k]]));
+    p.pluginsOff = Array.isArray(p.pluginsOff) ? p.pluginsOff.filter((x) => typeof x === 'string') : [];
     return p;
   } catch { return { ...DEFAULT_PREFERENCES }; }
 }
@@ -175,7 +178,7 @@ effect(() => {
 /** the settings dialog, opened from the top bar, the home screen or Ctrl+, */
 export const settingsOpen = signal(false);
 
-export type SettingsSection = 'appearance' | 'preview' | 'sound' | 'models' | 'tours' | 'storage' | 'model' | 'providers' | 'behavior' | 'connection';
+export type SettingsSection = 'plugins' | 'appearance' | 'preview' | 'sound' | 'models' | 'tours' | 'storage' | 'model' | 'providers' | 'behavior' | 'connection';
 /** the section shown: the last one opened, or the one asked for */
 export const settingsSection = signal<SettingsSection>('appearance');
 export function openSettings(section?: SettingsSection) {
