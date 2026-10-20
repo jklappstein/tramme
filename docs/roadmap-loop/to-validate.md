@@ -66,3 +66,9 @@ its network policy) and has no GPU: no model was downloaded or run there.
 - **Step 1 — a model hub id.** Settings → Models → Other models: type a
   detection model (`Xenova/detr-resnet-101`, say) and Try and use; it should
   download, answer, and become the row's choice. A wrong id should say why.
+- **Step 1 — downloads and the cache.** Settings → Models: Download now on a
+  row (the percentage moves, then "In this browser" with its weight); run its
+  tool, nothing downloads again; Delete, the row says "Not downloaded"; pick
+  another model, the former one shows under "In this browser" with Delete.
+  Checked in the container with fake files put in the cache, never with a
+  real download.

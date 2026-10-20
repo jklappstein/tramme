@@ -2231,6 +2231,14 @@
     "tryAndUse": "Essayer et utiliser",
     "notAHubId": "{id} n'est pas un identifiant du hub (propriétaire/nom)",
     "hubModelKept": "{id} a répondu : il sert désormais pour {task} sur cet ordinateur",
-    "hubModelFailed": "{id} n'a pas pu servir : {error}"
+    "hubModelFailed": "{id} n'a pas pu servir : {error}",
+    "inThisBrowser": "Dans ce navigateur · {size}",
+    "notDownloaded": "Pas téléchargé : il le sera la première fois que son outil servira",
+    "downloading": "Téléchargement · {percent} %",
+    "download": "Télécharger maintenant",
+    "downloadFailed": "{name} n'a pas pu être téléchargé : {error}",
+    "cacheTitle": "Dans ce navigateur",
+    "cacheHint": "Les modèles gardés par ce navigateur pèsent {size} en tout. Ci-dessous, ceux qu'aucune ligne n'utilise (un choix d'avant, une version plus ancienne) : supprimez-les pour libérer la place.",
+    "nothingElse": "Rien d'autre : chaque modèle gardé ici sert."
   }
 }

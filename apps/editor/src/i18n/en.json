@@ -1314,6 +1314,14 @@
     "tryAndUse": "Try and use",
     "notAHubId": "{id} is not a model hub id (owner/name)",
     "hubModelKept": "{id} answered: it is now used for {task} on this computer",
-    "hubModelFailed": "{id} could not be used: {error}"
+    "hubModelFailed": "{id} could not be used: {error}",
+    "inThisBrowser": "In this browser · {size}",
+    "notDownloaded": "Not downloaded: it will be the first time its tool runs",
+    "downloading": "Downloading · {percent} %",
+    "download": "Download now",
+    "downloadFailed": "{name} could not be downloaded: {error}",
+    "cacheTitle": "In this browser",
+    "cacheHint": "The models kept by this browser weigh {size} in all. Below, those no row uses (an earlier choice, an older version): delete them to free the space.",
+    "nothingElse": "Nothing else: every model kept here is in use."
   }
 }
