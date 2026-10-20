@@ -2,7 +2,8 @@
 //   vec4 effect(vec2 uv)
 // reading uImage (the picture it applies to: a layer drawn alone, or the
 // whole frame), uRes (its size in pixels), uScale (pixels per composition
-// pixel: sizes in props are composition pixels), uTime, and one uniform per
+// pixel: sizes in props are composition pixels), uTime, uLayerTime (the time
+// since the in point of the layer it applies to), and one uniform per
 // property of its schema, declared here from the schema: u_<name> as float
 // (number, bool, enum: the rank of the option), vec2, vec4 (colour, 0..1
 // straight) or sampler2D (a layer, drawn alone at the same instant).
@@ -30,7 +31,7 @@ export function uniformsOf(schema: PropSchema): string {
 export const fragmentOf = (code: string, schema: PropSchema) => `#version 300 es
 precision highp float;
 in vec2 vUv; out vec4 fragColor;
-uniform sampler2D uImage; uniform vec2 uRes; uniform float uScale; uniform float uTime;
+uniform sampler2D uImage; uniform vec2 uRes; uniform float uScale; uniform float uTime; uniform float uLayerTime;
 ${uniformsOf(schema)}
 ${code}
 void main() { fragColor = effect(vUv); }`;
@@ -156,7 +157,7 @@ export function resizeNode(g: import('@tramme/core').NodeGL, w: number, h: numbe
  * canvas is read as premultiplied sRGB and gets the result. `layers` gives
  * the pictures of the effect's layer props (canvases of the same size).
  */
-export function glPass(ctx: CanvasRenderingContext2D, code: string, schema: PropSchema, props: Record<string, unknown>, t: number, scale: number, layers: Record<string, CanvasImageSource | null> = {}) {
+export function glPass(ctx: CanvasRenderingContext2D, code: string, schema: PropSchema, props: Record<string, unknown>, t: number, scale: number, layers: Record<string, CanvasImageSource | null> = {}, layerIn = 0) {
   const g = context(), { gl } = g, { width: w, height: h } = ctx.canvas;
   if (g.canvas.width !== w || g.canvas.height !== h) { g.canvas.width = w; g.canvas.height = h; }
   const p = program(g, fragmentOf(code, schema));
@@ -171,6 +172,7 @@ export function glPass(ctx: CanvasRenderingContext2D, code: string, schema: Prop
     gl.uniform1i(gl.getUniformLocation(p, 'uImage'), 0);
     gl.uniform2f(gl.getUniformLocation(p, 'uRes'), w, h);
     gl.uniform1f(gl.getUniformLocation(p, 'uTime'), t);
+    gl.uniform1f(gl.getUniformLocation(p, 'uLayerTime'), t - layerIn);
     gl.uniform1f(gl.getUniformLocation(p, 'uScale'), scale);
     setUniforms(gl, p, schema, props, 1, (k) => {
       const src = layers[k];

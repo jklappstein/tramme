@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 under way (transitions: the effect, its kinds and notes); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -54,11 +54,13 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 
 ### Step 3. Transitions between shots
 
-- [ ] A transition between two overlapping layers: the outgoing and the incoming shot both drawn, mixed by a GL program that receives the two pictures and a `progress` (0 to 1 over the overlap). It references the other layer the way `fx.matte` does (`source: { type: 'layer' }`, `packages/nodes/src/effects.ts`).
-- [ ] The set: crossfade, dip to colour, push and slide (with motion blur along the move), zoom, whip pan, luma wipe (from a grey picture), glitch, and the existing shape wipes of the `transition` recipe kept as they are.
+- [x] A transition between two overlapping layers: the outgoing and the incoming shot both drawn, mixed by a GL program that receives the two pictures and a `progress` (0 to 1 over the overlap). It references the other layer the way `fx.matte` does (`source: { type: 'layer' }`, `packages/nodes/src/effects.ts`).
+  `fx.transition` on the incoming layer: `from` (the outgoing layer), `kind`, `duration` from the layer's in point. Its progress comes from a new uniform every GL effect now gets, `uLayerTime` (the time since its layer's in point). Rendered in Chrome and read back pixel by pixel (`packages/cli/test/transitions.test.ts`, skipped without Chrome).
+- [x] The set: crossfade, dip to colour, push and slide (with motion blur along the move), zoom, whip pan, luma wipe (from a grey picture), glitch, and the existing shape wipes of the `transition` recipe kept as they are.
+  One program for all eight kinds; push, slide and whip average twelve looks along their move (`blur`), the whip eased harder. To check on a device: the glitch on real footage (flat colours do not show its rows).
 - [ ] The timeline: drop a transition on a cut, drag its length; the two layers are made to overlap by the needed handles, or the transition says the file has no handle left.
 - [ ] The sound crossfades with the picture by default (the gains of the two clips, `gainMoves`).
-- [ ] The assistant's notes: one kind of transition per film, cuts by default, a transition where the story changes place or time.
+- [x] The assistant's notes: one kind of transition per film, cuts by default, a transition where the story changes place or time.
 
 ### Step 4. Keying
 

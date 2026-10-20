@@ -226,3 +226,75 @@ export const grade: EffectType<{ lift: number; gain: number; saturation: number;
 }`,
   },
 };
+
+/**
+ * A transition between two shots that overlap: on the incoming layer, the
+ * outgoing one (`from`) and its own picture mixed by `kind` over `duration`
+ * seconds from its in point, then the incoming shot alone. Push, slide and
+ * whip blur along their move; a luma wipe opens where a grey picture (`map`)
+ * is dark first.
+ */
+export const transition: EffectType<{ from: string | null; kind: string; duration: number; direction: string; color: string; map: string | null; softness: number; blur: number }> = {
+  type: 'fx.transition', title: 'Transition', category: 'Effects', stage: 'layer',
+  description: 'from the shot under it (from) to this one, over the overlap: crossfade, dip, push, slide, zoom, whip pan, luma wipe, glitch',
+  props: {
+    from: { type: 'layer', default: null, nullable: true, label: 'From', animatable: false, description: 'the outgoing shot, which this layer overlaps' },
+    kind: { type: 'enum', default: 'crossfade', options: ['crossfade', 'dip', 'push', 'slide', 'zoom', 'whip', 'luma', 'glitch'], label: 'Kind', animatable: false },
+    duration: { type: 'number', default: 0.5, min: 0.04, step: 0.01, unit: 's', label: 'Duration', animatable: false, description: "from the layer's in point" },
+    direction: { type: 'enum', default: 'left', options: ['left', 'right', 'up', 'down'], label: 'Direction', animatable: false, description: 'where the move goes (push, slide, whip)' },
+    color: { type: 'color', default: '#000000', label: 'Colour', description: 'the colour dipped to (dip)' },
+    map: { type: 'layer', default: null, nullable: true, label: 'Wipe picture', animatable: false, description: 'a grey picture, usually hidden: dark opens first (luma)' },
+    softness: { type: 'number', default: 0.1, min: 0, max: 1, step: 0.01, label: 'Softness', description: 'the edge of a luma wipe' },
+    blur: { type: 'number', default: 1, min: 0, max: 3, step: 0.05, label: 'Motion blur', description: 'along the move (push, slide, whip)' },
+  },
+  gl: {
+    code: `float easeIO(float x) { return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) / 2.0; }
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+vec4 pic(sampler2D s, vec2 uv) { return any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0))) ? vec4(0.0) : texture(s, uv); }
+vec2 way() { return u_direction < 0.5 ? vec2(-1.0, 0.0) : u_direction < 1.5 ? vec2(1.0, 0.0) : u_direction < 2.5 ? vec2(0.0, 1.0) : vec2(0.0, -1.0); }
+// the two shots at a step e of a move along d (push: both move; slide: the new one over the old)
+vec4 moved(vec2 uv, float e, vec2 d, bool both) {
+  vec4 b = pic(uImage, uv - d * (e - 1.0));
+  vec4 a = both ? pic(u_from, uv - d * e) : texture(u_from, uv);
+  return b + a * (1.0 - b.a);
+}
+vec4 effect(vec2 uv) {
+  float p = clamp(uLayerTime / max(u_duration, 0.001), 0.0, 1.0);
+  vec4 b = texture(uImage, uv);
+  if (p >= 1.0) return b;
+  vec4 a = texture(u_from, uv);
+  int k = int(u_kind + 0.5);
+  if (k == 0) return mix(a, b, p);
+  if (k == 1) { vec4 c = vec4(u_color.rgb * u_color.a, u_color.a); return p < 0.5 ? mix(a, c, p * 2.0) : mix(c, b, p * 2.0 - 1.0); }
+  if (k == 2 || k == 3 || k == 5) {
+    // the move eased (a whip: harder), blurred along itself by its speed
+    float sharp = k == 5 ? 3.0 : 1.0;
+    float e = k == 5 ? (p < 0.5 ? 0.5 * pow(2.0 * p, sharp) : 1.0 - 0.5 * pow(2.0 - 2.0 * p, sharp)) : easeIO(p);
+    float de = (k == 5 ? 0.3 : 0.08) * u_blur * (1.0 - abs(2.0 * p - 1.0));
+    vec4 sum = vec4(0.0);
+    for (int i = 0; i < 12; i++) sum += moved(uv, clamp(e + de * (float(i) / 11.0 - 0.5), 0.0, 1.0), way(), k != 3);
+    return sum / 12.0;
+  }
+  if (k == 4) {
+    float e = easeIO(p);
+    vec2 c = uv - 0.5;
+    vec4 za = texture(u_from, 0.5 + c / (1.0 + 0.6 * e)), zb = pic(uImage, 0.5 + c / (0.7 + 0.3 * e));
+    return mix(za, zb, e);
+  }
+  if (k == 6) {
+    vec4 m = texture(u_map, uv);
+    float luma = m.a > 0.0 ? dot(m.rgb / m.a, vec3(0.2126, 0.7152, 0.0722)) : 0.0;
+    float s = max(u_softness, 0.001), w = smoothstep(luma - s, luma + s, p * (1.0 + 2.0 * s) - s);
+    return mix(a, b, w);
+  }
+  // glitch: blocks of rows thrown aside and the colours split, hardest at the switch
+  float g = 1.0 - abs(2.0 * p - 1.0), frame = floor(uLayerTime * 24.0);
+  float row = floor(uv.y * 24.0), shift = (hash(vec2(row, frame)) - 0.5) * 0.12 * g * step(0.55, hash(vec2(frame, row + 7.0)));
+  vec2 q = uv + vec2(shift, 0.0), split = vec2(0.012 * g, 0.0);
+  vec4 r = p < 0.5 ? texture(u_from, q + split) : texture(uImage, q + split);
+  vec4 c = p < 0.5 ? texture(u_from, q) : texture(uImage, q);
+  vec4 bl = p < 0.5 ? texture(u_from, q - split) : texture(uImage, q - split);
+  return vec4(r.r, c.g, bl.b, c.a);
+}`,
+  },
+};

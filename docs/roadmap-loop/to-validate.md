@@ -97,3 +97,8 @@ its network policy) and has no GPU: no model was downloaded or run there.
 - **Step 2 — the speed presets.** Select a video layer, open Curves: the
   Speed row writes each preset around the playhead (checked in the container
   on a layer without a real file); play each one and judge its feel.
+- **Step 3 — transitions, on footage.** `CHROME_PATH=… npx vitest run
+  packages/cli/test/transitions.test.ts` renders every kind (it ran in the
+  container with Chromium's software GL). Then on two real clips that overlap:
+  each kind in the preview and an export, and the glitch, whose rows only show
+  on a picture with detail.

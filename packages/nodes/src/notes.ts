@@ -42,6 +42,7 @@ export const EFFECT_NOTES: Record<string, AiNotes> = {
   'fx.glow': { when: 'neon type and icons on dark plates', avoid: 'strength over 2 on body text' },
   'fx.color': { when: 'matching footage, desaturating a background so the subject stands out' },
   'fx.tint': { when: 'duotone looks, recolouring an icon or a logo to the accent token' },
+  'fx.transition': { when: 'a change of place or time between two shots: on the incoming layer, which overlaps the outgoing one by the duration (from = the outgoing layer); one kind for the whole film, a crossfade or a dip for calm pieces, a push or a whip for energetic ones', avoid: 'transitions between every shot: cut by default; mixing kinds in one film; a duration over about 1 s (0.3 to 0.6 s for push and whip)', example: { from: 'shot_1', kind: 'crossfade', duration: 0.5 } },
   'fx.matte': { when: 'footage or a gradient seen through big type or a shape (hide the matte layer); luma for a soft mask', example: { source: 'title', mode: 'alpha' } },
   'fx.displace': { when: 'glass, heat haze, liquid or glitch looks: the map layer is usually a hidden moving shader or noisy shape' },
   'fx.parallax': { when: 'a photo or flat footage in 2.5D under the composition camera: the depth tool makes the map and wires it; keep the depth span at about a third of the perspective', avoid: 'a range much over half the perspective (the edges stretch); an unhidden depth layer' },
