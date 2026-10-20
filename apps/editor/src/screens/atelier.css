@@ -513,3 +513,11 @@ svg.i.flip { transform: rotate(180deg); }
 @media (max-height: 520px) and (orientation: landscape) {
   .menu { max-height: calc(100dvh - 16px); overflow-y: auto; }
 }
+
+/* the scopes in the viewport's corner while a grading effect is selected */
+.scopes { position: absolute; right: 12px; bottom: 12px; z-index: 3; display: flex; gap: 8px; padding: 8px; border-radius: var(--r-md); background: rgba(10, 11, 13, .82); backdrop-filter: blur(10px); box-shadow: var(--shadow-2); pointer-events: auto; }
+.scopes figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.scopes canvas { display: block; width: 192px; height: 96px; image-rendering: pixelated; background: #000; border-radius: var(--r-xs); }
+.scopes .vector canvas { width: 96px; height: 96px; border-radius: 50%; }
+.scopes figcaption { font-size: 10px; color: rgba(255, 255, 255, .6); text-align: center; }
+@media (max-width: 760px) { .scopes canvas { width: 128px; height: 64px; } .scopes .vector canvas { width: 64px; height: 64px; } }

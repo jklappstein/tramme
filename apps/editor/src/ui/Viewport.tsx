@@ -18,6 +18,7 @@ import { openMenu, type MenuItem } from './controls.tsx';
 import { Icon } from './icons.tsx';
 import { m, t } from '../i18n/index.ts';
 import { picking, pixelAt } from '../dropper.ts';
+import { grading, Scopes } from './Scopes.tsx';
 
 /** a finger rather than a mouse: bigger handles */
 const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
@@ -483,6 +484,7 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
 
   return (
     <div class={`viewport${bare ? ' bare' : ''}`} data-tour="viewport" ref={host} onWheel={onWheel} onPointerDownCapture={touchDown} onPointerMove={touchMove} onPointerUp={touchUp} onPointerCancel={touchUp} style={{ cursor: spaceDown ? 'grab' : undefined }}>
+      {!bare && grading() && <Scopes />}
       {!bare && <div class="toolbar" onPointerDown={(e) => e.stopPropagation()}>
         <button class="zoom" onClick={zoomMenu} title={t('viewport.zoomCtrlWheel')}>{Math.round(scale * 100)} %</button>
         <span class="sep" />

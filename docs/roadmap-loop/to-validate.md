@@ -145,3 +145,7 @@ its network policy) and has no GPU: no model was downloaded or run there.
   orange warms the highlights, the lift toward teal cools the shadows (the
   classic look); double-click a wheel to reset it. Judge the strength of the
   wheels against a colourist's tool (lift ×0.25, gamma and gain ×0.5 per unit).
+- **Step 6 — scopes.** Select a layer with a grading effect: the waveform and
+  the vectorscope show in the viewport's corner and follow the grade and the
+  time; on a phone they shrink. Compare with a known colour chart (skin tones
+  on the vectorscope's skin line, between red and yellow).

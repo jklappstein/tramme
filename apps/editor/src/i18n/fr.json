@@ -1052,6 +1052,8 @@
     "shortOfN": "{name} · {i}/{n}"
   },
   "viewport": {
+    "waveform": "Forme d'onde",
+    "vectorscope": "Vectorscope",
     "socialSafeZoneReels": "Zone sûre réseaux (Reels, TikTok)",
     "action": "Action",
     "titles": "Titres",

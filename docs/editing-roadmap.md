@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 under way (colour: LUTs, curves and wheels; scopes next); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -89,7 +89,8 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
   Each curve a `path` prop of format `curve` (points in 0..1, animatable like a path), joined by a monotone cubic that never overshoots (`curveTable`, `packages/core/src/lut.ts`) into 256 half floats; edited in the inspector on a square (drag a point, click to add, double-click to remove). Rendered in Chrome.
 - [x] Colour wheels: lift, gamma and gain, each a hue and an amount, with the master level.
   `fx.wheels`: each wheel a `vec2` of format `wheel` (its angle the hue, its length the amount, a disc to drag in the inspector), each with its level; out = (gain × (c + lift × (1 − c)))^(1/gamma), the wheels' hues made neutral in brightness. Rendered in Chrome.
-- [ ] Scopes beside the viewport while one of these is selected: waveform and vectorscope, read from the rendered frame.
+- [x] Scopes beside the viewport while one of these is selected: waveform and vectorscope, read from the rendered frame.
+  In the viewport's corner while the selected layer carries a LUT, curves, wheels, a colour correction or a key (`apps/editor/src/ui/Scopes.tsx`); counted on the frame drawn at 256 px wide (`apps/editor/src/scopes.ts`), a moment after it changes, on a log scale.
 
 ### Step 7. Stabilisation
 
