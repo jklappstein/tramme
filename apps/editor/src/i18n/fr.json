@@ -1159,6 +1159,14 @@
     "used": "Plugin {name} ajouté à ce projet."
   },
   "content": {
+    "Locked": "Verrouillé",
+    "Stabilisation": "Stabilisation",
+    "Stabilise a video": "Stabiliser une vidéo",
+    "Strength (s)": "Force (s)",
+    "how long a move must last to stay: 0.5 s keeps a pan and takes the shake out; longer smooths more (and zooms more)": "combien de temps un mouvement doit durer pour rester : 0,5 s garde un panoramique et retire le tremblement ; plus long lisse davantage (et zoome davantage)",
+    "takes the camera's shake out of a video: its path read from the footage, smoothed (or locked still), the picture moved back and zoomed just enough to hide its edges": "retire le tremblement de la caméra d'une vidéo : sa trajectoire lue dans les images, lissée (ou figée), l'image replacée et zoomée juste assez pour cacher ses bords",
+    "the camera held still for each shot, as on a tripod": "la caméra tenue immobile à chaque plan, comme sur un pied",
+    "the camera's shake read by the stabilize tool: the picture moved back, zoomed just enough to keep its edges out": "le tremblement de la caméra lu par l'outil de stabilisation : l'image replacée, zoomée juste assez pour cacher ses bords",
     "Colour wheels": "Roues chromatiques",
     "Lift": "Noirs",
     "Lift level": "Niveau des noirs",
@@ -2339,5 +2347,8 @@
     "cacheHint": "Les modèles gardés par ce navigateur pèsent {size} en tout. Ci-dessous, ceux qu'aucune ligne n'utilise (un choix d'avant, une version plus ancienne) : supprimez-les pour libérer la place.",
     "nothingElse": "Rien d'autre : chaque modèle gardé ici sert.",
     "transcriptionPaths": "Le serveur transcrit avec son propre modèle quand il en a un : Whisper large v3 turbo sur Workers AI, ou whisper-1 d'OpenAI avec une clé OpenAI. Sans lui, le compagnon local fait tourner le modèle choisi ici (TRAMME_WHISPER_MODEL, sur sa machine, l'emporte), et sans compagnon, ce navigateur s'en charge (le plus lent)."
+  },
+  "stabilize": {
+    "reading": "lecture du tremblement"
   }
 }

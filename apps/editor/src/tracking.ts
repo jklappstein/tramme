@@ -54,7 +54,7 @@ export function toPicture(ev: Evaluator, c: Composition, compId: string, videoId
 }
 
 /** the video layer a tool works on: the one given, the selected one, or the only one */
-function videoLayer(ctx: ToolContext, wanted?: string): string {
+export function videoLayer(ctx: ToolContext, wanted?: string): string {
   const c = compOf(ctx), videos = Object.keys(c.layers).filter((id) => c.layers[id].type === 'video');
   const id = wanted ?? ctx.selection.find((s) => c.layers[s]?.type === 'video') ?? (videos.length === 1 ? videos[0] : undefined);
   if (!id) throw new Error(videos.length ? `which video? Select it or name it (${videos.join(', ')})` : 'the composition has no video layer');

@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -94,9 +94,12 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 
 ### Step 7. Stabilisation
 
-- [ ] The `stabilize` tool: points tracked from frame to frame (from the grey frames the tracker already reads, `grayFrame`, `apps/editor/src/tracking.ts`), the camera's path estimated, smoothed (a strength, or locked), and saved as a JSON asset timed like the file.
-- [ ] The video node reads it (`stabilize` property): the inverse move applied, and the zoom that keeps the edges out of the frame, computed for the whole clip so it does not breathe.
-- [ ] Shots cut separately: the shots tool's cuts reset the path, so a stabilised edit does not drift across a cut.
+- [x] The `stabilize` tool: points tracked from frame to frame (from the grey frames the tracker already reads, `grayFrame`, `apps/editor/src/tracking.ts`), the camera's path estimated, smoothed (a strength, or locked), and saved as a JSON asset timed like the file.
+  `packages/core/src/stabilize.ts`: points with detail in a grid, matched block by block below the pixel, the similarity that carries them (the outliers set aside); a look a frame of the file (30 a second at most) at 320 px (`apps/editor/src/stabilize.ts`). On a still picture shaken by a known path (ffmpeg), the move is read to 0.25 px on average.
+- [x] The video node reads it (`stabilize` property): the inverse move applied, and the zoom that keeps the edges out of the frame, computed for the whole clip so it does not breathe.
+  The zoom is at most 1.5 (the tool says when it reaches it). Left out: a track or a callout on a stabilised video follows the file as it was filmed, not the picture moved back.
+- [x] Shots cut separately: the shots tool's cuts reset the path, so a stabilised edit does not drift across a cut.
+  The tool finds the cuts as the shots tool does (the histogram distance over `CUT`) and starts the path again at each.
 
 ### Step 8. Proxies
 

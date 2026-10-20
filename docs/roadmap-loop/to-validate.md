@@ -149,3 +149,8 @@ its network policy) and has no GPU: no model was downloaded or run there.
   the vectorscope show in the viewport's corner and follow the grade and the
   time; on a phone they shrink. Compare with a known colour chart (skin tones
   on the vectorscope's skin line, between red and yellow).
+- **Step 7 — stabilisation on real footage.** A handheld phone clip: run
+  `stabilize` (the / menu or the assistant), then play it: the shake gone, a
+  pan kept, no breathing zoom; `lock` on a tripod-like shot; a clip with a
+  cut in it does not drift across the cut. Measured in the container on a
+  synthetic shake only.
