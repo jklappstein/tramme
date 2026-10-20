@@ -31,3 +31,30 @@ describe('a .cube LUT', () => {
     expect(() => parseCube('LUT_3D_SIZE 2\n0 0 x\n')).toThrow(/three numbers/);
   });
 });
+
+describe('a tone curve', () => {
+  it('is the identity by its two ends', async () => {
+    const { curveTable } = await import('../src/lut.ts');
+    const t = curveTable([[0, 0], [1, 1]], 5);
+    expect(Array.from(t).map((x) => +x.toFixed(6))).toEqual([0, 0.25, 0.5, 0.75, 1]);
+  });
+
+  it('goes through its points without overshooting between them', async () => {
+    const { curveTable } = await import('../src/lut.ts');
+    // an S curve: darker shadows, brighter highlights
+    const t = curveTable([[0, 0], [0.25, 0.15], [0.75, 0.85], [1, 1]], 257);
+    expect(t[64]).toBeCloseTo(0.15, 5);
+    expect(t[192]).toBeCloseTo(0.85, 5);
+    for (let i = 1; i < t.length; i++) expect(t[i]).toBeGreaterThanOrEqual(t[i - 1] - 1e-7);
+    // a plateau stays flat
+    const flat = curveTable([[0, 0], [0.4, 0.5], [0.6, 0.5], [1, 1]], 101);
+    for (let i = 40; i <= 60; i++) expect(flat[i]).toBeCloseTo(0.5, 6);
+  });
+
+  it('takes its points in any order and holds past its ends', async () => {
+    const { curveTable } = await import('../src/lut.ts');
+    const t = curveTable([[0.8, 0.9], [0.2, 0.1]], 11);
+    expect(t[0]).toBeCloseTo(0.1);
+    expect(t[10]).toBeCloseTo(0.9);
+  });
+});

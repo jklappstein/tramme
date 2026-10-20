@@ -3,7 +3,7 @@
 // shown by colour and switched from its menu.
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Evaluator, getAt, pointer, propKind, staticValue, sheetIssues, TRANSFORM_SCHEMA, MOTION_BLUR_SCHEMA, CAMERA_SCHEMA, SOUND_MIX_SCHEMA, type TrammeDoc, type Op, type Paint, type Prop, type PropDef, type PropSchema, type Token, MASK_SCHEMA } from '@tramme/core';
+import { Evaluator, getAt, pointer, propKind, staticValue, sheetIssues, TRANSFORM_SCHEMA, MOTION_BLUR_SCHEMA, CAMERA_SCHEMA, SOUND_MIX_SCHEMA, type TrammeDoc, type Op, type Paint, type Prop, type PropDef, type PropSchema, type Token, MASK_SCHEMA, curveTable, type PathValue } from '@tramme/core';
 import { comp, commit, draft, cancelDraft, S, viewDoc, select, toast, uiTime } from '../state.ts';
 import { assetData } from '../preview.ts';
 import { addModifierOps, editAtOps, fixedOps, folderOf, imagesIn, keyAtOps, keyIndexAt, keysOf, removeKeyOps, removeModifierOps, setAtOps, snap, freshId, fmtSeconds } from '../model.ts';
@@ -307,6 +307,9 @@ function Field({ def, value, ctx, label, onDraft, onCommit, onPick }: { def: Pro
       const opts = Object.entries(layers).map(([id, l]) => [id, l.name ?? id] as [string, string]);
       return <Select value={String(value ?? '')} options={[['', t('inspector.none')], ...opts]} onChange={(v) => onCommit(v || null)} />;
     }
+    case 'path':
+      if (def.format === 'curve') return <CurveField value={value as PathValue | null} onDraft={onDraft} onCommit={onCommit} />;
+      return <JsonField value={value} label={label} onCommit={onCommit} />;
     case 'color':
       return value === null ? <NullPaint onSet={() => onCommit('#FFFFFF')} /> : <ColorField value={rawColor(value)} tokens={ctx.tokens} onDraft={onDraft} onCommit={onCommit} onPick={onPick} />;
     case 'paint':
@@ -337,6 +340,57 @@ const ENUM_LABEL: Record<string, string> = {
 
 const rawColor = (v: unknown) => (typeof v === 'string' ? v : '#000000');
 const NullPaint = ({ onSet }: { onSet: () => void }) => <button class="btn sm ghost" onClick={onSet}><Icon name="plus" />{t('inspector.add')}</button>;
+
+/**
+ * A tone curve: its points over a square from black (0) to white (1), the
+ * curve drawn through them as the effect reads it. Drag a point; click the
+ * square to add one; double-click a point (not an end) to take it out.
+ */
+function CurveField({ value, onDraft, onCommit }: { value: PathValue | null; onDraft: (v: unknown) => void; onCommit: (v: unknown) => void }) {
+  const S_ = 120, pts = ((value?.v ?? [[0, 0], [1, 1]]) as number[][]).map((p) => [p[0], p[1]]).sort((a, b) => a[0] - b[0]);
+  const table = curveTable(pts, 64);
+  const line = Array.from(table, (y, i) => `${(i / 63) * S_},${(1 - y) * S_}`).join(' ');
+  const write = (next: number[][]) => ({ v: next.map(([x, y]) => [+x.toFixed(3), +y.toFixed(3)]).sort((a, b) => a[0] - b[0]), closed: false });
+  const at = (e: PointerEvent, svg: SVGSVGElement): [number, number] => {
+    const r = svg.getBoundingClientRect();
+    return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, 1 - (e.clientY - r.top) / r.height))];
+  };
+  const drag = (e: PointerEvent, i: number, list: number[][]) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const svg = (e.currentTarget as SVGElement).ownerSVGElement ?? (e.currentTarget as SVGSVGElement);
+    let last: unknown = null;
+    const move = (ev: PointerEvent) => {
+      const [x, y] = at(ev, svg), next = list.map((p) => [...p]);
+      // the ends keep their place on the x axis; the others stay between their neighbours
+      const lo = i === 0 ? 0 : list[i - 1][0] + 0.01, hi = i === list.length - 1 ? 1 : list[i + 1][0] - 0.01;
+      next[i] = [i === 0 || i === list.length - 1 ? list[i][0] : Math.min(hi, Math.max(lo, x)), y];
+      last = write(next);
+      onDraft(last);
+    };
+    const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); if (last) onCommit(last); };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+  };
+  const add = (e: PointerEvent) => {
+    const [x] = at(e, e.currentTarget as SVGSVGElement);
+    if (pts.some((p) => Math.abs(p[0] - x) < 0.02)) return;
+    const next = [...pts, [x, table[Math.round(x * 63)]]].sort((a, b) => a[0] - b[0]);
+    onCommit(write(next));
+  };
+  return (
+    <svg class="curve-field" viewBox={`0 0 ${S_} ${S_}`} width={S_} height={S_} onPointerDown={add as never}>
+      {[0.25, 0.5, 0.75].map((g) => <g key={g}><line class="grid" x1={g * S_} y1={0} x2={g * S_} y2={S_} /><line class="grid" x1={0} y1={g * S_} x2={S_} y2={g * S_} /></g>)}
+      <line class="diag" x1={0} y1={S_} x2={S_} y2={0} />
+      <polyline class="curve" points={line} />
+      {pts.map((p, i) => (
+        <circle key={i} class="pt" cx={p[0] * S_} cy={(1 - p[1]) * S_} r={4.5}
+          onPointerDown={(e) => drag(e as unknown as PointerEvent, i, pts)}
+          onDblClick={(e) => { e.stopPropagation(); if (i > 0 && i < pts.length - 1) onCommit(write(pts.filter((_, j) => j !== i))); }} />
+      ))}
+    </svg>
+  );
+}
 
 function JsonField({ value, onCommit }: { value: unknown; label: string; onCommit: (v: unknown) => void }) {
   const [bad, setBad] = useState(false);

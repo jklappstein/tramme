@@ -370,3 +370,29 @@ export const lut: EffectType<{ lut: string | null; strength: number }> = {
 }`,
   },
 };
+
+const IDENTITY = { v: [[0, 0], [1, 1]], closed: false };
+
+/** tone curves: the master curve on the three channels, then one curve each for red, green and blue */
+export const curves: EffectType<{ master: unknown; red: unknown; green: unknown; blue: unknown; strength: number }> = {
+  type: 'fx.curves', title: 'Curves', category: 'Effects', stage: 'layer',
+  description: 'tone curves: contrast, a lifted black, a colour cast, by points on a curve',
+  props: {
+    master: { type: 'path', format: 'curve', default: IDENTITY, label: 'Master', description: 'the brightness: points from 0 (black) to 1 (white)' },
+    red: { type: 'path', format: 'curve', default: IDENTITY, label: 'Red' },
+    green: { type: 'path', format: 'curve', default: IDENTITY, label: 'Green' },
+    blue: { type: 'path', format: 'curve', default: IDENTITY, label: 'Blue' },
+    strength: { type: 'number', default: 1, min: 0, max: 1, step: 0.01, label: 'Strength' },
+  },
+  gl: {
+    code: `float through(sampler2D curve, float x) { return texture(curve, vec2(clamp(x, 0.0, 1.0) * (255.0 / 256.0) + 0.5 / 256.0, 0.5)).r; }
+vec4 effect(vec2 uv) {
+  vec4 p = texture(uImage, uv);
+  if (p.a <= 0.0) return p;
+  vec3 c = p.rgb / p.a;
+  vec3 m = vec3(through(u_master, c.r), through(u_master, c.g), through(u_master, c.b));
+  vec3 g = vec3(through(u_red, m.r), through(u_green, m.g), through(u_blue, m.b));
+  return vec4(mix(c, g, u_strength) * p.a, p.a);
+}`,
+  },
+};

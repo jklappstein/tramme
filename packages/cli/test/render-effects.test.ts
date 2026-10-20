@@ -72,6 +72,16 @@ function graded(strength: number) {
   };
 }
 
+/** a mid grey frame through tone curves */
+function toned(props: Record<string, unknown>) {
+  return {
+    schema: 'tramme/1', meta: { title: 'curves' }, tokens: {}, assets: {}, root: 'main',
+    compositions: { main: { name: 'Main', width: 320, height: 180, fps: 30, duration: 1, background: '#000000', motionBlur: { samples: 1, shutter: 0 }, order: ['frame'], layers: {
+      frame: { type: 'shape.rect', transform: { position: [160, 90] }, props: { size: [320, 180], fill: '#808080' }, effects: [{ id: 'c', type: 'fx.curves', props }] },
+    } } },
+  };
+}
+
 let dir = '', server: Server, close: () => Promise<void>, still: (kind: string, t: number) => Promise<(x: number, y: number) => Pixel>;
 
 describe.skipIf(!CHROME)('effects, rendered', () => {
@@ -80,6 +90,9 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     for (const k of KINDS) fs.writeFileSync(path.join(dir, `${k}.tramme.json`), JSON.stringify(doc(k)));
     fs.writeFileSync(path.join(dir, 'key.tramme.json'), JSON.stringify(keyed('result')));
     fs.writeFileSync(path.join(dir, 'swap.cube'), SWAP_CUBE);
+    fs.writeFileSync(path.join(dir, 'curves-same.tramme.json'), JSON.stringify(toned({})));
+    fs.writeFileSync(path.join(dir, 'curves-bright.tramme.json'), JSON.stringify(toned({ master: { v: [[0, 0], [0.5, 0.75], [1, 1]], closed: false } })));
+    fs.writeFileSync(path.join(dir, 'curves-cast.tramme.json'), JSON.stringify(toned({ blue: { v: [[0, 0], [1, 0]], closed: false } })));
     fs.writeFileSync(path.join(dir, 'lut.tramme.json'), JSON.stringify(graded(1)));
     fs.writeFileSync(path.join(dir, 'lut-half.tramme.json'), JSON.stringify(graded(0.5)));
     for (const [name, masks] of Object.entries(MASKS)) fs.writeFileSync(path.join(dir, `mask-${name}.tramme.json`), JSON.stringify(masked(masks)));
@@ -169,5 +182,11 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
   it('grades through a .cube LUT, at its strength', async () => {
     expect(near((await still('lut', 0.5))(160, 90), BLUE)).toBe(true);
     expect(near((await still('lut-half', 0.5))(160, 90), [128, 0, 128])).toBe(true);
+  }, 60_000);
+
+  it('tones through its curves: the identity by default, the master on all, a channel alone', async () => {
+    expect(near((await still('curves-same', 0.5))(160, 90), [128, 128, 128])).toBe(true);
+    expect(near((await still('curves-bright', 0.5))(160, 90), [191, 191, 191])).toBe(true);
+    expect(near((await still('curves-cast', 0.5))(160, 90), [128, 128, 0])).toBe(true);
   }, 60_000);
 });

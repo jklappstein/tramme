@@ -8,10 +8,11 @@
 // (number, bool, enum: the rank of the option), vec2, vec4 (colour, 0..1
 // straight) or sampler2D (a layer, drawn alone at the same instant); a LUT
 // asset (assetType 'lut') as sampler3D u_<name> with u_<name>_size,
-// u_<name>_min and u_<name>_max (its table's size and domain).
+// u_<name>_min and u_<name>_max (its table's size and domain); a tone curve
+// (a path prop of format 'curve') as sampler2D u_<name>, 256 values in red.
 // Programs are compiled once per source.
 
-import { parseColor, type Lut3D, type PropSchema } from '@tramme/core';
+import { curveTable, parseColor, type Lut3D, type PathValue, type PropSchema } from '@tramme/core';
 
 const VERT = `#version 300 es
 out vec2 vUv;
@@ -26,6 +27,7 @@ export function uniformsOf(schema: PropSchema): string {
     if (d.type === 'color') return `uniform vec4 ${n};`;
     if (d.type === 'layer') return `uniform sampler2D ${n};`;
     if (d.type === 'asset' && d.assetType === 'lut') return `uniform highp sampler3D ${n}; uniform float ${n}_size; uniform vec3 ${n}_min; uniform vec3 ${n}_max;`;
+    if (d.type === 'path' && d.format === 'curve') return `uniform sampler2D ${n};`;
     return '';
   }).filter(Boolean).join('\n');
 }
@@ -102,6 +104,10 @@ export function setUniforms(gl: WebGL2RenderingContext, p: WebGLProgram, schema:
       const tex = textureOf(k, v);
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.uniform1i(loc, unit++);
+    } else if (d.type === 'path' && d.format === 'curve') {
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, curveTexture(gl, ((v as PathValue | undefined)?.v ?? []) as number[][]));
+      gl.uniform1i(loc, unit++);
     } else if (d.type === 'asset' && d.assetType === 'lut') {
       const n = `u_${k.replace(/\W/g, '_')}`, lut = lutOf(k, v);
       gl.activeTexture(gl.TEXTURE0 + unit);
@@ -112,6 +118,27 @@ export function setUniforms(gl: WebGL2RenderingContext, p: WebGLProgram, schema:
       gl.uniform3fv(gl.getUniformLocation(p, `${n}_max`), lut?.domainMax ?? [1, 1, 1]);
     }
   }
+}
+
+/** a tone curve as a 256 × 1 texture of half floats (red), the last ones kept by their points */
+const CURVES = new WeakMap<WebGL2RenderingContext, Map<string, WebGLTexture>>();
+function curveTexture(gl: WebGL2RenderingContext, points: number[][]): WebGLTexture {
+  let made = CURVES.get(gl);
+  if (!made) CURVES.set(gl, (made = new Map()));
+  const key = JSON.stringify(points);
+  let t = made.get(key);
+  if (t) { made.delete(key); made.set(key, t); return t; }
+  t = gl.createTexture()!;
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16F, 256, 1, 0, gl.RED, gl.FLOAT, curveTable(points, 256));
+  for (const [k, val] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, val);
+  made.set(key, t);
+  // an animated curve makes a new one each frame: the oldest go
+  for (const [old, tex] of made) { if (made.size <= 64) break; gl.deleteTexture(tex); made.delete(old); }
+  return t;
 }
 
 /** a LUT's table as a 3D texture (half floats, which WebGL2 always filters), made once per context */

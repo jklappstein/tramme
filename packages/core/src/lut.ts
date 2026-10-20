@@ -67,3 +67,39 @@ export function applyLut(lut: Lut3D, rgb: [number, number, number]): [number, nu
   }
   return out;
 }
+
+/**
+ * A tone curve as a table of n values over 0..1 (the 1D texture of
+ * fx.curves): its points (x, y in 0..1) sorted, joined by a monotone cubic
+ * (Fritsch-Carlson), so it never overshoots between two points, held flat
+ * before the first and after the last.
+ */
+export function curveTable(points: readonly (readonly number[])[], n = 256): Float32Array {
+  const pts = points.filter((p) => p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+    .map((p) => [Math.min(1, Math.max(0, p[0])), Math.min(1, Math.max(0, p[1]))] as [number, number])
+    .sort((a, b) => a[0] - b[0])
+    .filter((p, i, a) => i === 0 || p[0] - a[i - 1][0] > 1e-6);
+  const out = new Float32Array(n);
+  if (pts.length === 0) { for (let i = 0; i < n; i++) out[i] = i / (n - 1); return out; }
+  if (pts.length === 1) return out.fill(pts[0][1]);
+  const m = pts.length, d: number[] = [], tan: number[] = new Array(m).fill(0);
+  for (let i = 0; i < m - 1; i++) d.push((pts[i + 1][1] - pts[i][1]) / (pts[i + 1][0] - pts[i][0]));
+  tan[0] = d[0]; tan[m - 1] = d[m - 2];
+  for (let i = 1; i < m - 1; i++) tan[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < m - 1; i++) {
+    if (d[i] === 0) { tan[i] = tan[i + 1] = 0; continue; }
+    const a = tan[i] / d[i], b = tan[i + 1] / d[i], s = a * a + b * b;
+    if (s > 9) { const k = 3 / Math.sqrt(s); tan[i] = k * a * d[i]; tan[i + 1] = k * b * d[i]; }
+  }
+  let seg = 0;
+  for (let j = 0; j < n; j++) {
+    const x = j / (n - 1);
+    if (x <= pts[0][0]) { out[j] = pts[0][1]; continue; }
+    if (x >= pts[m - 1][0]) { out[j] = pts[m - 1][1]; continue; }
+    while (seg < m - 2 && x > pts[seg + 1][0]) seg++;
+    const [x0, y0] = pts[seg], [x1, y1] = pts[seg + 1], h = x1 - x0, t = (x - x0) / h;
+    const t2 = t * t, t3 = t2 * t;
+    out[j] = Math.min(1, Math.max(0, (2 * t3 - 3 * t2 + 1) * y0 + (t3 - 2 * t2 + t) * h * tan[seg] + (-2 * t3 + 3 * t2) * y1 + (t3 - t2) * h * tan[seg + 1]));
+  }
+  return out;
+}

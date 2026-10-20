@@ -1157,6 +1157,13 @@
     "used": "Plugin {name} ajouté à ce projet."
   },
   "content": {
+    "Curves": "Courbes",
+    "Master": "Maître",
+    "Red": "Rouge",
+    "Green": "Vert",
+    "Blue": "Bleu",
+    "tone curves: contrast, a lifted black, a colour cast, by points on a curve": "courbes de tons : contraste, noirs relevés, dominante de couleur, par des points sur une courbe",
+    "the brightness: points from 0 (black) to 1 (white)": "la luminosité : des points de 0 (noir) à 1 (blanc)",
     "LUT": "LUT",
     "the colours through a .cube table: a look, or the conversion of log footage": "les couleurs à travers une table .cube : un look, ou la conversion d'images en log",
     "a .cube file imported into the project": "un fichier .cube importé dans le projet",

@@ -137,3 +137,7 @@ its network policy) and has no GPU: no model was downloaded or run there.
   65³) and a look LUT; `fx.lut` on log footage at strength 1: the picture
   looks like the camera's own conversion. In the desktop app too (`.cube`
   added to its store's allowed files).
+- **Step 6 — curves.** An adjustment layer with `fx.curves`: drag the
+  master curve's points (a contrast S), add one, double-click to remove it;
+  pull the blue curve down for a warm cast. On a phone, the square takes a
+  finger (its points are small).
