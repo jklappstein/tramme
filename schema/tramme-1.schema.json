@@ -133,6 +133,32 @@
         "additionalProperties": false
       }
     },
+    "styles": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]+$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "props": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "props"
+        ],
+        "additionalProperties": false
+      }
+    },
     "compositions": {
       "type": "object",
       "propertyNames": {
@@ -381,6 +407,48 @@
                     "type": "string",
                     "pattern": "^[A-Za-z0-9_-]+$"
                   }
+                },
+                "params": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                },
+                "overrides": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                },
+                "styles": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "style": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]+$"
+                      },
+                      "at": {
+                        "type": "number"
+                      },
+                      "map": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "style"
+                    ],
+                    "additionalProperties": false
+                  }
                 }
               },
               "required": [
@@ -394,6 +462,47 @@
             "items": {
               "type": "string",
               "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "params": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "default": {},
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "label": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "targets"
+              ],
+              "additionalProperties": false
             }
           }
         },

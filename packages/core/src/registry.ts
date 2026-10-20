@@ -8,6 +8,7 @@ import type { Asset, Layer, Vec2 } from './types.ts';
 import { BUILTIN_MODIFIERS, type ModifierType } from './modifiers.ts';
 import { TOOL_NAME, type AiNotes, type KitType, type PromptType, type ToolType } from './tools.ts';
 import type { CheckType } from './checks.ts';
+import type { Instance } from './components.ts';
 
 export type PropType =
   | 'number' | 'vec2' | 'bool'
@@ -108,8 +109,8 @@ export interface Host {
    * arrived. Exports wait for it; the preview redraws.
    */
   defer?(pending: Promise<unknown>): void;
-  /** draw another composition of the document at its local time t, from (0, 0) (nested compositions) */
-  drawComposition?(ctx: CanvasRenderingContext2D, compId: string, t: number): void;
+  /** draw another composition of the document at its local time t, from (0, 0) (nested compositions), read through an instance when it is a component */
+  drawComposition?(ctx: CanvasRenderingContext2D, compId: string, t: number, instance?: Instance): void;
   /** size and duration of a composition of the document */
   compositionSize?(compId: string): { width: number; height: number; duration: number } | null;
   /**

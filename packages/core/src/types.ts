@@ -133,6 +133,46 @@ export interface Layer {
   masks?: Mask[];
   /** container layers only (group): child ids, bottom to top */
   children?: string[];
+  /** comp layers (an instance of a component): a value per parameter the composition exposes */
+  params?: Record<string, Prop>;
+  /** comp layers: properties of the component set for this instance alone, by their address in it ('title.text', 'card.transform.position') */
+  overrides?: Record<string, Prop>;
+  /** styles and animations of the document applied to this layer, in order: each sets its properties over the layer's own, the later over the earlier */
+  styles?: StyleUse[];
+}
+
+/**
+ * A parameter a composition exposes, which makes it a component: each
+ * instance (a comp layer) gives it a value, which lands on every target, an
+ * address in the composition ('card.fill', 'title.transform.position',
+ * 'glow.effects.blur.radius', '$comp.background'). Without a value from the
+ * instance, the default; without a default, the targets keep their own.
+ */
+export interface ComponentParam {
+  /** a property type of the schema: number, vec2, color, text, asset... */
+  type: string;
+  targets: string[];
+  default?: unknown;
+  /** enum parameters: the values accepted */
+  options?: string[];
+  label?: string;
+  description?: string;
+}
+
+/** a set of properties defined once (a look, or an animation when they are keyframed), applied to any layer that has them */
+export interface Style {
+  /** by the property's name on the layer ('fill', 'transform.opacity') */
+  props: Record<string, Prop>;
+  description?: string;
+}
+
+/** a style applied to a layer */
+export interface StyleUse {
+  style: string;
+  /** seconds its keyframes are moved by: an animation written from 0 played from `at` */
+  at?: number;
+  /** a style's property applied to another one of the layer: { 'transform.scale': 'size' } */
+  map?: Record<string, string>;
 }
 
 export interface Marker {
@@ -171,6 +211,8 @@ export interface Composition {
   layers: Record<string, Layer>;
   /** root stack, bottom to top */
   order: string[];
+  /** what it exposes as a component: its comp layers give these values */
+  params?: Record<string, ComponentParam>;
 }
 
 export interface TrammeDoc {
@@ -180,6 +222,8 @@ export interface TrammeDoc {
   meta: { title: string; description?: string; [k: string]: unknown };
   tokens: Record<string, Token>;
   assets: Record<string, Asset>;
+  /** looks and animations defined once, applied to layers by name (Layer.styles) */
+  styles?: Record<string, Style>;
   compositions: Record<string, Composition>;
   /** composition rendered by default */
   root: string;

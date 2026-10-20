@@ -5,6 +5,7 @@
 // layers involved. The assistant runs them before summing up its work, the
 // user from the / menu. Plugins add their own (`checks` export).
 
+import type { Instance } from './components.ts';
 import { Evaluator, nestedTime, type EvaluatedLayer, type NestedTiming } from './evaluate.ts';
 import { asKeyframed, modsOf, propKind } from './props.ts';
 import { animatedSlots, motionFigures, motionStretches, pathDeviation, sampleAddress, spanOf } from './motion.ts';
@@ -116,7 +117,7 @@ function place(ev: Evaluator, comp: Composition, t: number, layers: EvaluatedLay
     const inner = L.node.type === 'comp' && typeof L.props.comp === 'string' && depth < 8 ? doc.compositions[L.props.comp] : undefined;
     if (inner) {
       const lt = nestedTime(L.props as unknown as NestedTiming, t, L.layer.in ?? 0, inner.duration);
-      if (lt >= 0 && lt < inner.duration) place(ev, inner, lt, ev.frame(lt, L.props.comp as string).layers, matMul(m, [1, 0, 0, 1, -inner.width / 2, -inner.height / 2]), opacity, out, `${prefix}${L.id}/`, depth + 1);
+      if (lt >= 0 && lt < inner.duration) place(ev, inner, lt, ev.frame(lt, L.props.comp as string, L.props.$instance as Instance | undefined).layers, matMul(m, [1, 0, 0, 1, -inner.width / 2, -inner.height / 2]), opacity, out, `${prefix}${L.id}/`, depth + 1);
     }
   }
 }

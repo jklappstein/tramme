@@ -3,9 +3,10 @@
 // optionally looping; `remap` (often an expression) gives the local time
 // directly.
 
-import { nestedTime, type NestedTiming, type NodeType } from '@tramme/core';
+import { nestedTime, type Instance, type NestedTiming, type NodeType } from '@tramme/core';
 
-interface CompProps extends NestedTiming { comp: string | null; crop: boolean }
+/** $instance: how this layer reads the composition when it is a component (its parameters, its overrides), set by the Evaluator */
+interface CompProps extends NestedTiming { comp: string | null; crop: boolean; $instance?: Instance }
 
 /** local time of the nested composition (the checks read it the same way: core's nestedTime) */
 export const localTime = nestedTime;
@@ -39,7 +40,7 @@ export const comp: NodeType<CompProps> = {
       if (!s) return;
       ctx.translate(-s.width / 2, -s.height / 2);
       if (p.crop) { ctx.beginPath(); ctx.rect(0, 0, s.width, s.height); ctx.clip(); }
-      host.drawComposition(ctx, p.comp, localTime(p, host.t, host.layerIn ?? 0, s.duration));
+      host.drawComposition(ctx, p.comp, localTime(p, host.t, host.layerIn ?? 0, s.duration), p.$instance);
     },
   },
 };

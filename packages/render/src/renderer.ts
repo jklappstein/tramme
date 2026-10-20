@@ -3,7 +3,7 @@
 // with the Canvas2D backend, accumulate in linear light, then finish
 // (background plate, finishing effects, grain) in the compositor.
 
-import { assertValid, DocSchema, Evaluator, parseColor, type Composition, type TrammeDoc, type EvaluatedEffect, type EvaluatedFrame, type Host, type PluginModule, type Registry } from '@tramme/core';
+import { assertValid, DocSchema, Evaluator, parseColor, type Composition, type TrammeDoc, type EvaluatedEffect, type EvaluatedFrame, type Host, type Instance, type PluginModule, type Registry } from '@tramme/core';
 import { AssetStore } from './assets.ts';
 import { CanvasPool, drawComposed, drawFrame, drawLayers, type DrawEnv, type HostFactory } from './canvas2d.ts';
 import { Compositor, type Finish, type FinishPass, type Look } from './compositor.ts';
@@ -217,7 +217,7 @@ export class Renderer {
     }
   }
 
-  hostFactory(f: { t: number; frame: number }, compId = this.compId): HostFactory {
+  hostFactory(f: { t: number; frame: number; instance?: Instance }, compId = this.compId): HostFactory {
     const { assets } = this;
     const comp = this.evaluator.comp(compId);
     return (layerId: string): Host => ({
@@ -227,10 +227,10 @@ export class Renderer {
       assetInfo: (id: string) => assets.info(id),
       assetUrl: (id: string) => assets.url(id),
       compositionSize: (id: string) => { const c = this.doc.compositions[id]; return c ? { width: c.width, height: c.height, duration: c.duration } : null; },
-      drawComposition: (ctx: CanvasRenderingContext2D, id: string, t: number) => this.drawNested(ctx, id, t),
-      drawLayer: (ctx: CanvasRenderingContext2D, id: string) => { const L = this.layerOf(id, f.t, compId); if (L) drawLayers(ctx, [{ ...L, layer: { ...L.layer, visible: true } }], this.env(f, compId)); },
-      layer: (id: string) => { const L = this.layerOf(id, f.t, compId); return L ? { props: L.props, transform: L.transform, in: L.layer.in ?? 0, out: L.layer.out ?? comp.duration } : null; },
-      state: <T>() => this.simState(compId, layerId, f.t) as T,
+      drawComposition: (ctx: CanvasRenderingContext2D, id: string, t: number, instance?: Instance) => this.drawNested(ctx, id, t, instance),
+      drawLayer: (ctx: CanvasRenderingContext2D, id: string) => { const L = this.layerOf(id, f.t, compId, f.instance); if (L) drawLayers(ctx, [{ ...L, layer: { ...L.layer, visible: true } }], this.env(f, compId)); },
+      layer: (id: string) => { const L = this.layerOf(id, f.t, compId, f.instance); return L ? { props: L.props, transform: L.transform, in: L.layer.in ?? 0, out: L.layer.out ?? comp.duration } : null; },
+      state: <T>() => this.simState(compId, layerId, f.t, f.instance) as T,
       defer: (p: Promise<unknown>) => { this.pending.push(p); },
     });
   }
@@ -241,18 +241,19 @@ export class Renderer {
    * computed, so playing forward costs one step a frame and a jump at most
    * CHECKPOINT steps once the way there was computed.
    */
-  private simState(compId: string, id: string, t: number): unknown {
+  private simState(compId: string, id: string, t: number, instance?: Instance): unknown {
     const comp = this.doc.compositions[compId], layer = comp?.layers[id];
     const sim = layer && this.registry.hasNode(layer.type) ? this.registry.node(layer.type).simulate : undefined;
     if (!sim) return undefined;
     const CHECKPOINT = 10, fps = comp.fps, start = layer.in ?? 0;
     const target = Math.max(0, Math.round((t - start) * fps));
-    const key = `${compId}/${id}`;
+    // each instance of a component runs its own
+    const key = `${compId}/${id}${instance ? `/${instance.key}` : ''}`;
     let c = this.sims.get(key);
     if (!c) { c = { checkpoints: new Map(), last: null }; this.sims.set(key, c); }
     const at = (frame: number) => {
       const time = start + frame / fps;
-      return { props: this.evaluator.layerAt(id, time, compId).props, host: this.hostFactory({ t: time, frame: Math.round(time * fps) }, compId)(id) };
+      return { props: this.evaluator.layerAt(id, time, compId, instance).props, host: this.hostFactory({ t: time, frame: Math.round(time * fps), instance }, compId)(id) };
     };
     if (c.last?.frame === target) return c.last.state;
     // where to start: the last frame computed if it is just behind, else the highest checkpoint at or before the target
@@ -279,21 +280,21 @@ export class Renderer {
   }
 
   /** a layer at time t even when hidden or out of its range (layer inputs), or null */
-  private layerOf(id: string, t: number, compId: string) {
-    try { return this.doc.compositions[compId]?.layers[id] ? this.evaluator.layerAt(id, t, compId) : null; } catch { return null; }
+  private layerOf(id: string, t: number, compId: string, instance?: Instance) {
+    try { return this.doc.compositions[compId]?.layers[id] ? this.evaluator.layerAt(id, t, compId, instance) : null; } catch { return null; }
   }
 
-  private env(frame: { t: number; frame: number }, compId = this.compId): DrawEnv {
+  private env(frame: { t: number; frame: number; instance?: Instance }, compId = this.compId): DrawEnv {
     return {
       host: this.hostFactory(frame, compId), registry: this.registry, pool: this.pool, scale: [this.sx, this.sy], t: frame.t,
-      layerAt: (id) => this.layerOf(id, frame.t, compId),
+      layerAt: (id) => this.layerOf(id, frame.t, compId, frame.instance),
       ...(this.isolate ? { onError: (id: string, e: Error) => { this.errors.set(id, e.message); } } : {}),
     };
   }
 
   /** a nested composition at its local time: background plate, then its layers (through its own camera) */
-  private drawNested(ctx: CanvasRenderingContext2D, compId: string, t: number) {
-    const f = this.evaluator.frame(t, compId);
+  private drawNested(ctx: CanvasRenderingContext2D, compId: string, t: number, instance?: Instance) {
+    const f = this.evaluator.frame(t, compId, instance);
     if (f.background) { ctx.fillStyle = f.background; ctx.fillRect(0, 0, f.comp.width, f.comp.height); }
     drawComposed(ctx, f, this.env(f, compId));
   }

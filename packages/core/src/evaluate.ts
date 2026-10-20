@@ -5,6 +5,7 @@
 // cycles are reported and the editor can show what drives what. Static
 // properties are cached across frames.
 
+import { componentOf, instanceProps, paramDef, styleProps, type Instance } from './components.ts';
 import { audioReader, type AudioReader } from './analysis.ts';
 import { eventsReader, type EventsReader } from './events.ts';
 import { integrate, mediaClockOf, mediaMoments, mediaTime, trackId, trackReader, type MediaClock, type TrackReader } from './track.ts';
@@ -57,6 +58,8 @@ export interface EvaluatedFrame {
   effects: EvaluatedEffect[];
   /** active, visible layers of the root stack, bottom to top */
   layers: EvaluatedLayer[];
+  /** the instance it was read through, when the composition is a component held by a comp layer */
+  instance?: Instance;
 }
 
 export class EvalError extends Error {
@@ -68,7 +71,7 @@ export class EvalError extends Error {
 }
 
 /** a property slot: where its value lives in the document and how to read it */
-interface Slot { prop: Prop | undefined; def: PropDef }
+interface Slot { prop: Prop | undefined; def: PropDef; /** set by the instance read: never cached across instances */ inst?: boolean }
 
 interface FrameCtx {
   compId: string;
@@ -77,6 +80,8 @@ interface FrameCtx {
   frame: number;
   memo: Map<string, unknown>;
   stack: string[];
+  /** the instance the composition is read through: the properties its parameters and overrides set */
+  inst?: Instance;
 }
 
 const COMP_DEFS: Record<string, PropDef> = {
@@ -164,10 +169,19 @@ export class Evaluator {
     return c;
   }
 
-  /** the resolved scene of a composition at time t (seconds) */
-  frame(t: number, compId = this.doc.root): EvaluatedFrame {
+  /**
+   * How an instance reads a component: the parameters' values (evaluated in
+   * the composition holding it) on their targets, and the overrides.
+   */
+  instance(compId: string, values: Record<string, unknown>, overrides?: Record<string, Prop>): Instance {
+    const props = instanceProps(this.comp(compId), values, overrides);
+    return { key: JSON.stringify([compId, ...props]), props };
+  }
+
+  /** the resolved scene of a composition at time t (seconds), read through an instance when it holds one */
+  frame(t: number, compId = this.doc.root, inst?: Instance): EvaluatedFrame {
     const comp = this.comp(compId);
-    const ctx: FrameCtx = { compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [] };
+    const ctx: FrameCtx = { compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [], inst };
     const effects: EvaluatedEffect[] = (comp.effects || []).filter((e) => e.enabled !== false).map((e) => ({
       id: e.id, type: e.type, props: this.evalSchema(ctx, `$comp.effects.${e.id}`, this.effectSchema(e.type)),
     }));
@@ -181,13 +195,14 @@ export class Evaluator {
       camera: comp.camera ? this.evalSchema(ctx, '$comp.camera', CAMERA_SCHEMA) as unknown as EvaluatedCamera : null,
       effects,
       layers: this.stack(ctx, comp.order),
+      ...(inst ? { instance: inst } : {}),
     };
   }
 
   /** value of one property: 'layerId.prop', 'layerId.transform.position', '$comp.background' */
-  value(address: string, t: number, compId = this.doc.root): unknown {
+  value(address: string, t: number, compId = this.doc.root, inst?: Instance): unknown {
     const comp = this.comp(compId);
-    return this.read({ compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [] }, address);
+    return this.read({ compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [], inst }, address);
   }
 
   /**
@@ -203,10 +218,10 @@ export class Evaluator {
   }
 
   /** one layer at time t, whether or not it is active then (node loading, editor) */
-  layerAt(id: string, t: number, compId = this.doc.root): EvaluatedLayer {
+  layerAt(id: string, t: number, compId = this.doc.root, inst?: Instance): EvaluatedLayer {
     const comp = this.comp(compId);
     if (!comp.layers[id]) throw new Error(`unknown layer: ${id}`);
-    return this.layer({ compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [] }, id);
+    return this.layer({ compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [], inst }, id);
   }
 
   // ── layers ─────────────────────────────────────────────────
@@ -229,6 +244,13 @@ export class Evaluator {
       if (!def.integral) continue;
       const elapsed = this.integralOf(ctx, id, name);
       if (elapsed !== null) props[def.integral] = elapsed;
+    }
+    // an instance of a component: how it reads it, for the node to draw it so
+    const inner = componentOf(this.doc, layer);
+    if (inner && (inner.params || layer.overrides)) {
+      const values: Record<string, unknown> = {};
+      for (const name of Object.keys(inner.params || {})) if (layer.params?.[name] !== undefined) values[name] = this.read(ctx, `${id}.params.${name}`);
+      props.$instance = this.instance(String(props.comp), values, layer.overrides);
     }
     return {
       id, layer, node,
@@ -272,7 +294,24 @@ export class Evaluator {
   }
 
   // ── addresses ──────────────────────────────────────────────
+  /** the property at an address: the document's, then a style's on the layer, then the instance's */
   private slot(ctx: FrameCtx, address: string): Slot {
+    const s = this.docSlot(ctx, address);
+    const dot = address.indexOf('.');
+    const styled = dot > 0 && address[0] !== '$' ? this.styled(ctx.comp.layers[address.slice(0, dot)])?.get(address.slice(dot + 1)) : undefined;
+    const own = ctx.inst?.props.get(address);
+    return own !== undefined ? { ...s, prop: own, inst: true } : styled !== undefined ? { ...s, prop: styled } : s;
+  }
+
+  private styles = new WeakMap<Layer, Map<string, Prop> | null>();
+  /** the properties a layer's styles set, once per layer */
+  private styled(layer: Layer | undefined): Map<string, Prop> | null {
+    if (!layer?.styles) return null;
+    if (!this.styles.has(layer)) this.styles.set(layer, styleProps(this.doc, layer));
+    return this.styles.get(layer)!;
+  }
+
+  private docSlot(ctx: FrameCtx, address: string): Slot {
     const parts = address.split('.');
     if (parts[0] === '$comp') {
       if (parts[1] === 'background') return { prop: ctx.comp.background ?? undefined, def: COMP_DEFS.background };
@@ -308,6 +347,11 @@ export class Evaluator {
       if (mk && def) return { prop: mk.props?.[parts[3]], def };
       throw new EvalError(address, 'unknown mask or mask property');
     }
+    if (parts[1] === 'params') {
+      const p = parts.length === 3 ? componentOf(this.doc, layer)?.params?.[parts[2]] : undefined;
+      if (p) return { prop: layer.params?.[parts[2]], def: paramDef(p) };
+      throw new EvalError(address, 'unknown parameter');
+    }
     const def = this.registry.node(layer.type).props[parts[1]];
     if (!def || parts.length !== 2) throw new EvalError(address, `unknown property for ${layer.type}`);
     return { prop: layer.props?.[parts[1]], def };
@@ -316,9 +360,9 @@ export class Evaluator {
   private read(ctx: FrameCtx, address: string): unknown {
     if (ctx.memo.has(address)) return ctx.memo.get(address);
     const cacheKey = `${ctx.compId}:${address}`;
-    if (this.staticCache.has(cacheKey)) return this.staticCache.get(cacheKey);
+    if (!ctx.inst?.props.has(address) && this.staticCache.has(cacheKey)) return this.staticCache.get(cacheKey);
     if (ctx.stack.includes(address)) throw new EvalError(address, `circular dependency (${[...ctx.stack, address].join(' → ')})`);
-    const { prop, def } = this.slot(ctx, address);
+    const { prop, def, inst } = this.slot(ctx, address);
     ctx.stack.push(address);
     let v: unknown;
     try {
@@ -326,7 +370,8 @@ export class Evaluator {
     } finally {
       ctx.stack.pop();
     }
-    if (prop === undefined || (propKind(prop) === 'static' && !modsOf(prop))) this.staticCache.set(cacheKey, v);
+    // a fixed value reads nothing else: the same in every frame and every instance, except one an instance sets
+    if (!inst && (prop === undefined || (propKind(prop) === 'static' && !modsOf(prop)))) this.staticCache.set(cacheKey, v);
     else ctx.memo.set(address, v);
     return v;
   }

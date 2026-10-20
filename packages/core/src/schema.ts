@@ -47,6 +47,26 @@ const mask = z.strictObject({
   props: z.record(z.string(), prop).optional(),
 });
 
+const styleUse = z.strictObject({
+  style: id,
+  at: finite.optional(),
+  map: z.record(z.string(), z.string()).optional(),
+});
+
+const style = z.strictObject({
+  props: z.record(z.string(), prop),
+  description: z.string().optional(),
+});
+
+const param = z.strictObject({
+  type: z.string().min(1),
+  targets: z.array(z.string().min(1)),
+  default: z.unknown().optional(),
+  options: z.array(z.string()).optional(),
+  label: z.string().optional(),
+  description: z.string().optional(),
+});
+
 const layer = z.strictObject({
   type: z.string().min(1),
   name: z.string().optional(),
@@ -61,6 +81,9 @@ const layer = z.strictObject({
   effects: z.array(effect).optional(),
   masks: z.array(mask).optional(),
   children: z.array(id).optional(),
+  params: z.record(z.string(), prop).optional(),
+  overrides: z.record(z.string(), prop).optional(),
+  styles: z.array(styleUse).optional(),
 });
 
 const marker = z.strictObject({
@@ -85,6 +108,7 @@ const composition = z.strictObject({
   sound: z.strictObject({ loudness: prop.optional(), room: prop.optional() }).optional(),
   layers: z.record(id, layer),
   order: z.array(id),
+  params: z.record(id, param).optional(),
 });
 
 export const DocSchema = z.strictObject({
@@ -93,6 +117,7 @@ export const DocSchema = z.strictObject({
   meta: z.looseObject({ title: z.string(), description: z.string().optional() }),
   tokens: z.record(id, token),
   assets: z.record(id, asset),
+  styles: z.record(id, style).optional(),
   compositions: z.record(id, composition),
   root: id,
   plugins: z.array(id).optional(),

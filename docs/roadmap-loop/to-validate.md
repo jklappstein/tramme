@@ -165,3 +165,19 @@ its network policy) and has no GPU: no model was downloaded or run there.
   semitones, robot, telephone, radio, megaphone, echo) in the preview and in
   an MP4 export: the same sound; a speech clip at 0.7× with Keep the pitch:
   slow but at its pitch. Listen for the shifter's grain on deep voices.
+
+## Components, step 1
+
+- **Instances in the editor.** Open a project with a component (a
+  composition with `params`) held by a few comp layers with different
+  `params` and `overrides` (written by hand or by the assistant): the
+  preview, a still and an MP4 export show each instance with its values;
+  change the component (its plate colour, a layer's keyframes): every
+  instance follows, except what one overrides. The inspector has no
+  parameter fields yet (step 5); it shows the comp node's own props.
+- **Detach.** Only in `@tramme/core` for now (`detachPlan`; the tool and the
+  button come with steps 4 and 5). Rendered identical to the instance in
+  Chrome at four times, within 2 levels; check on a device's GPU path too.
+- **Styles.** A document with `styles` (a look, a keyframed entrance) applied
+  to layers with `at`: they animate from `at`. The inspector shows the
+  layer's own values, not the style's (step 5 marks them).

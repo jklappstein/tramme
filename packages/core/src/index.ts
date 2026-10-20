@@ -29,3 +29,4 @@ export * from './events.ts';
 export * from './track.ts';
 export * from './lut.ts';
 export * from './stabilize.ts';
+export * from './components.ts';

@@ -2,7 +2,7 @@
 
 How anything in a document is defined once and used many times with parameters: a layer of any type, a group, a whole composition, an animation alone or a style. Today the assistant writes every element in full through JSON Patch — twenty cards are twenty complete subtrees, a hundred dots a hundred layers — so the cost of a film follows the number of things on screen. After this it follows the number of different ideas in the film.
 
-Status: not started. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (parameters, instances and overrides read by the Evaluator, detach, styles and animations). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -23,10 +23,10 @@ What exists goes partway. `stagger` and `noise` vary a value by the layer's rank
 
 ### Step 1. Parametric components
 
-- [ ] The document format: a component is any subtree or composition with a list of exposed parameters (name, type from the schema, target paths, default). The `comp` node grows parameters instead of a new node type.
-- [ ] Instances: a reference, parameter values, overrides; the Evaluator expands them at evaluation time. Validation in `packages/core/src/validate.ts` (unknown parameter, wrong type, a component that contains itself).
-- [ ] Detach: an instance becomes plain layers, its parameters resolved.
-- [ ] Animations and styles as components: a set of keyframes and modifiers, or a set of values, applied to any compatible property.
+- [x] The document format: a component is any subtree or composition with a list of exposed parameters (name, type from the schema, target paths, default). The `comp` node grows parameters instead of a new node type.
+- [x] Instances: a reference, parameter values, overrides; the Evaluator expands them at evaluation time. Validation in `packages/core/src/validate.ts` (unknown parameter, wrong type, a component that contains itself).
+- [x] Detach: an instance becomes plain layers, its parameters resolved.
+- [x] Animations and styles as components: a set of keyframes and modifiers, or a set of values, applied to any compatible property.
 
 ### Step 2. Distribution
 

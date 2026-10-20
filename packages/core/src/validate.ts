@@ -8,6 +8,7 @@ import { compileExpr } from './expr.ts';
 import { pointer } from './ops.ts';
 import { asExpr, asKeyframed, asLink, propKind, staticValue } from './props.ts';
 import { CAMERA_SCHEMA, MASK_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type PropDef, type PropSchema, type Registry } from './registry.ts';
+import { addressDef, componentOf, PARAM_TYPES, paramDef, paramFits } from './components.ts';
 import { DocSchema } from './schema.ts';
 import type { Composition, TrammeDoc } from './types.ts';
 
@@ -131,6 +132,7 @@ class Checker {
     if (comp.sound) this.props(cid, pointer(...base, 'sound'), SOUND_MIX_SCHEMA, comp.sound);
     if (comp.camera) this.props(cid, pointer(...base, 'camera'), CAMERA_SCHEMA, comp.camera);
     this.effects(cid, pointer(...base, 'effects'), comp.effects, 'finish');
+    this.params(cid, comp);
 
     for (const [lid, layer] of Object.entries(comp.layers)) {
       const lp = pointer(...base, 'layers', lid);
@@ -154,6 +156,52 @@ class Checker {
         masks.add(mk.id);
         if (mk.props) this.props(cid, `${lp}/masks/${i}/props`, MASK_SCHEMA, mk.props);
       });
+      this.instance(cid, lid, lp);
+      (layer.styles || []).forEach((use, i) => {
+        const style = this.doc.styles?.[use.style];
+        if (!style) return this.err(`${lp}/styles/${i}/style`, `unknown style "${use.style}"`);
+        for (const [name, v] of Object.entries(style.props)) {
+          const to = use.map?.[name] ?? name, def = addressDef(this.doc, this.reg, comp, `${lid}.${to}`);
+          if (!def) { this.err(`${lp}/styles/${i}`, `${layer.type} has no property "${to}" for the style "${use.style}"`); continue; }
+          this.prop(cid, pointer('styles', use.style, 'props', name), def, v);
+        }
+        for (const from of Object.keys(use.map || {})) if (!(from in style.props)) this.err(`${lp}/styles/${i}/map/${from}`, `the style "${use.style}" has no property "${from}"`);
+      });
+    }
+  }
+
+  /** what a composition exposes as a component: known types, targets that exist and take the type, a default of the type */
+  params(cid: string, comp: Composition) {
+    for (const [name, p] of Object.entries(comp.params || {})) {
+      const pp = pointer('compositions', cid, 'params', name);
+      if (!PARAM_TYPES.includes(p.type as never)) { this.err(pp + '/type', `unknown type "${p.type}" (one of ${PARAM_TYPES.join(', ')})`); continue; }
+      if (!p.targets.length) this.err(pp + '/targets', 'at least one target expected');
+      p.targets.forEach((target, i) => {
+        const def = addressDef(this.doc, this.reg, comp, target);
+        if (!def) this.err(`${pp}/targets/${i}`, `nothing at "${target}" in the composition`);
+        else if (!paramFits(p.type, def.type)) this.err(`${pp}/targets/${i}`, `"${target}" is ${def.type}, the parameter ${p.type}`);
+        else if (def.animatable === false && p.type !== def.type) this.err(`${pp}/targets/${i}`, `"${target}" takes only a ${def.type}`);
+      });
+      if (p.default !== undefined) { const bad = this.valueIssue(paramDef(p), p.default); if (bad) this.err(pp + '/default', bad); }
+    }
+  }
+
+  /** a comp layer's parameter values (in the composition holding it) and overrides (in the component) */
+  instance(cid: string, lid: string, lp: string) {
+    const layer = this.doc.compositions[cid].layers[lid];
+    if (!layer.params && !layer.overrides) return;
+    const inner = componentOf(this.doc, layer);
+    if (!inner) return this.err(lp + (layer.type === 'comp' ? '/props/comp' : '/type'), 'parameters and overrides belong to a comp layer holding a composition');
+    const innerId = String(staticValue(layer.props?.comp));
+    for (const [name, v] of Object.entries(layer.params || {})) {
+      const p = inner.params?.[name];
+      if (!p) { this.err(`${lp}/params/${name}`, `"${innerId}" has no parameter "${name}"`); continue; }
+      if (PARAM_TYPES.includes(p.type as never)) this.prop(cid, `${lp}/params/${name}`, paramDef(p), v);
+    }
+    for (const [address, v] of Object.entries(layer.overrides || {})) {
+      const def = addressDef(this.doc, this.reg, inner, address);
+      if (!def) { this.err(lp + pointer('overrides', address), `nothing at "${address}" in "${innerId}"`); continue; }
+      this.prop(innerId, lp + pointer('overrides', address), def, v);
     }
   }
 
@@ -256,6 +304,7 @@ class Checker {
     const layer = comp.layers[lid];
     if (!layer) return `unknown layer "${lid}"`;
     if (a === 'transform') return TRANSFORM_SCHEMA[b] && !rest.length ? null : `unknown transform.${b}`;
+    if (a === 'params') return addressDef(this.doc, this.reg, comp, address) ? null : `"${lid}" has no parameter "${b}"`;
     if (b !== undefined) return `invalid address "${address}"`;
     if (!this.reg.hasNode(layer.type)) return null;
     return this.reg.node(layer.type).props[a] ? null : `${layer.type} has no property "${a}"`;

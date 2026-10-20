@@ -59,6 +59,34 @@ A layer's `masks` cut what it draws, in order, before its effects: each is `{ id
 "masks": [{ "id": "window", "props": { "path": { "v": [[-300, -200], [300, -200], [300, 200], [-300, 200]], "closed": true }, "feather": 12 } }]
 ```
 
+### Components
+
+A composition that lists `params` is a component: each parameter has a `type` (a property type: `number`, `vec2`, `color`, `text`, `asset`…), the `targets` it lands on (addresses in the composition: `card.fill`, `title.transform.position`, `glow.effects.blur.radius`, `$comp.background`), and an optional `default`, `label`, `description` (`options` for an enum). A `comp` layer holding it is an instance: its `params` give a value per parameter (any form: fixed, keyframed, an expression, a link, read in the composition holding the instance), its `overrides` set any property of the component by its address, for this instance alone. A parameter the instance leaves out takes its default; without a default its targets keep their own values. Changing the component changes every instance, except what an instance sets.
+
+```jsonc
+"card": {
+  "params": {
+    "color": { "type": "color", "targets": ["plate.fill"], "default": "@paper" },
+    "title": { "type": "text", "targets": ["label.text"] }
+  }, …
+},
+// in another composition
+"first": { "type": "comp", "props": { "comp": "card" }, "params": { "title": "Hello", "color": "@accent" }, "overrides": { "plate.radius": 32 } }
+```
+
+An instance's parameter reads as `first.params.title` (a link, an expression's `prop()`). A composition must not hold itself, through instances or not. Detaching an instance (`detachPlan` in `@tramme/core`) turns it into a group of plain layers drawing the same: the parameters and overrides written in, the keyframes moved to the holding composition's time. It is refused when the copy could not draw the same: a nested time that does not run one to one (a speed other than 1, a loop, a remap), an expression or a modifier reading the time while the copy is moved, an expression reading the component's own size or markers, a camera or finishing effects in the component.
+
+### Styles and animations
+
+`styles` at the document's top level are sets of properties defined once, by their name on a layer (`fill`, `radius`, `transform.opacity`). A layer applies them in order with `styles: [{ "style": "ink" }, { "style": "pop", "at": 2 }]`: each sets its properties over the layer's own, the later over the earlier. Keyframed, a style is an animation: written from 0, moved by `at`. `map` applies a style's property to another one of the layer (`{ "transform.scale": "size" }`).
+
+```json
+"styles": {
+  "pop": { "props": { "transform.scale": { "$k": [{ "t": 0, "v": [0, 0], "ease": "@swift" }, { "t": 0.4, "v": [1, 1] }] } } },
+  "ink": { "props": { "fill": "@ink", "radius": 8 } }
+}
+```
+
 ## Properties: four forms
 
 | Form | Example | Meaning |

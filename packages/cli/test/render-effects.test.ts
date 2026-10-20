@@ -8,6 +8,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { PNG } from 'pngjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { applyOps, detachPlan, validate, type TrammeDoc } from '@tramme/core';
+import { builtinRegistry } from '@tramme/nodes';
 import { CHROME, launch, openDoc } from '../src/browser.ts';
 import { readConfig, Server } from '../src/server.ts';
 
@@ -118,6 +120,53 @@ function frequencyOf(b64: string): number {
   return n / 0.5;
 }
 
+/**
+ * A badge component (its colour, its size and its spin exposed, a dot linked
+ * to its plate) in a scene of three instances: one with its default, one
+ * animated and overridden, one starting later; and the same scene with every
+ * instance detached into plain layers.
+ */
+function badges(): TrammeDoc {
+  return {
+    schema: 'tramme/1', meta: { title: 'badges' }, tokens: { brand: { type: 'color', value: '#E03070' } }, assets: {}, root: 'main',
+    compositions: {
+      badge: {
+        name: 'Badge', width: 120, height: 80, fps: 30, duration: 2, background: '#203040',
+        params: {
+          color: { type: 'color', targets: ['plate.fill'], default: '#40A0E0' },
+          spin: { type: 'number', targets: ['dot.transform.rotation'] },
+        },
+        layers: {
+          plate: { type: 'shape.rect', transform: { position: [60, 40] }, props: { size: [100, 60], radius: 12, fill: '#FFFFFF' } },
+          dot: { type: 'shape.rect', transform: { position: { $k: [{ t: 0, v: [20, 40] }, { t: 1, v: [100, 40] }] }, rotation: 0 }, props: { size: [30, 30], fill: { $link: 'plate.fill' } } },
+          // reaches past the frame on the right: cropped
+          tail: { type: 'shape.ellipse', in: 0.5, transform: { position: [120, 70] }, props: { size: [40, 40], fill: '#F0D020' } },
+        },
+        order: ['plate', 'dot', 'tail'],
+      },
+      main: {
+        name: 'Main', width: 320, height: 180, fps: 30, duration: 3, background: '#000000', motionBlur: { samples: 1, shutter: 0 },
+        layers: {
+          a: { type: 'comp', transform: { position: [70, 50] }, props: { comp: 'badge' } },
+          b: { type: 'comp', transform: { position: [220, 60], rotation: 15, scale: [1.2, 1.2] }, props: { comp: 'badge' }, params: { color: '@brand', spin: { $k: [{ t: 0, v: 0 }, { t: 2, v: 90 }] } }, overrides: { 'plate.radius': 30 } },
+          c: { type: 'comp', in: 0.4, transform: { position: [150, 140], opacity: 0.7 }, props: { comp: 'badge' } },
+        },
+        order: ['a', 'b', 'c'],
+      },
+    },
+  };
+}
+
+function detachedBadges(): TrammeDoc {
+  let d = badges();
+  for (const id of ['a', 'b', 'c']) {
+    const plan = detachPlan(d, builtinRegistry(), 'main', id);
+    if ('error' in plan) throw new Error(`${id}: ${plan.error}`);
+    d = applyOps(d, plan.ops).doc;
+  }
+  return d;
+}
+
 let dir = '', server: Server, close: () => Promise<void>, still: (kind: string, t: number) => Promise<(x: number, y: number) => Pixel>, mix: (kind: string) => Promise<string>;
 
 describe.skipIf(!CHROME)('effects, rendered', () => {
@@ -143,6 +192,8 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     fs.writeFileSync(path.join(dir, 'lut-half.tramme.json'), JSON.stringify(graded(0.5)));
     for (const [name, masks] of Object.entries(MASKS)) fs.writeFileSync(path.join(dir, `mask-${name}.tramme.json`), JSON.stringify(masked(masks)));
     fs.writeFileSync(path.join(dir, 'key-matte.tramme.json'), JSON.stringify(keyed('matte')));
+    fs.writeFileSync(path.join(dir, 'badges.tramme.json'), JSON.stringify(badges()));
+    fs.writeFileSync(path.join(dir, 'badges-detached.tramme.json'), JSON.stringify(detachedBadges()));
     server = new Server(readConfig(path.join(dir, 'crossfade.tramme.json')));
     const port = await server.start();
     const { browser, page } = await launch();
@@ -257,5 +308,22 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     expect(frequencyOf(await mix('voice-kept'))).toBeCloseTo(440, -1.5);
     // the telephone keeps the 440 Hz tone (in its band)
     expect(frequencyOf(await mix('voice-phone'))).toBeCloseTo(440, -1.5);
+  }, 120_000);
+
+  it('draws an instance and its detached copy the same', async () => {
+    const d = detachedBadges();
+    expect(validate(d, builtinRegistry())).toEqual([]);
+    expect(Object.values(d.compositions.main.layers).some((l) => l.type === 'comp')).toBe(false);
+    for (const t of [0.2, 0.7, 1.5, 2.5]) {
+      const a = await still('badges', t), b = await still('badges-detached', t);
+      let worst = 0, lit = 0;
+      for (let y = 0; y < 180; y += 2) for (let x = 0; x < 320; x += 2) {
+        const p = a(x, y), q = b(x, y);
+        worst = Math.max(worst, ...p.map((v, i) => Math.abs(v - q[i])));
+        if (p.some((v) => v > 0)) lit++;
+      }
+      expect(lit, `something drawn at ${t}`).toBeGreaterThan(1000);
+      expect(worst, `at ${t}`).toBeLessThanOrEqual(2);
+    }
   }, 120_000);
 });
