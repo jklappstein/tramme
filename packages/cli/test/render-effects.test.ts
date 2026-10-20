@@ -82,6 +82,16 @@ function toned(props: Record<string, unknown>) {
   };
 }
 
+/** a frame of the colour given, through colour wheels */
+function wheeled(fill: string, props: Record<string, unknown>) {
+  return {
+    schema: 'tramme/1', meta: { title: 'wheels' }, tokens: {}, assets: {}, root: 'main',
+    compositions: { main: { name: 'Main', width: 320, height: 180, fps: 30, duration: 1, background: '#000000', motionBlur: { samples: 1, shutter: 0 }, order: ['frame'], layers: {
+      frame: { type: 'shape.rect', transform: { position: [160, 90] }, props: { size: [320, 180], fill }, effects: [{ id: 'w', type: 'fx.wheels', props }] },
+    } } },
+  };
+}
+
 let dir = '', server: Server, close: () => Promise<void>, still: (kind: string, t: number) => Promise<(x: number, y: number) => Pixel>;
 
 describe.skipIf(!CHROME)('effects, rendered', () => {
@@ -91,6 +101,11 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     fs.writeFileSync(path.join(dir, 'key.tramme.json'), JSON.stringify(keyed('result')));
     fs.writeFileSync(path.join(dir, 'swap.cube'), SWAP_CUBE);
     fs.writeFileSync(path.join(dir, 'curves-same.tramme.json'), JSON.stringify(toned({})));
+    fs.writeFileSync(path.join(dir, 'wheels-same.tramme.json'), JSON.stringify(wheeled('#808080', {})));
+    fs.writeFileSync(path.join(dir, 'wheels-lift.tramme.json'), JSON.stringify(wheeled('#000000', { liftLevel: 0.2 })));
+    fs.writeFileSync(path.join(dir, 'wheels-gain.tramme.json'), JSON.stringify(wheeled('#808080', { gainLevel: 0.5 })));
+    // the shadows toward red (the wheel's angle 0): a black frame turns red
+    fs.writeFileSync(path.join(dir, 'wheels-warm.tramme.json'), JSON.stringify(wheeled('#000000', { lift: [1, 0] })));
     fs.writeFileSync(path.join(dir, 'curves-bright.tramme.json'), JSON.stringify(toned({ master: { v: [[0, 0], [0.5, 0.75], [1, 1]], closed: false } })));
     fs.writeFileSync(path.join(dir, 'curves-cast.tramme.json'), JSON.stringify(toned({ blue: { v: [[0, 0], [1, 0]], closed: false } })));
     fs.writeFileSync(path.join(dir, 'lut.tramme.json'), JSON.stringify(graded(1)));
@@ -188,5 +203,15 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     expect(near((await still('curves-same', 0.5))(160, 90), [128, 128, 128])).toBe(true);
     expect(near((await still('curves-bright', 0.5))(160, 90), [191, 191, 191])).toBe(true);
     expect(near((await still('curves-cast', 0.5))(160, 90), [128, 128, 0])).toBe(true);
+  }, 60_000);
+
+  it('grades by wheels: the identity at rest, the levels, a hue in the shadows', async () => {
+    expect(near((await still('wheels-same', 0.5))(160, 90), [128, 128, 128])).toBe(true);
+    expect(near((await still('wheels-lift', 0.5))(160, 90), [51, 51, 51])).toBe(true);
+    expect(near((await still('wheels-gain', 0.5))(160, 90), [192, 192, 192])).toBe(true);
+    const warm = (await still('wheels-warm', 0.5))(160, 90);
+    expect(warm[0]).toBeGreaterThan(30);
+    expect(warm[1]).toBeLessThan(5);
+    expect(warm[2]).toBeLessThan(5);
   }, 60_000);
 });

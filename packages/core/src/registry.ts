@@ -41,8 +41,8 @@ export interface PropDef {
   animatable?: boolean;
   /** null accepted as a value (paint: no fill) */
   nullable?: boolean;
-  /** text props: edited as code (monospace); path props: a tone curve (points in 0..1, a curve editor, a 1D texture in GL effects) */
-  format?: 'code' | 'curve';
+  /** text props: edited as code (monospace); path props: a tone curve (points in 0..1, a curve editor, a 1D texture in GL effects); vec2 props: a colour wheel (its angle the hue, its length the amount, up to 1) */
+  format?: 'code' | 'curve' | 'wheel';
   /**
    * number props: the evaluated layer also carries, under this name, the
    * integral of the value from the layer's in point to t (a speed curve's

@@ -278,6 +278,7 @@ function Field({ def, value, ctx, label, onDraft, onCommit, onPick }: { def: Pro
     case 'number':
       return <NumberField value={Number(value)} step={def.step ?? (def.unit === 'px' ? 1 : 0.01)} min={def.min} max={def.max} unit={unit} onDraft={onDraft} onCommit={onCommit} onCancel={cancelDraft} />;
     case 'vec2': {
+      if (def.format === 'wheel') return <WheelField value={(value as [number, number]) ?? [0, 0]} onDraft={onDraft} onCommit={onCommit} />;
       const [x, y] = (value as number[]) ?? [0, 0];
       const step = def.step ?? (def.unit === 'px' ? 1 : 0.01);
       return <>
@@ -340,6 +341,39 @@ const ENUM_LABEL: Record<string, string> = {
 
 const rawColor = (v: unknown) => (typeof v === 'string' ? v : '#000000');
 const NullPaint = ({ onSet }: { onSet: () => void }) => <button class="btn sm ghost" onClick={onSet}><Icon name="plus" />{t('inspector.add')}</button>;
+
+/**
+ * A colour wheel: the hues around a disc, the point's angle the hue it leans
+ * toward, its distance from the centre the amount. Drag the point;
+ * double-click puts it back in the centre.
+ */
+function WheelField({ value, onDraft, onCommit }: { value: [number, number]; onDraft: (v: unknown) => void; onCommit: (v: unknown) => void }) {
+  const R = 36, [x, y] = value;
+  const round = (v: number) => +v.toFixed(3);
+  const drag = (e: PointerEvent) => {
+    e.preventDefault();
+    const svg = e.currentTarget as SVGSVGElement;
+    let last: unknown = null;
+    const at = (ev: PointerEvent) => {
+      const r = svg.getBoundingClientRect();
+      let dx = ((ev.clientX - r.left) / r.width) * 2 - 1, dy = -(((ev.clientY - r.top) / r.height) * 2 - 1);
+      const k = Math.hypot(dx, dy);
+      if (k > 1) { dx /= k; dy /= k; }
+      last = [round(dx), round(dy)];
+      onDraft(last);
+    };
+    at(e);
+    const up = () => { removeEventListener('pointermove', at); removeEventListener('pointerup', up); if (last) onCommit(last); };
+    addEventListener('pointermove', at);
+    addEventListener('pointerup', up);
+  };
+  return (
+    <svg class="wheel-field" viewBox={`${-R - 2} ${-R - 2} ${2 * R + 4} ${2 * R + 4}`} width={2 * R + 4} height={2 * R + 4} onPointerDown={drag as never} onDblClick={() => onCommit([0, 0])}>
+      <line class="cross" x1={-R} y1={0} x2={R} y2={0} /><line class="cross" x1={0} y1={-R} x2={0} y2={R} />
+      <circle class="pt" cx={x * R} cy={-y * R} r={4} />
+    </svg>
+  );
+}
 
 /**
  * A tone curve: its points over a square from black (0) to white (1), the

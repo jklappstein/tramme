@@ -349,6 +349,11 @@
 .curve-field .diag { stroke: var(--border); stroke-width: .5; stroke-dasharray: 2 2; }
 .curve-field .curve { fill: none; stroke: var(--text); stroke-width: 1.5; }
 .curve-field .pt { fill: var(--accent); stroke: var(--bg); stroke-width: 1; cursor: move; }
+/* a colour wheel: the hues around, white at the centre */
+.prop .pvalue > .wheel-field { flex: none; cursor: crosshair; touch-action: none; }
+.wheel-field .cross { stroke: rgba(0, 0, 0, .25); stroke-width: .5; }
+.wheel-field .pt { fill: #fff; stroke: #000; stroke-width: 1.2; }
+.wheel-field { border-radius: 50%; background: radial-gradient(circle closest-side, rgba(255, 255, 255, .95), rgba(255, 255, 255, 0) 100%), conic-gradient(from 90deg, #f00, #f0f, #00f, #0ff, #0f0, #ff0, #f00); }
 /* the keyframe button: a diamond */
 .kbtn { width: 18px; height: 18px; border: 0; padding: 0; background: transparent; display: grid; place-items: center; color: var(--text-4); border-radius: var(--r-xs); }
 .kbtn:hover { color: var(--text-2); background: var(--field); }

@@ -396,3 +396,43 @@ vec4 effect(vec2 uv) {
 }`,
   },
 };
+
+const W0: [number, number] = [0, 0];
+
+/**
+ * Colour wheels: lift (the shadows), gamma (the mid tones) and gain (the
+ * highlights), each a hue and an amount (a point on its wheel: its angle,
+ * its distance from the centre) and a level, as a colourist grades.
+ */
+export const wheels: EffectType<{ lift: [number, number]; liftLevel: number; gamma: [number, number]; gammaLevel: number; gain: [number, number]; gainLevel: number }> = {
+  type: 'fx.wheels', title: 'Colour wheels', category: 'Effects', stage: 'layer',
+  description: 'lift, gamma and gain: the shadows, the mid tones and the highlights pushed toward a colour, and their levels',
+  props: {
+    lift: { type: 'vec2', format: 'wheel', default: W0, label: 'Lift', group: 'Shadows', description: 'the colour the shadows lean toward' },
+    liftLevel: { type: 'number', default: 0, min: -0.5, max: 0.5, step: 0.005, label: 'Lift level', group: 'Shadows', description: 'raises (or crushes) the blacks' },
+    gamma: { type: 'vec2', format: 'wheel', default: W0, label: 'Gamma', group: 'Mid tones', description: 'the colour the mid tones lean toward' },
+    gammaLevel: { type: 'number', default: 0, min: -0.8, max: 0.8, step: 0.005, label: 'Gamma level', group: 'Mid tones', description: 'brightens (or darkens) the mid tones' },
+    gain: { type: 'vec2', format: 'wheel', default: W0, label: 'Gain', group: 'Highlights', description: 'the colour the highlights lean toward' },
+    gainLevel: { type: 'number', default: 0, min: -1, max: 1, step: 0.005, label: 'Gain level', group: 'Highlights', description: 'brightens (or dims) the whites' },
+  },
+  gl: {
+    code: `// a wheel's colour: its hue at full saturation, made neutral in brightness, times its amount
+vec3 tint(vec2 w) {
+  float k = min(length(w), 1.0);
+  if (k <= 0.0) return vec3(0.0);
+  float h = atan(w.y, w.x) / 6.2831853;
+  vec3 c = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+  return (c - dot(c, vec3(0.2126, 0.7152, 0.0722))) * k;
+}
+vec4 effect(vec2 uv) {
+  vec4 p = texture(uImage, uv);
+  if (p.a <= 0.0) return p;
+  vec3 c = p.rgb / p.a;
+  vec3 lift = u_liftLevel + tint(u_lift) * 0.25;
+  vec3 gain = 1.0 + u_gainLevel + tint(u_gain) * 0.5;
+  vec3 gamma = max(vec3(0.05), 1.0 + u_gammaLevel + tint(u_gamma) * 0.5);
+  vec3 o = clamp(gain * (c + lift * (1.0 - c)), 0.0, 1.0);
+  return vec4(pow(o, 1.0 / gamma) * p.a, p.a);
+}`,
+  },
+};

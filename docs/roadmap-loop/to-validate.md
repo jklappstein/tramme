@@ -141,3 +141,7 @@ its network policy) and has no GPU: no model was downloaded or run there.
   master curve's points (a contrast S), add one, double-click to remove it;
   pull the blue curve down for a warm cast. On a phone, the square takes a
   finger (its points are small).
+- **Step 6 — wheels.** An adjustment layer with `fx.wheels`: the gain toward
+  orange warms the highlights, the lift toward teal cools the shadows (the
+  classic look); double-click a wheel to reset it. Judge the strength of the
+  wheels against a colourist's tool (lift ×0.25, gamma and gain ×0.5 per unit).
