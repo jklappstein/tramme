@@ -234,7 +234,7 @@ export const grade: EffectType<{ lift: number; gain: number; saturation: number;
  * whip blur along their move; a luma wipe opens where a grey picture (`map`)
  * is dark first.
  */
-export const transition: EffectType<{ from: string | null; kind: string; duration: number; direction: string; color: string; map: string | null; softness: number; blur: number }> = {
+export const transition: EffectType<{ from: string | null; kind: string; duration: number; direction: string; color: string; map: string | null; softness: number; blur: number; sound: boolean }> = {
   type: 'fx.transition', title: 'Transition', category: 'Effects', stage: 'layer',
   description: 'from the shot under it (from) to this one, over the overlap: crossfade, dip, push, slide, zoom, whip pan, luma wipe, glitch',
   props: {
@@ -246,6 +246,7 @@ export const transition: EffectType<{ from: string | null; kind: string; duratio
     map: { type: 'layer', default: null, nullable: true, label: 'Wipe picture', animatable: false, description: 'a grey picture, usually hidden: dark opens first (luma)' },
     softness: { type: 'number', default: 0.1, min: 0, max: 1, step: 0.01, label: 'Softness', description: 'the edge of a luma wipe' },
     blur: { type: 'number', default: 1, min: 0, max: 3, step: 0.05, label: 'Motion blur', description: 'along the move (push, slide, whip)' },
+    sound: { type: 'bool', default: true, label: 'Sound crossfade', animatable: false, description: "the two shots' sounds cross with the picture" },
   },
   gl: {
     code: `float easeIO(float x) { return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) / 2.0; }

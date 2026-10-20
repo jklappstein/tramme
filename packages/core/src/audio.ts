@@ -38,6 +38,8 @@ export interface AudioClip {
   /** seconds of fade at each end */
   fadeIn: number;
   fadeOut: number;
+  /** a transition's crossfade (composition times): in, the clip rises over the window; out, it falls and stays silent after */
+  cross?: { in?: [number, number]; out?: [number, number] };
   /** playback speed, pitch with it: 1 as recorded (its value at `at` when it moves) */
   rate: number;
   /** the speed over time when it is animated (a speed curve): [composition time, speed] from the layer's in point to the clip's end, 0 and over (a sound does not play backwards) */
@@ -136,7 +138,27 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
       reverb: clamp(num(staticValue(props.reverb), 0), 0, 1),
     });
   }
+  crossfades(comp, clips);
   return clips.sort((a, b) => a.at - b.at);
+}
+
+/**
+ * The sounds of two shots joined by a transition cross with the picture, by
+ * default: over the transition's window, the incoming clip rises and the
+ * outgoing one falls (equal power), the outgoing silent after it.
+ */
+function crossfades(comp: Composition, clips: AudioClip[]) {
+  const byLayer = new Map(clips.map((c) => [c.layerId, c]));
+  for (const [id, layer] of Object.entries(comp.layers)) {
+    for (const e of layer.effects ?? []) {
+      if (e.type !== 'fx.transition' || e.enabled === false || staticValue(e.props?.sound) === false) continue;
+      const from = staticValue(e.props?.from), duration = num(staticValue(e.props?.duration), 0.5);
+      const incoming = byLayer.get(id), outgoing = typeof from === 'string' ? byLayer.get(from) : undefined;
+      const start = layer.in ?? 0, window: [number, number] = [start, start + Math.max(0.01, duration)];
+      if (incoming) incoming.cross = { ...incoming.cross, in: window };
+      if (outgoing) outgoing.cross = { ...outgoing.cross, out: window };
+    }
+  }
 }
 
 /** how a composition's sound is finished (its `sound` settings): the loudness of the master, null as mixed; the share of the room the effects have in common */
@@ -176,11 +198,20 @@ export function gainAt(c: AudioClip, t: number): number {
   const dB = c.envelope ? curveAt(c.envelope, t) : c.gainDb;
   const end = c.at + c.duration;
   const fade = Math.min(1, c.fadeIn > 0 ? (t - c.at) / c.fadeIn : 1, c.fadeOut > 0 ? (end - t) / c.fadeOut : 1);
-  return Math.pow(10, dB / 20) * Math.max(0, fade);
+  return Math.pow(10, dB / 20) * Math.max(0, fade) * crossAt(c, t);
 }
 
-/** whether the clip's gain moves (a curve or fades): it is then sampled over time */
-export const gainMoves = (c: AudioClip) => !!c.envelope || c.fadeIn > 0 || c.fadeOut > 0;
+/** a crossfade's share of the clip at t: equal power, so the two clips keep the level between them */
+function crossAt(c: AudioClip, t: number): number {
+  const x = (w: [number, number]) => Math.min(1, Math.max(0, (t - w[0]) / (w[1] - w[0])));
+  let k = 1;
+  if (c.cross?.in) k *= Math.sin((Math.PI / 2) * x(c.cross.in));
+  if (c.cross?.out) { const o = x(c.cross.out); k *= o >= 1 ? 0 : Math.cos((Math.PI / 2) * o); }
+  return k;
+}
+
+/** whether the clip's gain moves (a curve, fades, a crossfade): it is then sampled over time */
+export const gainMoves = (c: AudioClip) => !!c.envelope || c.fadeIn > 0 || c.fadeOut > 0 || !!c.cross;
 
 // ── what a sound is like ─────────────────────────────────────
 export interface SoundFigures {

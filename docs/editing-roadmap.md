@@ -59,7 +59,8 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 - [x] The set: crossfade, dip to colour, push and slide (with motion blur along the move), zoom, whip pan, luma wipe (from a grey picture), glitch, and the existing shape wipes of the `transition` recipe kept as they are.
   One program for all eight kinds; push, slide and whip average twelve looks along their move (`blur`), the whip eased harder. To check on a device: the glitch on real footage (flat colours do not show its rows).
 - [ ] The timeline: drop a transition on a cut, drag its length; the two layers are made to overlap by the needed handles, or the transition says the file has no handle left.
-- [ ] The sound crossfades with the picture by default (the gains of the two clips, `gainMoves`).
+- [x] The sound crossfades with the picture by default (the gains of the two clips, `gainMoves`).
+  `sound` on the transition (on by default): over its window the incoming clip rises and the outgoing one falls, equal power, the outgoing silent after it (`cross` on the clip, `gainAt`, `packages/core/src/audio.ts`); the preview and the exports share it.
 - [x] The assistant's notes: one kind of transition per film, cuts by default, a transition where the story changes place or time.
 
 ### Step 4. Keying

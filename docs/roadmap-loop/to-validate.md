@@ -102,3 +102,7 @@ its network policy) and has no GPU: no model was downloaded or run there.
   container with Chromium's software GL). Then on two real clips that overlap:
   each kind in the preview and an export, and the glitch, whose rows only show
   on a picture with detail.
+- **Step 3 — the sound of a transition.** Two clips with speech or music
+  joined by a crossfade: the level holds through the window (no dip, no
+  bump), the outgoing sound is gone after it; with Sound crossfade off, both
+  play as they are.

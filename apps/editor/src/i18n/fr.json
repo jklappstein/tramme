@@ -1130,6 +1130,8 @@
     "used": "Plugin {name} ajouté à ce projet."
   },
   "content": {
+    "Sound crossfade": "Fondu du son",
+    "the two shots' sounds cross with the picture": "les sons des deux plans se croisent avec l'image",
     "Duration": "Durée",
     "From": "Depuis",
     "Motion blur": "Flou de mouvement",
