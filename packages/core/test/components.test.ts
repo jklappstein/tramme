@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyOps, detachPlan, Evaluator, validate, type Instance, type NodeType, type TrammeDoc } from '../src/index.ts';
+import { applyOps, BUILTIN_CHECKS, defineComponentPlan, detachPlan, Evaluator, runChecks, validate, type Instance, type NodeType, type TrammeDoc } from '../src/index.ts';
 import { registry as baseRegistry } from './fixtures.ts';
 
 const compNode: NodeType = {
@@ -7,7 +7,7 @@ const compNode: NodeType = {
   props: {
     comp: { type: 'comp', default: null, nullable: true, animatable: false },
     start: { type: 'number', default: 0 }, speed: { type: 'number', default: 1 },
-    loop: { type: 'bool', default: false }, remap: { type: 'number', default: null, nullable: true },
+    loop: { type: 'bool', default: false }, remap: { type: 'number', default: null, nullable: true }, crop: { type: 'bool', default: true },
   },
   render: { canvas2d() {} },
 };
@@ -287,5 +287,72 @@ describe('distribution', () => {
     ]));
     expect(paths).not.toContain('/compositions/main/layers/many/distribute/params/color');
     expect(detachPlan(d, registry(), 'main', 'many')).toEqual({ error: 'distributed' });
+  });
+});
+
+describe('defining a component from layers', () => {
+  const scene = (): TrammeDoc => ({
+    schema: 'tramme/1', meta: { title: 'scene' }, tokens: {}, assets: {}, root: 'main',
+    compositions: { main: { name: 'Main', width: 1000, height: 500, fps: 30, duration: 4, order: ['bg', 'plate', 'title', 'top'], layers: {
+      bg: { type: 'box', props: { size: [1000, 500] } },
+      plate: { type: 'box', transform: { position: { $k: [{ t: 1, v: [200, 100] }, { t: 2, v: [300, 100] }] } }, props: { size: [100, 50], fill: '#FF0000' } },
+      title: { type: 'box', in: 1, transform: { position: [210, 100] }, props: { label: 'Hello' } },
+      top: { type: 'box' },
+    } } },
+  });
+
+  it('moves the layers into a component, an instance in their place that reads the same', () => {
+    const d = scene();
+    const plan = defineComponentPlan(d, registry(), 'main', ['title', 'plate'], { id: 'card', box: { x: 150, y: 50, w: 200, h: 100 }, params: { title: { targets: ['title.label'] }, color: { targets: ['plate.fill'], default: '#00FF00' } } });
+    if ('error' in plan) throw new Error(plan.error);
+    const out = applyOps(d, plan.ops).doc;
+    expect(validate(out, registry())).toEqual([]);
+    expect(out.compositions.main.order).toEqual(['bg', plan.instance, 'top']);
+    expect(out.compositions.card.params).toEqual({ title: { type: 'string', targets: ['title.label'] }, color: { type: 'paint', targets: ['plate.fill'], default: '#00FF00' } });
+    const inst = out.compositions.main.layers[plan.instance];
+    expect(inst.transform!.position).toEqual([250, 100]);
+    // the plate where it was: the content moved back by the box
+    const ev = new Evaluator(out, registry());
+    const f = ev.frame(1.5, 'card');
+    expect(f.layers[0].transform.position).toEqual([-150, -50]);
+    expect(f.layers[0].children.map((l) => l.id)).toEqual(['plate', 'title']);
+    expect(f.layers[0].children[0].transform.position).toEqual([250, 100]);
+  });
+
+  it('refuses layers that are not siblings, or that read the composition', () => {
+    const d = scene();
+    d.compositions.main.layers.g = { type: 'group', children: ['top'] };
+    d.compositions.main.order = ['bg', 'plate', 'title', 'g'];
+    expect(defineComponentPlan(d, registry(), 'main', ['title', 'top'], { id: 'x' })).toHaveProperty('error');
+    d.compositions.main.layers.title.props!.label = { $expr: 'String(comp.width)' };
+    expect(defineComponentPlan(d, registry(), 'main', ['title'], { id: 'x' })).toHaveProperty('error');
+    expect(defineComponentPlan(d, registry(), 'main', ['plate'], { id: 'main' })).toHaveProperty('error');
+  });
+});
+
+describe('the repeated check', () => {
+  const scene = (extra: Record<string, unknown> = {}): TrammeDoc => ({
+    schema: 'tramme/1', meta: { title: 'cards' }, tokens: {}, assets: {}, root: 'main',
+    compositions: { main: { name: 'Main', width: 1000, height: 500, fps: 30, duration: 2, order: ['a', 'b', 'c', 'other'], layers: {
+      a: { type: 'box', in: 0, transform: { position: [100, 100], opacity: { $k: [{ t: 0, v: 0 }, { t: 0.4, v: 1 }] } }, props: { size: [80, 40], fill: '#FF0000', label: 'One' } },
+      b: { type: 'box', in: 0.1, transform: { position: [300, 100], opacity: { $k: [{ t: 0.1, v: 0 }, { t: 0.5, v: 1 }] } }, props: { size: [80, 40], fill: '#FF0000', label: 'Two' } },
+      c: { type: 'box', in: 0.2, transform: { position: [500, 100], opacity: { $k: [{ t: 0.2, v: 0 }, { t: 0.6, v: 1 }] } }, props: { size: [80, 40], fill: '#00FF00', label: 'Three' } },
+      other: { type: 'box', props: { size: [10, 10], radius: 3 } },
+      ...extra,
+    } } },
+  });
+  const run = async (d: TrammeDoc) => (await runChecks(d, registry().registerCheck(...BUILTIN_CHECKS), 'main', { only: ['repeated'] }));
+
+  it('finds layers written nearly the same, their keyframes counted from their own start', async () => {
+    const found = await run(scene());
+    expect(found).toHaveLength(1);
+    expect(found[0].layers).toEqual(['a', 'b', 'c']);
+    expect(found[0].message).toMatch(/define_component/);
+  });
+
+  it('leaves alone what differs in structure or in many values', async () => {
+    const d = scene();
+    d.compositions.main.layers.c.props = { size: [10, 90], fill: '#0000FF', label: 'X', radius: 9, mode: 'b' };
+    expect(await run(d)).toEqual([]);
   });
 });

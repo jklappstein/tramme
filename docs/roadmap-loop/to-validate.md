@@ -205,3 +205,21 @@ its network policy) and has no GPU: no model was downloaded or run there.
 - **The modifier block in the inspector.** Add Time field to a property:
   the By segments (Rank, Direction, Distance, Noise), the Loop toggle and
   the Centre fields show in EN and FR.
+
+## Components, step 4
+
+- **The bench brief.** Ask the assistant for "a grid of forty product cards
+  in the palette entering as a wave from the centre": it should write one
+  card, `define_component`, then one `instantiate` with a grid, a palette
+  rule and a time field. Compare the tokens written with a run before this
+  branch (the roadmap's done-when); the bench needs a model key, not run
+  here.
+- **The / menu.** Make a component, Place a component, Detach an instance:
+  their forms (JSON fields for parameters, rules and the time field are
+  plain text there), in EN and FR.
+- **Dressings as instances.** apply_template "keyword" twice, "title",
+  "lower-third": the timeline shows one comp layer each, the look in a
+  `tpl-…` composition; the keyword's wiggle now runs in the instance's own
+  time (its phase differs from before, by design). A keyword cannot be
+  detached (its wiggle reads the time); a lower third can.
+- **The Repeated elements check** on an old project with copied cards.

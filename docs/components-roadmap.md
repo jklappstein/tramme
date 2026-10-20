@@ -2,7 +2,7 @@
 
 How anything in a document is defined once and used many times with parameters: a layer of any type, a group, a whole composition, an animation alone or a style. Today the assistant writes every element in full through JSON Patch — twenty cards are twenty complete subtrees, a hundred dots a hundred layers — so the cost of a film follows the number of things on screen. After this it follows the number of different ideas in the film.
 
-Status: step 1 done (parameters, instances and overrides read by the Evaluator, detach, styles and animations), step 2 done (distributions: layouts, rules, a rank per instance; a distribution is not detached yet), step 3 done (the time field, on any property and over a distribution). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (parameters, instances and overrides read by the Evaluator, detach, styles and animations), step 2 done (distributions: layouts, rules, a rank per instance; a distribution is not detached yet), step 3 done (the time field, on any property and over a distribution), step 4 done (define_component, instantiate and detach; the guide; the repeated check; the dressings as instances of components of their look). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -44,10 +44,10 @@ What exists goes partway. `stagger` and `noise` vary a value by the layer's rank
 
 ### Step 4. The assistant
 
-- [ ] Tools: `define_component` (from an existing element or a new one, with its parameters), `instantiate` (one or N instances, a layout, a rule), `detach`.
-- [ ] The guide: anything that repeats or resembles more than once is defined then instanced; when to use a distribution, a time field (wave, ripple, liquid time, desynchronisation); amounts that break the reading.
-- [ ] A check in `packages/core/src/checks.ts` that finds near-identical subtrees of any type and proposes to factor them, so existing projects benefit too.
-- [ ] `apply_template` becomes instancing of library components instead of four hard-coded dressings.
+- [x] Tools: `define_component` (from an existing element or a new one, with its parameters), `instantiate` (one or N instances, a layout, a rule), `detach`.
+- [x] The guide: anything that repeats or resembles more than once is defined then instanced; when to use a distribution, a time field (wave, ripple, liquid time, desynchronisation); amounts that break the reading.
+- [x] A check in `packages/core/src/checks.ts` that finds near-identical subtrees of any type and proposes to factor them, so existing projects benefit too.
+- [x] `apply_template` becomes instancing of library components instead of four hard-coded dressings.
 
 ### Step 5. The editor
 

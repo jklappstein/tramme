@@ -356,3 +356,71 @@ export function paletteColor(doc: TrammeDoc, r: PaletteRule, i: number): string 
   const k = r.$palette === 'order' ? i % colors.length : Math.floor(hash(i * 7919 + (r.seed ?? 0) * 104729 + 1) * colors.length) % colors.length;
   return colors[k];
 }
+
+// ── defining a component from what exists (step 4) ─────────
+
+export interface DefinePlan { ops: Op[]; component: string; instance: string }
+
+/**
+ * The operations that turn layers of a composition (siblings, with their
+ * children) into a component and one instance of it in their place, which
+ * draws the same: the component's frame is `box` (where they are drawn, in
+ * the composition's pixels; the whole frame by default), the layers keep
+ * their ids and times inside it, moved by a group so they stay where they
+ * were, and the instance sits on the box's centre without cropping. `params`
+ * expose what will vary: a name, the addresses it lands on (the layers' own:
+ * 'title.text'), its type (the first target's by default) and its default.
+ */
+export function defineComponentPlan(doc: TrammeDoc, registry: Registry, compId: string, ids: string[], opts: { id: string; name?: string; box?: { x: number; y: number; w: number; h: number }; params?: Record<string, { targets: string[]; type?: string; default?: unknown; label?: string }> }): DefinePlan | { error: string } {
+  const host = doc.compositions[compId];
+  if (!host) return { error: `no composition "${compId}"` };
+  if (!ids.length) return { error: 'no layers given' };
+  const missing = ids.filter((id) => !host.layers[id]);
+  if (missing.length) return { error: `no such layer: ${missing.join(', ')}` };
+  if (doc.compositions[opts.id]) return { error: `a composition "${opts.id}" exists already` };
+  // one stack: the composition's or a group's
+  const parentOf = (id: string) => Object.entries(host.layers).find(([, l]) => l.children?.includes(id))?.[0] ?? null;
+  const parent = parentOf(ids[0]);
+  if (ids.some((id) => parentOf(id) !== parent)) return { error: 'the layers must be siblings (in the same group or all at the root)' };
+  const stack = parent ? host.layers[parent].children! : host.order;
+  const chosen = stack.filter((id) => ids.includes(id));
+  // the layers with their children
+  const all: string[] = [];
+  const take = (id: string) => { all.push(id); for (const c of host.layers[id].children ?? []) take(c); };
+  chosen.forEach(take);
+  if (readsComp(all.map((id) => host.layers[id]))) return { error: 'an expression or a link of these layers reads the composition (its size, its markers): it would read the component\'s' };
+  const outside = all.map((id) => host.layers[id].clip).filter((c): c is string => !!c && !all.includes(c));
+  if (outside.length) return { error: `clipped by layers left outside: ${[...new Set(outside)].join(', ')}` };
+
+  const box = opts.box ?? { x: 0, y: 0, w: host.width, h: host.height };
+  const w = Math.max(1, Math.round(box.w)), h = Math.max(1, Math.round(box.h)), x = Math.round(box.x), y = Math.round(box.y);
+  const taken = new Set([...Object.keys(host.layers)]);
+  const fresh = (base: string) => { let id = base.replace(/[^A-Za-z0-9_-]/g, '') || 'component', n = 2; const b = id; while (taken.has(id)) id = `${b}${n++}`; taken.add(id); return id; };
+  const inner = fresh('content');
+  const layers: Record<string, Layer> = { [inner]: { type: 'group', name: 'Content', transform: { position: [-x, -y] }, children: chosen } };
+  for (const id of all) layers[id] = host.layers[id];
+  const params: Record<string, ComponentParam> = {};
+  const comp: Composition = { name: opts.name ?? opts.id, width: w, height: h, fps: host.fps, duration: host.duration, layers, order: [inner] };
+  for (const [name, p] of Object.entries(opts.params ?? {})) {
+    const def = p.targets.length ? addressDef(doc, registry, comp, p.targets[0]) : null;
+    if (!def) return { error: `the parameter "${name}" lands on nothing: ${p.targets[0] ?? '(no target)'}` };
+    params[name] = { type: p.type ?? def.type, targets: p.targets, ...(p.default !== undefined ? { default: p.default } : {}), ...(p.label ? { label: p.label } : {}) };
+  }
+  if (Object.keys(params).length) comp.params = params;
+
+  const instance = fresh(opts.id);
+  const at = (id: string) => pointer('compositions', compId, 'layers', id);
+  const first = stack.indexOf(chosen[chosen.length - 1]);
+  const rest = stack.filter((id) => !chosen.includes(id));
+  // the instance where the topmost of them was
+  rest.splice(first - (chosen.length - 1), 0, instance);
+  return {
+    component: opts.id, instance,
+    ops: [
+      { op: 'add', path: pointer('compositions', opts.id), value: comp },
+      ...all.map((id): Op => ({ op: 'remove', path: at(id) })),
+      { op: 'add', path: at(instance), value: { type: 'comp', name: opts.name ?? opts.id, transform: { position: [x + w / 2, y + h / 2] }, props: { comp: opts.id, crop: false } } },
+      { op: 'replace', path: parent ? pointer('compositions', compId, 'layers', parent, 'children') : pointer('compositions', compId, 'order'), value: rest },
+    ],
+  };
+}

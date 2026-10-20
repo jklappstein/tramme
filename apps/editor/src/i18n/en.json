@@ -1378,6 +1378,13 @@
     "nothingElse": "Nothing else: every model kept here is in use.",
     "transcriptionPaths": "The server transcribes with its own model when it has one: Whisper large v3 turbo on Workers AI, or OpenAI's whisper-1 with an OpenAI key. Without it, the local companion runs the model chosen here (TRAMME_WHISPER_MODEL, on its machine, overrides it), and without a companion, this browser does (the slowest way)."
   },
+  "components": {
+    "defined": "Component {name}",
+    "definedNotice": "{name} is a component now: its first instance is in place of the layers.",
+    "placed": "Instances of {name}",
+    "placedNotice": "{name} placed.",
+    "detached": "Instance detached"
+  },
   "stabilize": {
     "reading": "reading the shake"
   },

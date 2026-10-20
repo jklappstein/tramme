@@ -16,7 +16,7 @@ import { describeOp, freshId } from '../model.ts';
 import { analyses, jpegOf, loadImage } from '../perception.ts';
 import { safeName } from '../files.ts';
 import { transcriptFor, transcriptIdOf } from '../speech.ts';
-import { TEMPLATES } from '../templates.ts';
+import { placeTemplate, TEMPLATES } from '../templates.ts';
 import { S } from '../state.ts';
 import { t } from '../i18n/index.ts';
 
@@ -226,7 +226,7 @@ ${r.content[0].type === 'text' ? r.content[0].text : ''}`);
           const tpl = TEMPLATES[String(input.template)];
           if (!tpl) return text(`unknown template: ${input.template} (${Object.keys(TEMPLATES).join(', ')})`, true);
           const doc = this.liveDoc(), compId = input.compId && doc.compositions[input.compId] ? input.compId : S.compId.peek() in doc.compositions ? S.compId.peek() : doc.root;
-          const { label, ops } = tpl.build(doc, compId, { at: Number(input.at ?? 0), duration: input.duration, text: input.text, subtitle: input.subtitle, transcript: input.transcript, place: input.place });
+          const { label, ops } = placeTemplate(doc, compId, String(input.template), { at: Number(input.at ?? 0), duration: input.duration, text: input.text, subtitle: input.subtitle, transcript: input.transcript, place: input.place });
           return await this.propose(label, ops);
         }
         default: return text(`unknown tool: ${name}`, true);

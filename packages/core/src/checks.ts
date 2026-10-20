@@ -699,7 +699,67 @@ const uniformStagger: CheckType = {
   },
 };
 
-export const BUILTIN_CHECKS: CheckType[] = [textSize, textTime, safeZone, overlap, crossing, overSubject, overDetail, textContrast, crowd, stillness, linearTravel, springSettle, twinMotion, abruptEntrance, straightTravel, uniformStagger];
+/**
+ * The values of a layer and its subtree, flattened ('props.fill', 'children.1.transform.scale'),
+ * its own timing and place left out (what instances differ by), keyframe
+ * times counted from its in point
+ */
+function leaves(comp: Composition, id: string, depth = 0): Map<string, string> {
+  const out = new Map<string, string>(), l = comp.layers[id];
+  if (!l || depth > 8) return out;
+  const from = l.in ?? 0;
+  const walk = (x: unknown, path: string) => {
+    if (Array.isArray(x)) { x.forEach((y, i) => walk(y, `${path}.${i}`)); return; }
+    if (x && typeof x === 'object') {
+      for (const [k, v] of Object.entries(x)) {
+        if (k === 't' && typeof v === 'number' && /\$k\.\d+$/.test(path)) out.set(`${path}.t`, String(+(v - from).toFixed(3)));
+        else walk(v, `${path}.${k}`);
+      }
+      return;
+    }
+    out.set(path, JSON.stringify(x));
+  };
+  const { in: _in, out: _out, name: _name, children, transform, ...rest } = l;
+  walk(rest, '');
+  if (transform) { const { position: _p, ...tr } = transform; walk(tr, '.transform'); }
+  (children ?? []).forEach((c, i) => { for (const [k, v] of leaves(comp, c, depth + 1)) out.set(`.children.${i}${k}`, v); });
+  return out;
+}
+
+const repeated: CheckType = {
+  name: 'repeated', title: 'Repeated elements', description: 'layers or groups written several times nearly the same: one component and its instances say it once',
+  texts: ['{n} nearly identical elements ({type}): define one component and place instances of it'],
+  run(ctx) {
+    const out: QualityIssue[] = [];
+    const lists = [ctx.comp.order, ...Object.values(ctx.comp.layers).filter((l) => l.children?.length).map((l) => l.children!)];
+    for (const list of lists) {
+      // the same paths (structure) and few values apart: at most 4 of them, and fewer than a third
+      const groups = new Map<string, { ids: string[]; first: Map<string, string> }>();
+      for (const id of list) {
+        const l = ctx.comp.layers[id];
+        if (!l || l.type === 'comp') continue;
+        const lv = leaves(ctx.comp, id), key = `${l.type}|${[...lv.keys()].sort().join(',')}`;
+        const g = groups.get(key);
+        if (!g) { groups.set(key, { ids: [id], first: lv }); continue; }
+        let diff = 0;
+        for (const [k, v] of lv) if (g.first.get(k) !== v) diff++;
+        if (diff <= Math.min(4, Math.max(1, Math.floor(lv.size / 3)))) g.ids.push(id);
+      }
+      for (const [key, g] of groups) {
+        const type = key.split('|')[0], subtree = [...g.first.keys()].some((k) => k.startsWith('.children.'));
+        if (g.ids.length < (subtree ? 2 : 3)) continue;
+        out.push({
+          check: 'repeated', severity: 'info', layers: g.ids,
+          message: `${g.ids.length} nearly identical ${type} ${subtree ? 'groups' : 'layers'} (${g.ids.slice(0, 6).join(', ')}${g.ids.length > 6 ? '…' : ''}): define one component (use_tool "define_component" with them) and place instances of it ("instantiate", a distribution for many), so a change is made once.`,
+          say: { text: '{n} nearly identical elements ({type}): define one component and place instances of it', params: { n: g.ids.length, type } },
+        });
+      }
+    }
+    return out;
+  },
+};
+
+export const BUILTIN_CHECKS: CheckType[] = [textSize, textTime, safeZone, overlap, crossing, overSubject, overDetail, textContrast, crowd, stillness, linearTravel, springSettle, twinMotion, abruptEntrance, straightTravel, uniformStagger, repeated];
 
 /** every check of the registry on one composition, the failures of a check reported as issues */
 export async function runChecks(doc: TrammeDoc, registry: Registry, compId = doc.root, { step = 0.25, only, data = () => undefined }: { step?: number; only?: string[]; data?: (assetId: string) => unknown } = {}): Promise<QualityIssue[]> {

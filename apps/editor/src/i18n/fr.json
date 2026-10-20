@@ -2179,7 +2179,34 @@
     "distance: from this layer's position instead": "distance : depuis la position de ce calque",
     "Noise size": "Taille du bruit",
     "0: a fixed random delay per element": "0 : un retard aléatoire fixe par élément",
-    "repeat the animation outside its keyframes instead of holding its ends": "répéter l'animation hors de ses clés au lieu de tenir ses extrémités"
+    "repeat the animation outside its keyframes instead of holding its ends": "répéter l'animation hors de ses clés au lieu de tenir ses extrémités",
+    "Make a component": "Faire un composant",
+    "turns layers (the selection by default, siblings, with their children) into a component: a composition of their own with the parameters given, and one instance of it in their place, drawn the same. Place more with instantiate": "fait des calques (la sélection par défaut, de même parent, avec leurs enfants) un composant : une composition à eux avec les paramètres donnés, et une instance à leur place, dessinée pareil. En placer d'autres avec instantiate",
+    "Place a component": "Placer un composant",
+    "places a component: one instance with its parameter values, or many at once (count, or one per row of data) laid out on a grid, a line, a circle, a path or another layer's points, each parameter given by a rule, optionally played as a wave by a time field": "place un composant : une instance avec ses valeurs de paramètres, ou plusieurs d'un coup (un nombre, ou une par ligne de données) disposées en grille, en ligne, en cercle, le long d'un tracé ou sur les points d'un autre calque, chaque paramètre donné par une règle, éventuellement jouées en vague par un champ temporel",
+    "Detach an instance": "Détacher une instance",
+    "turns an instance of a component into plain layers drawn the same (its parameters and overrides written into them), to retouch it alone": "fait d'une instance de composant des calques ordinaires dessinés pareil (ses paramètres et ses remplacements écrits dedans), pour la retoucher seule",
+    "Repeated elements": "Éléments répétés",
+    "layers or groups written several times nearly the same: one component and its instances say it once": "des calques ou des groupes écrits plusieurs fois presque pareils : un composant et ses instances le disent une fois",
+    "{n} nearly identical elements ({type}): define one component and place instances of it": "{n} éléments presque identiques ({type}) : définir un composant et en placer des instances",
+    "their ids; the selection by default": "leurs identifiants ; la sélection par défaut",
+    "Parameters": "Paramètres",
+    "what varies from one instance to the next: a name and the properties it lands on, by their address (title.text, plate.fill, card.transform.scale); its type is the first target's": "ce qui change d'une instance à l'autre : un nom et les propriétés où il s'applique, par leur adresse (title.text, plate.fill, card.transform.scale) ; son type est celui de la première cible",
+    "Component": "Composant",
+    "its composition id": "l'identifiant de sa composition",
+    "the centre of the instance (or of the layout), in pixels; the frame's centre by default": "le centre de l'instance (ou de la disposition), en pixels ; le centre de l'image par défaut",
+    "when it starts; the component plays from its own 0 there": "quand elle commence ; le composant y joue depuis son propre 0",
+    "Values": "Valeurs",
+    "a value per parameter, for every instance": "une valeur par paramètre, pour toutes les instances",
+    "Overrides": "Remplacements",
+    "any property of the component set for these instances only, by its address in it": "toute propriété du composant fixée pour ces instances seulement, par son adresse dans celui-ci",
+    "'grid', 'list', 'circle', or a layout object: { type: 'grid', columns, spacing: [x, y] }, { type: 'list', direction, spacing }, { type: 'circle', radius, start, sweep, rotate }, { type: 'path', path, rotate }, { type: 'points', layer }": "'grid', 'list', 'circle', ou un objet de disposition : { type: 'grid', columns, spacing: [x, y] }, { type: 'list', direction, spacing }, { type: 'circle', radius, start, sweep, rotate }, { type: 'path', path, rotate }, { type: 'points', layer }",
+    "Spacing (px)": "Espacement (px)",
+    "with a layout by name: the step between instances (the circle's radius)": "avec une disposition nommée : le pas entre les instances (le rayon du cercle)",
+    "per parameter, for many: a value, { $expr } reading index, count, row (random(index), noise(index * 0.3)), or { $palette: \"order\" | \"random\" }": "par paramètre, pour plusieurs : une valeur, { $expr } qui lit index, count, row (random(index), noise(index * 0.3)), ou { $palette: \"order\" | \"random\" }",
+    "one instance per row of this JSON asset (an array), read as row": "une instance par ligne de cette ressource JSON (un tableau), lue comme row",
+    "each instance later: { mode: 'rank' | 'angle' | 'distance' | 'noise', amount (s), angle, center, scale, speed, seed, loop }": "chaque instance plus tard : { mode: 'rank' | 'angle' | 'distance' | 'noise', amount (s), angle, center, scale, speed, seed, loop }",
+    "Instance": "Instance"
   },
   "personal": {
     "cannotStart": "tramme ne peut pas démarrer ici",
@@ -2384,6 +2411,13 @@
     "cacheHint": "Les modèles gardés par ce navigateur pèsent {size} en tout. Ci-dessous, ceux qu'aucune ligne n'utilise (un choix d'avant, une version plus ancienne) : supprimez-les pour libérer la place.",
     "nothingElse": "Rien d'autre : chaque modèle gardé ici sert.",
     "transcriptionPaths": "Le serveur transcrit avec son propre modèle quand il en a un : Whisper large v3 turbo sur Workers AI, ou whisper-1 d'OpenAI avec une clé OpenAI. Sans lui, le compagnon local fait tourner le modèle choisi ici (TRAMME_WHISPER_MODEL, sur sa machine, l'emporte), et sans compagnon, ce navigateur s'en charge (le plus lent)."
+  },
+  "components": {
+    "defined": "Composant {name}",
+    "definedNotice": "{name} est désormais un composant : sa première instance remplace les calques.",
+    "placed": "Instances de {name}",
+    "placedNotice": "{name} placé.",
+    "detached": "Instance détachée"
   },
   "stabilize": {
     "reading": "lecture du tremblement"
