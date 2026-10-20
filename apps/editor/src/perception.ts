@@ -7,6 +7,8 @@ import { ALL_FORMATS, AudioBufferSink, CanvasSink, Input, UrlSource } from 'medi
 import { analyseAudio, clearMargins, freeSides, largestFree, pointer, type Op, type ToolContext, type ToolType } from '@tramme/core';
 import { t } from './i18n/index.ts';
 import { freshId } from './model.ts';
+import type { ModelEntry } from './models.ts';
+import { chosenModel } from './settings.ts';
 
 const RATE = 16000;
 
@@ -199,12 +201,33 @@ export function onDemand<T>(what: string, load: () => Promise<T>): () => Promise
   return () => (loading ??= load().catch((e) => { loading = null; throw new Error(`${what} could not load: ${(e as Error).message}`); }));
 }
 
-/** a small object detector (YOLOS tiny, a few MB), downloaded once and run in the browser: on the GPU (WebGPU), on the processor without one (much slower) */
-const loadDetector = onDemand('the detection model', () => import('@huggingface/transformers').then(async ({ pipeline, RawImage }) => {
-  const make = (opts: object) => pipeline('object-detection', 'Xenova/yolos-tiny', opts as never);
-  const detect = (await ('gpu' in navigator ? make({ device: 'webgpu', dtype: 'fp32' }).catch(() => make({ dtype: 'q8' })) : make({ dtype: 'q8' }))) as unknown as Detector;
+const PIPELINES = new Map<string, () => Promise<unknown>>();
+
+/**
+ * A model's transformers.js pipeline, loaded on first use and kept (per
+ * model): on the GPU (WebGPU) in the precisions its adapter lists, in turn,
+ * on the processor without one or when the GPU refuses them all (slower).
+ */
+export function pipelineOf<T>(entry: ModelEntry, what: string): Promise<T> {
+  const a = entry.adapter;
+  if (a.kind !== 'pipeline') return Promise.reject(new Error(`${entry.name} does not run as a pipeline`));
+  if (!PIPELINES.has(entry.id)) PIPELINES.set(entry.id, onDemand(what, () => import('@huggingface/transformers').then(async ({ pipeline }) => {
+    const make = (opts: object) => pipeline(a.pipeline, entry.source, { revision: entry.revision, ...opts } as never);
+    const cpu = () => make({ dtype: a.cpu });
+    if (!('gpu' in navigator)) return cpu();
+    let p = make({ device: 'webgpu', dtype: a.gpu[0] });
+    for (const dtype of a.gpu.slice(1)) p = p.catch(() => make({ device: 'webgpu', dtype }));
+    return p.catch(cpu);
+  })));
+  return PIPELINES.get(entry.id)!() as Promise<T>;
+}
+
+/** the object detector chosen in the settings (by default YOLOS tiny, a few MB), downloaded once and run in the browser */
+const loadDetector = async () => {
+  const { RawImage } = await import('@huggingface/transformers');
+  const detect = await pipelineOf<Detector>(chosenModel('detection'), 'the detection model');
   return { detect, fromCanvas: (c: HTMLCanvasElement) => RawImage.fromCanvas(c) };
-}));
+};
 
 export interface PersonBox { x: number; y: number; w: number; h: number; label: string; score: number }
 
@@ -473,3 +496,19 @@ const still: ToolType<{ at?: number; place?: boolean }> = {
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
 export const PERCEPTION_TOOLS: ToolType[] = [beats, shots, subjects, palette, space, still];
+
+/**
+ * A short run of a pipeline model on a blank input (a small grey picture, a
+ * second of silence): a model hub id the user typed is used only once it has
+ * loaded and answered. Throws with the reason otherwise.
+ */
+export async function tryPipeline(entry: ModelEntry): Promise<void> {
+  if (entry.adapter.kind !== 'pipeline') throw new Error(`${entry.name} does not run as a pipeline`);
+  const run = await pipelineOf<(input: unknown, opts?: object) => Promise<unknown>>(entry, entry.name);
+  if (entry.adapter.pipeline === 'automatic-speech-recognition') { await run(new Float32Array(16000)); return; }
+  const { RawImage } = await import('@huggingface/transformers');
+  const c = canvas(64, 64);
+  c.g.fillStyle = '#808080';
+  c.g.fillRect(0, 0, 64, 64);
+  await run(RawImage.fromCanvas(c.c));
+}

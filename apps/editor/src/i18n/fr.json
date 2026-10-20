@@ -2201,5 +2201,36 @@
   },
   "cuts": {
     "done": "« {name} » resserré : {saved} gagnées."
+  },
+  "localModels": {
+    "title": "Modèles",
+    "hint": "Les modèles que l'éditeur fait tourner sur cet ordinateur (détourage, détection, profondeur, transcription) : chacun se télécharge la première fois que son outil sert et reste dans ce navigateur. Rien n'est envoyé nulle part. Le choix vaut pour cet ordinateur.",
+    "cutoutPerson": "Détourage d'une personne",
+    "cutoutAny": "Détourage de tout sujet",
+    "detection": "Détection",
+    "depth": "Profondeur",
+    "transcription": "Transcription",
+    "defaultIs": "Par défaut : {model}",
+    "byDefault": "{name} (par défaut)",
+    "aboutSize": "environ {size}",
+    "notCommercial": "pas pour un travail commercial (sa licence)",
+    "ownLicence": "sous sa propre licence : lisez-la avant un projet commercial",
+    "notTried": "pas essayé avec cette version de tramme",
+    "noteU2netpPerson": "entraîné sur tout sujet, pas sur des personnes : cheveux et contours plus grossiers, mais il tourne sur les plus petites machines",
+    "noteU2net": "des contours plus fins que le petit, pour environ quarante fois le téléchargement",
+    "noteIsnet": "lit 1024 px : les contours les plus nets et le plus lourd ; il peut dépasser le GPU d'une machine modeste (le processeur prend alors le relais, lentement)",
+    "noteYolosSmall": "trouve des choses plus petites et plus lointaines, environ quatre fois plus lent",
+    "noteNonCommercial": "une profondeur plus fine, pour un travail non commercial seulement",
+    "noteWhisperBase": "plus rapide, plus d'erreurs sur les noms et les accents",
+    "noteWhisperTiny": "le plus rapide, pour un premier jet",
+    "noteWhisperLarge": "le plus juste ; de préférence dans l'app de bureau ou avec le compagnon",
+    "advanced": "Autres modèles",
+    "advancedHint": "Tout modèle du hub de modèles fait pour le même pipeline (transformers.js, poids ONNX) : il est téléchargé et essayé sur une image vide ou une seconde de silence avant de servir.",
+    "hubModel": "{task} : un identifiant du hub",
+    "hubModelHint": "propriétaire/nom, comme sur huggingface.co",
+    "tryAndUse": "Essayer et utiliser",
+    "notAHubId": "{id} n'est pas un identifiant du hub (propriétaire/nom)",
+    "hubModelKept": "{id} a répondu : il sert désormais pour {task} sur cet ordinateur",
+    "hubModelFailed": "{id} n'a pas pu servir : {error}"
   }
 }

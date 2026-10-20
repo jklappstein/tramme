@@ -28,6 +28,7 @@ import { fromVault } from '../vault/link.ts';
 import { Providers as ProviderList, type ProviderActions } from './Providers.tsx';
 import { ViewSwitch } from './views.tsx';
 import { Confirm, norm, Row, Search, Section } from './SettingsRows.tsx';
+import { LocalModels } from './ModelsSettings.tsx';
 
 const MOTION: Record<Preferences['motion'], string> = {
   auto: m('settings.adaptsToTheMachine'),
@@ -433,6 +434,7 @@ const GROUPS: { title: () => string; panes: Pane[] }[] = [
       { id: 'appearance', icon: 'palette', title: () => t('settings.appearance'), body: Appearance },
       { id: 'preview', icon: 'eye', title: () => t('common.preview'), body: Preview },
       { id: 'sound', icon: 'audio', title: () => t('settings.sound'), body: Sound },
+      { id: 'models', icon: 'download', title: () => t('localModels.title'), body: LocalModels },
       { id: 'tours', icon: 'help', title: () => t('common.guidedTours'), body: Tours },
       // the native app only: the projects live in a folder of this computer
       ...(tauri ? [{ id: 'storage' as SettingsSection, icon: 'folder', title: () => t('settings.storage'), body: Storage }] : []),

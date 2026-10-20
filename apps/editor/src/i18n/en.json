@@ -1284,5 +1284,36 @@
   },
   "cuts": {
     "done": "\"{name}\" tightened: {saved} saved."
+  },
+  "localModels": {
+    "title": "Models",
+    "hint": "The models the editor runs on this computer (cut-out, detection, depth, transcription): each downloads the first time its tool runs and stays in this browser. Nothing is sent anywhere. The choice is for this computer.",
+    "cutoutPerson": "Cut-out of a person",
+    "cutoutAny": "Cut-out of any subject",
+    "detection": "Detection",
+    "depth": "Depth",
+    "transcription": "Transcription",
+    "defaultIs": "By default: {model}",
+    "byDefault": "{name} (default)",
+    "aboutSize": "about {size}",
+    "notCommercial": "not for commercial work (its licence)",
+    "ownLicence": "under its own licence: read it before a commercial project",
+    "notTried": "not tried with this version of tramme",
+    "noteU2netpPerson": "trained on any subject, not on people: rougher hair and edges, but it runs on the smallest machines",
+    "noteU2net": "finer edges than the small one, for about forty times the download",
+    "noteIsnet": "reads 1024 px: the sharpest edges and the heaviest; it may exceed the GPU of a modest machine (the processor then takes over, slowly)",
+    "noteYolosSmall": "finds smaller and farther things, about four times slower",
+    "noteNonCommercial": "finer depth, for non-commercial work only",
+    "noteWhisperBase": "faster, more mistakes on names and accents",
+    "noteWhisperTiny": "the fastest, for a first pass",
+    "noteWhisperLarge": "the most accurate; best in the desktop app or with the companion",
+    "advanced": "Other models",
+    "advancedHint": "Any model of the model hub made for the same pipeline (transformers.js, ONNX weights): it is downloaded and tried on a blank picture or a second of silence before it is used.",
+    "hubModel": "{task}: a model hub id",
+    "hubModelHint": "owner/name, as on huggingface.co",
+    "tryAndUse": "Try and use",
+    "notAHubId": "{id} is not a model hub id (owner/name)",
+    "hubModelKept": "{id} answered: it is now used for {task} on this computer",
+    "hubModelFailed": "{id} could not be used: {error}"
   }
 }
