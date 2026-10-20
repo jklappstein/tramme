@@ -10,7 +10,7 @@
 // When the environment isolates errors (the editor's preview), a layer that
 // fails is drawn as a red frame and reported; the rest of the frame renders.
 
-import { layerMatrix, type BlendMode, type EvaluatedFrame, type EvaluatedLayer, type EvaluatedTransform, type Host, type Registry } from '@tramme/core';
+import { layerMatrix, pathD, type BlendMode, type PathValue, type EvaluatedFrame, type EvaluatedLayer, type EvaluatedTransform, type Host, type Registry } from '@tramme/core';
 import { glPass, nodeContext, resizeNode } from './gpu.ts';
 
 const BLEND: Record<BlendMode, GlobalCompositeOperation> = {
@@ -117,6 +117,61 @@ function layerPicture(like: CanvasRenderingContext2D, id: string, env: DrawEnv):
   return off;
 }
 
+/**
+ * A layer's drawn masks, applied to its picture (`off`, in canvas pixels):
+ * each mask's outline drawn in the layer's space (`at`: the canvas transform
+ * of the layer), grown or shrunk, feathered, inverted, at its opacity, then
+ * combined with the masks before it (add: union; subtract: taken out;
+ * intersect: kept where both are). The picture keeps what they let through.
+ */
+function applyMasks(off: CanvasRenderingContext2D, masks: EvaluatedLayer['masks'], at: DOMMatrix, env: DrawEnv) {
+  const { width: w, height: h } = off.canvas;
+  const k = env.scale ? (env.scale[0] + env.scale[1]) / 2 : 1;
+  const all = env.pool.get(w, h), one = env.pool.get(w, h);
+  masks.forEach((mk, i) => {
+    const p = mk.props, mode = String(p.mode ?? 'add');
+    const feather = Math.max(0, Number(p.feather) || 0), grow = Number(p.expansion) || 0, opacity = Math.min(1, Math.max(0, Number(p.opacity ?? 1)));
+    const outline = new Path2D(pathD(p.path as PathValue));
+    one.setTransform(1, 0, 0, 1, 0, 0);
+    one.globalCompositeOperation = 'source-over';
+    one.filter = 'none';
+    one.clearRect(0, 0, w, h);
+    one.setTransform(at);
+    one.fillStyle = one.strokeStyle = '#ffffff';
+    one.lineJoin = 'round';
+    if (feather > 0) one.filter = `blur(${(feather * k) / 2}px)`;
+    one.fill(outline);
+    // grown: its edge stroked on; shrunk: its edge stroked off
+    if (grow !== 0) {
+      one.lineWidth = Math.abs(grow) * 2;
+      one.globalCompositeOperation = grow > 0 ? 'source-over' : 'destination-out';
+      one.stroke(outline);
+    }
+    // inverted: what lies outside it
+    if (p.invert === true) {
+      one.setTransform(1, 0, 0, 1, 0, 0);
+      one.filter = 'none';
+      one.globalCompositeOperation = 'xor';
+      one.fillStyle = '#ffffff';
+      one.fillRect(0, 0, w, h);
+    }
+    // what the masks before it let through: everything, when the first one takes away or intersects
+    if (i === 0 && mode !== 'add') all.fillRect(0, 0, w, h);
+    all.globalAlpha = opacity;
+    all.globalCompositeOperation = mode === 'subtract' ? 'destination-out' : mode === 'intersect' ? 'destination-in' : 'source-over';
+    all.drawImage(one.canvas, 0, 0);
+  });
+  off.save();
+  off.setTransform(1, 0, 0, 1, 0, 0);
+  off.globalAlpha = 1;
+  off.filter = 'none';
+  off.globalCompositeOperation = 'destination-in';
+  off.drawImage(all.canvas, 0, 0);
+  off.restore();
+  env.pool.release(one);
+  env.pool.release(all);
+}
+
 function drawLayer(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: DrawEnv) {
   if (L.transform.opacity <= 0) return;
   if (!L.node.render.canvas2d && !L.node.render.gl && !L.children.length) return;
@@ -133,12 +188,16 @@ function drawLayer(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: DrawEn
   const fx = L.effects
     .map((e) => ({ e, type: env.registry.hasEffect(e.type) ? env.registry.effect(e.type) : null }))
     .filter((x) => x.type?.stage === 'layer' && (x.type.canvas2d || x.type.gl));
-  if (fx.length) {
+  const masks = L.masks ?? [];
+  if (fx.length || masks.length) {
     const { width: w, height: h } = ctx.canvas;
     const off = env.pool.get(w, h);
     off.setTransform(ctx.getTransform());
     off.transform(m.a, m.b, m.c, m.d, m.e, m.f);
+    const at = off.getTransform();
     drawContent(off, L, env);
+    // the masks cut the picture before its effects: a feathered mask then blurs with the layer, as in an editor
+    if (masks.length) applyMasks(off, masks, at, env);
     // effect sizes are in composition pixels: they follow the render scale
     const k = env.scale ? (env.scale[0] + env.scale[1]) / 2 : 1;
     for (const { e, type } of fx) {

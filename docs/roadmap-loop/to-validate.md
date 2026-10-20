@@ -120,3 +120,6 @@ its network policy) and has no GPU: no model was downloaded or run there.
   colour, then a click on the screen in the viewport: the colour is the
   screen's (the key is off while picking); Escape cancels. Try it on a
   phone too (a tap).
+- **Step 5 — masks.** Inspector → Masks → + on a video layer: a rectangle
+  over it; change mode, feather, expansion, invert, add a second one in
+  subtract, and see the picture follow; an export shows the same.

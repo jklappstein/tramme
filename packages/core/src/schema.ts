@@ -40,6 +40,12 @@ const effect = z.strictObject({
   props: z.record(z.string(), prop).optional(),
 });
 
+const mask = z.strictObject({
+  id,
+  enabled: z.boolean().optional(),
+  props: z.record(z.string(), prop).optional(),
+});
+
 const layer = z.strictObject({
   type: z.string().min(1),
   name: z.string().optional(),
@@ -52,6 +58,7 @@ const layer = z.strictObject({
   transform: transform.optional(),
   props: z.record(z.string(), prop).optional(),
   effects: z.array(effect).optional(),
+  masks: z.array(mask).optional(),
   children: z.array(id).optional(),
 });
 

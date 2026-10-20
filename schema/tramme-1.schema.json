@@ -345,6 +345,32 @@
                     "additionalProperties": false
                   }
                 },
+                "masks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]+$"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "props": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
                 "children": {
                   "type": "array",
                   "items": {

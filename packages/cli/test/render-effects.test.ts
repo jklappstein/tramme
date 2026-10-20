@@ -40,6 +40,27 @@ function keyed(view: 'result' | 'matte', tolerance = 0.12) {
   };
 }
 
+/** a blue frame over white, cut by the masks given (a disc of radius 50 at the centre, a band across the top) */
+const DISC = { v: [[0, -50], [50, 0], [0, 50], [-50, 0]], i: [[-27.6, 0], [0, -27.6], [27.6, 0], [0, 27.6]], o: [[27.6, 0], [0, 27.6], [-27.6, 0], [0, -27.6]], closed: true };
+const BAND = { v: [[-160, -90], [160, -90], [160, -40], [-160, -40]], closed: true };
+function masked(masks: unknown[]) {
+  return {
+    schema: 'tramme/1', meta: { title: 'masks' }, tokens: {}, assets: {}, root: 'main',
+    compositions: { main: { name: 'Main', width: 320, height: 180, fps: 30, duration: 1, background: '#FFFFFF', motionBlur: { samples: 1, shutter: 0 }, order: ['frame'], layers: {
+      frame: { type: 'shape.rect', transform: { position: [160, 90] }, props: { size: [320, 180], fill: '#0000FF' }, masks },
+    } } },
+  };
+}
+const MASKS: Record<string, unknown[]> = {
+  disc: [{ id: 'm', props: { path: DISC } }],
+  hole: [{ id: 'm', props: { path: DISC, mode: 'subtract' } }],
+  inverted: [{ id: 'm', props: { path: DISC, invert: true } }],
+  grown: [{ id: 'm', props: { path: DISC, expansion: 20 } }],
+  feathered: [{ id: 'm', props: { path: DISC, feather: 30 } }],
+  // the disc and the band, then only where both are
+  both: [{ id: 'a', props: { path: { v: [[-160, -90], [160, -90], [160, 90], [-160, 90]], closed: true } } }, { id: 'b', props: { path: DISC, mode: 'intersect' } }, { id: 'c', props: { path: BAND, mode: 'subtract' } }],
+};
+
 let dir = '', server: Server, close: () => Promise<void>, still: (kind: string, t: number) => Promise<(x: number, y: number) => Pixel>;
 
 describe.skipIf(!CHROME)('effects, rendered', () => {
@@ -47,6 +68,7 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tramme-transitions-'));
     for (const k of KINDS) fs.writeFileSync(path.join(dir, `${k}.tramme.json`), JSON.stringify(doc(k)));
     fs.writeFileSync(path.join(dir, 'key.tramme.json'), JSON.stringify(keyed('result')));
+    for (const [name, masks] of Object.entries(MASKS)) fs.writeFileSync(path.join(dir, `mask-${name}.tramme.json`), JSON.stringify(masked(masks)));
     fs.writeFileSync(path.join(dir, 'key-matte.tramme.json'), JSON.stringify(keyed('matte')));
     server = new Server(readConfig(path.join(dir, 'crossfade.tramme.json')));
     const port = await server.start();
@@ -103,4 +125,30 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     expect(near(m(10, 5), [0, 0, 0])).toBe(true);
     expect(near(m(160, 90), [255, 255, 255])).toBe(true);
   }, 60_000);
+
+  it('cuts a layer by its masks: added, taken away, inverted, grown, feathered, combined', async () => {
+    const WHITE: Pixel = [255, 255, 255];
+    const disc = await still('mask-disc', 0.5);
+    expect(near(disc(160, 90), BLUE)).toBe(true);
+    expect(near(disc(10, 10), WHITE)).toBe(true);
+    const hole = await still('mask-hole', 0.5);
+    expect(near(hole(160, 90), WHITE)).toBe(true);
+    expect(near(hole(10, 10), BLUE)).toBe(true);
+    const inv = await still('mask-inverted', 0.5);
+    expect(near(inv(160, 90), WHITE)).toBe(true);
+    expect(near(inv(10, 10), BLUE)).toBe(true);
+    // 60 px from the centre: outside the disc, inside it grown by 20
+    expect(near(disc(220, 90), WHITE)).toBe(true);
+    expect(near((await still('mask-grown', 0.5))(220, 90), BLUE)).toBe(true);
+    // feathered: its edge between the two
+    const edge = (await still('mask-feathered', 0.5))(210, 90);
+    expect(edge[2]).toBe(255);
+    expect(edge[0]).toBeGreaterThan(30);
+    expect(edge[0]).toBeLessThan(225);
+    // the frame, intersected with the disc, without the band: the disc's top is gone
+    const both = await still('mask-both', 0.5);
+    expect(near(both(160, 90), BLUE)).toBe(true);
+    expect(near(both(160, 45), WHITE)).toBe(true);
+    expect(near(both(10, 170), WHITE)).toBe(true);
+  }, 120_000);
 });

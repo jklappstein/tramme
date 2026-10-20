@@ -104,6 +104,13 @@ export interface Effect {
   props?: Record<string, Prop>;
 }
 
+/** a mask drawn on a layer: its props follow MASK_SCHEMA (path, mode, feather, expansion, opacity, invert) */
+export interface Mask {
+  id: string;
+  enabled?: boolean;
+  props?: Record<string, Prop>;
+}
+
 export interface Layer {
   /** node type in the registry: 'shape.rect', 'text', 'image', 'group', 'code', ... */
   type: string;
@@ -120,6 +127,8 @@ export interface Layer {
   transform?: Transform;
   props?: Record<string, Prop>;
   effects?: Effect[];
+  /** drawn masks, in order: each adds to, takes from or intersects what the ones before it let through */
+  masks?: Mask[];
   /** container layers only (group): child ids, bottom to top */
   children?: string[];
 }

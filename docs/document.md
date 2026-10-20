@@ -51,6 +51,14 @@ A project is a JSON file `*.tramme.json`. It is the source of truth: the editor,
 
 Local matrix: `translate(position) · rotate(rotation) · scale(scale) · translate(-anchor)`. A group's children are drawn in the group's local space. Rectangles, ellipses and image frames are **centered on the layer's origin**; text has its origin on the baseline.
 
+### Masks
+
+A layer's `masks` cut what it draws, in order, before its effects: each is `{ id, enabled?, props }`, its props `path` (in the layer's own space, as a `shape.path` writes it, animatable), `mode` (`add`: shown inside; `subtract`: hidden inside; `intersect`: kept where the masks before it and this one meet), `feather` and `expansion` (px), `opacity` and `invert`.
+
+```json
+"masks": [{ "id": "window", "props": { "path": { "v": [[-300, -200], [300, -200], [300, 200], [-300, 200]], "closed": true }, "feather": 12 } }]
+```
+
 ## Properties: four forms
 
 | Form | Example | Meaning |

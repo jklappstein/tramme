@@ -590,6 +590,15 @@
     "noProjectNamed": "Nothing named “{query}”."
   },
   "inspector": {
+    "maskAdd": "Add",
+    "maskSubtract": "Subtract",
+    "maskIntersect": "Intersect",
+    "masks": "Masks",
+    "addAMask": "Add a mask",
+    "noMasks": "No masks.",
+    "enableMask": "Enable the mask",
+    "disableMask": "Disable the mask",
+    "maskOrder": "Mask order",
     "animateName": "Animate {name}",
     "deleteTheKeyframeOf": "Delete the keyframe of {name}",
     "keyframeOfName": "Keyframe of {name}",

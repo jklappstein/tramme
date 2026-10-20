@@ -435,6 +435,16 @@ export const TRANSFORM_SCHEMA: PropSchema = {
   depth: { type: 'number', default: 0, label: 'Depth', unit: 'px', step: 10, description: 'behind the screen when positive, in front when negative: parallax and depth blur with the composition camera' },
 };
 
+/** schema of a layer's drawn mask: its outline in the layer's space, how it combines with the masks before it, its edge */
+export const MASK_SCHEMA: PropSchema = {
+  path: { type: 'path', default: { v: [[-200, -150], [200, -150], [200, 150], [-200, 150]], closed: true }, label: 'Path', description: "in the layer's own space, like a shape's" },
+  mode: { type: 'enum', default: 'add', options: ['add', 'subtract', 'intersect'], label: 'Mode', animatable: false, description: 'add: shown inside; subtract: hidden inside; intersect: shown only where the masks before it and this one meet' },
+  feather: { type: 'number', default: 0, min: 0, step: 0.5, unit: 'px', label: 'Feather', description: 'a soft edge' },
+  expansion: { type: 'number', default: 0, step: 0.5, unit: 'px', label: 'Expansion', description: 'grows (or under 0, shrinks) the outline' },
+  opacity: { type: 'number', default: 1, min: 0, max: 1, step: 0.01, label: 'Opacity' },
+  invert: { type: 'bool', default: false, label: 'Invert', animatable: false, description: 'outside rather than inside' },
+};
+
 /** schema of the composition camera (2.5D): what it looks at, its zoom, and the depth blur */
 export const CAMERA_SCHEMA: PropSchema = {
   pan: { type: 'vec2', default: [0, 0], label: 'Pan', unit: 'px', description: 'the camera moves from the centre of the composition' },

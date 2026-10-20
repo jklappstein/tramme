@@ -11,7 +11,7 @@ import { integrate, mediaClockOf, mediaMoments, mediaTime, trackId, trackReader,
 import { compileExpr, type ExprScope } from './expr.ts';
 import { modifierParams, seedOf, type ModifierContext } from './modifiers.ts';
 import { asExpr, asKeyframed, asLink, easeFn, modsOf, propKind, resolveTokens, sampleKeyframes, staticValue, tokenValue } from './props.ts';
-import { CAMERA_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type NodeType, type PropDef, type Registry } from './registry.ts';
+import { CAMERA_SCHEMA, MASK_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type NodeType, type PropDef, type Registry } from './registry.ts';
 import type { Composition, TrammeDoc, Layer, Marker, Prop, Vec2 } from './types.ts';
 
 export interface EvaluatedTransform {
@@ -39,6 +39,8 @@ export interface EvaluatedLayer {
   transform: EvaluatedTransform;
   /** enabled layer effects with their props at this instant */
   effects: EvaluatedEffect[];
+  /** enabled drawn masks with their props at this instant (path, mode, feather, expansion, opacity, invert) */
+  masks: { id: string; props: Record<string, unknown> }[];
   children: EvaluatedLayer[];
   clip: EvaluatedLayer | null;
 }
@@ -235,6 +237,7 @@ export class Evaluator {
       effects: (layer.effects || []).filter((e) => e.enabled !== false).map((e) => ({
         id: e.id, type: e.type, props: this.evalSchema(ctx, `${id}.effects.${e.id}`, this.effectSchema(e.type)),
       })),
+      masks: (layer.masks || []).filter((mk) => mk.enabled !== false).map((mk) => ({ id: mk.id, props: this.evalSchema(ctx, `${id}.masks.${mk.id}`, MASK_SCHEMA) })),
       children: node.container ? this.stack(ctx, layer.children || []) : [],
       // a clip layer is used even when hidden; it follows its own in/out
       clip: layer.clip && clipLayer && layerActive(clipLayer, ctx.comp, ctx.t) ? this.layer(ctx, layer.clip) : null,
@@ -299,6 +302,11 @@ export class Evaluator {
       const def = fx && this.effectSchema(fx.type)[parts[3]];
       if (fx && def) return { prop: fx.props?.[parts[3]], def };
       throw new EvalError(address, 'unknown effect or effect property');
+    }
+    if (parts[1] === 'masks') {
+      const mk = (layer.masks || []).find((x) => x.id === parts[2]), def = MASK_SCHEMA[parts[3]];
+      if (mk && def) return { prop: mk.props?.[parts[3]], def };
+      throw new EvalError(address, 'unknown mask or mask property');
     }
     const def = this.registry.node(layer.type).props[parts[1]];
     if (!def || parts.length !== 2) throw new EvalError(address, `unknown property for ${layer.type}`);

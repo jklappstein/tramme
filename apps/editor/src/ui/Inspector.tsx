@@ -3,7 +3,7 @@
 // shown by colour and switched from its menu.
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Evaluator, getAt, pointer, propKind, staticValue, sheetIssues, TRANSFORM_SCHEMA, MOTION_BLUR_SCHEMA, CAMERA_SCHEMA, SOUND_MIX_SCHEMA, type TrammeDoc, type Op, type Paint, type Prop, type PropDef, type PropSchema, type Token } from '@tramme/core';
+import { Evaluator, getAt, pointer, propKind, staticValue, sheetIssues, TRANSFORM_SCHEMA, MOTION_BLUR_SCHEMA, CAMERA_SCHEMA, SOUND_MIX_SCHEMA, type TrammeDoc, type Op, type Paint, type Prop, type PropDef, type PropSchema, type Token, MASK_SCHEMA } from '@tramme/core';
 import { comp, commit, draft, cancelDraft, S, viewDoc, select, uiTime } from '../state.ts';
 import { assetData } from '../preview.ts';
 import { addModifierOps, editAtOps, fixedOps, folderOf, imagesIn, keyAtOps, keyIndexAt, keysOf, removeKeyOps, removeModifierOps, setAtOps, snap, freshId, fmtSeconds } from '../model.ts';
@@ -327,6 +327,7 @@ function Field({ def, value, ctx, label, onDraft, onCommit, onPick }: { def: Pro
 }
 
 const ENUM_LABEL: Record<string, string> = {
+  add: m('inspector.maskAdd'), subtract: m('inspector.maskSubtract'), intersect: m('inspector.maskIntersect'),
   left: m('inspector.left'), center: m('inspector.center'), right: m('inspector.right'), cover: m('inspector.cover'), contain: m('inspector.contain'), fill: m('inspector.stretch'), none: m('inspector.none'),
   butt: m('inspector.butt'), round: m('inspector.round'), square: m('common.square'), miter: m('inspector.miter'), bevel: m('inspector.bevel'), alphabetic: m('inspector.alphabetic'), top: m('inspector.top'), middle: m('inspector.middle'), bottom: m('inspector.bottom'),
   normal: m('inspector.normal'), multiply: m('inspector.multiply'), screen: m('inspector.screen'), overlay: m('inspector.overlay'), darken: m('inspector.darken'), lighten: m('inspector.lighten'), add: m('inspector.additive'),
@@ -470,6 +471,7 @@ function LayerInspector({ ctx, id }: { ctx: Ctx; id: string }) {
         </Section>
       ))}
       {!node && <div class="empty"><Icon name="alert" />{t('inspector.unknownTypeTypeAdd', { type: layer.type })}</div>}
+      {node && layer.type !== 'audio' && <MasksSection ctx={ctx} base={lp} id={id} masks={layer.masks || []} />}
       {node && layer.type !== 'audio' && <EffectsSection ctx={ctx} base={lp} address={`${id}.effects`} effects={layer.effects || []} stage="layer" title={t('inspector.effects')} />}
     </>
   );
@@ -558,6 +560,35 @@ function SpeechSection({ asset }: { asset: string }) {
         <span class="faint">{done ? t('transcribe.readyHint') : t('transcribe.notYet')}</span>
         <TranscribeButton asset={asset} />
       </div>
+    </Section>
+  );
+}
+
+/** the drawn masks of a layer: add (a rectangle over the layer, to edit in the viewport), toggle, remove, reorder, their props */
+function MasksSection({ ctx, base, id, masks }: { ctx: Ctx; base: string; id: string; masks: import('@tramme/core').Mask[] }) {
+  const add = () => {
+    const mid = freshId(Object.fromEntries(masks.map((x) => [x.id, 1])), 'mask');
+    // a rectangle over what the layer draws, when it knows its bounds
+    let b: { x: number; y: number; w: number; h: number } | null = null;
+    try { const L = ctx.ev.layerAt(id, ctx.t, ctx.compId); b = L.node.bounds?.(L.props, {} as never) ?? null; } catch { /* the default rectangle */ }
+    const path = b ? { v: [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h]], closed: true } : MASK_SCHEMA.path.default;
+    const value = { id: mid, props: { path } };
+    commit(t('inspector.addAMask'), masks.length ? [{ op: 'add', path: `${base}/masks/-`, value }] : [{ op: 'add', path: `${base}/masks`, value: [value] }]);
+  };
+  return (
+    <Section id="masks" title={t('inspector.masks')} right={<button class="icon-btn sm" title={t('inspector.addAMask')} onClick={add}><Icon name="plus" /></button>}>
+      {masks.length === 0 && <div class="faint" style={{ padding: '2px 0 4px' }}>{t('inspector.noMasks')}</div>}
+      {masks.map((mk, i) => (
+        <div key={mk.id} class="fx">
+          <div class="fx-head">
+            <Toggle on={mk.enabled !== false} onChange={(v) => commit(v ? t('inspector.enableMask') : t('inspector.disableMask'), setAtOps(ctx.doc, `${base}/masks/${i}/enabled`, v))} />
+            <span class="fx-title">{mk.id}</span>
+            <button class="icon-btn xs" title={t('inspector.moveUp')} disabled={i === 0} onClick={() => commit(t('inspector.maskOrder'), [{ op: 'move', from: `${base}/masks/${i}`, path: `${base}/masks/${i - 1}` }])}><Icon name="chevronDown" class="flip" /></button>
+            <button class="icon-btn xs" title={t('common.remove')} onClick={() => commit(t('common.removeName', { name: mk.id }), [{ op: 'remove', path: `${base}/masks/${i}` }])}><Icon name="x" /></button>
+          </div>
+          {mk.enabled !== false && <SchemaRows ctx={ctx} schema={MASK_SCHEMA} basePath={`${base}/masks/${i}/props`} baseAddress={`${id}.masks.${mk.id}`} />}
+        </div>
+      ))}
     </Section>
   );
 }

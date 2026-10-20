@@ -590,6 +590,15 @@
     "noProjectNamed": "Rien qui s'appelle « {query} »."
   },
   "inspector": {
+    "maskAdd": "Ajouter",
+    "maskSubtract": "Soustraire",
+    "maskIntersect": "Intersection",
+    "masks": "Masques",
+    "addAMask": "Ajouter un masque",
+    "noMasks": "Aucun masque.",
+    "enableMask": "Activer le masque",
+    "disableMask": "Désactiver le masque",
+    "maskOrder": "Ordre des masques",
     "animateName": "Animer {name}",
     "deleteTheKeyframeOf": "Supprimer la clé de {name}",
     "keyframeOfName": "Clé de {name}",
@@ -1146,6 +1155,14 @@
     "used": "Plugin {name} ajouté à ce projet."
   },
   "content": {
+    "Expansion": "Expansion",
+    "Feather": "Contour progressif",
+    "Invert": "Inverser",
+    "a soft edge": "un bord adouci",
+    "add: shown inside; subtract: hidden inside; intersect: shown only where the masks before it and this one meet": "ajouter : visible dedans ; soustraire : caché dedans ; intersection : visible seulement où les masques d'avant et celui-ci se rejoignent",
+    "grows (or under 0, shrinks) the outline": "agrandit (sous 0, réduit) le contour",
+    "in the layer's own space, like a shape's": "dans l'espace du calque, comme celui d'une forme",
+    "outside rather than inside": "dehors plutôt que dedans",
     "Choke": "Rétrécir",
     "Chroma key": "Incrustation",
     "Key colour": "Couleur d'incrustation",

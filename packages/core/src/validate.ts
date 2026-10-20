@@ -7,7 +7,7 @@ import { parseColor } from './color.ts';
 import { compileExpr } from './expr.ts';
 import { pointer } from './ops.ts';
 import { asExpr, asKeyframed, asLink, propKind, staticValue } from './props.ts';
-import { CAMERA_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type PropDef, type PropSchema, type Registry } from './registry.ts';
+import { CAMERA_SCHEMA, MASK_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type PropDef, type PropSchema, type Registry } from './registry.ts';
 import { DocSchema } from './schema.ts';
 import type { Composition, TrammeDoc } from './types.ts';
 
@@ -143,6 +143,12 @@ class Checker {
       if (layer.transform) this.props(cid, lp + '/transform', TRANSFORM_SCHEMA, layer.transform);
       if (layer.props) this.props(cid, lp + '/props', node.props, layer.props);
       this.effects(cid, lp + '/effects', layer.effects, 'layer');
+      const masks = new Set<string>();
+      (layer.masks || []).forEach((mk, i) => {
+        if (masks.has(mk.id)) this.err(`${lp}/masks/${i}/id`, `duplicate mask id "${mk.id}"`);
+        masks.add(mk.id);
+        if (mk.props) this.props(cid, `${lp}/masks/${i}/props`, MASK_SCHEMA, mk.props);
+      });
     }
   }
 
