@@ -327,7 +327,7 @@ function Field({ def, value, ctx, label, onDraft, onCommit, onPick }: { def: Pro
 }
 
 const ENUM_LABEL: Record<string, string> = {
-  add: m('inspector.maskAdd'), subtract: m('inspector.maskSubtract'), intersect: m('inspector.maskIntersect'),
+  subtract: m('inspector.maskSubtract'), intersect: m('inspector.maskIntersect'),
   left: m('inspector.left'), center: m('inspector.center'), right: m('inspector.right'), cover: m('inspector.cover'), contain: m('inspector.contain'), fill: m('inspector.stretch'), none: m('inspector.none'),
   butt: m('inspector.butt'), round: m('inspector.round'), square: m('common.square'), miter: m('inspector.miter'), bevel: m('inspector.bevel'), alphabetic: m('inspector.alphabetic'), top: m('inspector.top'), middle: m('inspector.middle'), bottom: m('inspector.bottom'),
   normal: m('inspector.normal'), multiply: m('inspector.multiply'), screen: m('inspector.screen'), overlay: m('inspector.overlay'), darken: m('inspector.darken'), lighten: m('inspector.lighten'), add: m('inspector.additive'),

@@ -590,7 +590,6 @@
     "noProjectNamed": "Nothing named “{query}”."
   },
   "inspector": {
-    "maskAdd": "Add",
     "maskSubtract": "Subtract",
     "maskIntersect": "Intersect",
     "masks": "Masks",
