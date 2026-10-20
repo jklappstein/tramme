@@ -440,3 +440,17 @@ its network policy) and has no GPU: no model was downloaded or run there.
   `bounds` is smaller than what it draws by more than the margin (48 px plus 5 %).
 - **Not done (by the measures):** WebGL2 blurs and Rust. Nothing measured
   here calls for them; take `tramme load --json` on a GPU machine to decide.
+
+## Components, step 6
+
+- **Slit-scan on footage**: put a video in a composition, add a Time
+  displacement layer (add menu, Time) reading it, map `left`, delay 0.5 s. Check
+  that it plays in the preview, that scrubbing backwards gives the same frames,
+  and that an export matches the preview. Checked here on a moving shape only
+  (CLI): a frame drawn alone and after the previous one are identical.
+- **A video source**: each slice decodes the video at another moment (24
+  slices are 24 positions in the file a frame). Watch the preview's speed on
+  a 1080p clip and the memory on a phone; lower the slices if it stutters.
+- **Memory**: the ring is kept per layer until the node's canvas is lost; two
+  4K layers at 48 slices take about 384 MB of GPU memory.
+- **Not done:** a delay map read from a layer (a gradient or a picture).

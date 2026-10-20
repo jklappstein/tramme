@@ -109,8 +109,8 @@ export interface Host {
    * arrived. Exports wait for it; the preview redraws.
    */
   defer?(pending: Promise<unknown>): void;
-  /** draw another composition of the document at its local time t, from (0, 0) (nested compositions), read through an instance when it is a component */
-  drawComposition?(ctx: CanvasRenderingContext2D, compId: string, t: number, instance?: Instance): void;
+  /** draw another composition of the document at its local time t, from (0, 0) (nested compositions), read through an instance when it is a component; false when something in it was still loading (deferred) */
+  drawComposition?(ctx: CanvasRenderingContext2D, compId: string, t: number, instance?: Instance): boolean | void;
   /** size and duration of a composition of the document */
   compositionSize?(compId: string): { width: number; height: number; duration: number } | null;
   /**

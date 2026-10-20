@@ -2266,7 +2266,19 @@
     "makes up the frames between a video's frames (2 or 4 times as many), saved as a copy linked to it: a layer of that video slowed under 1× (a speed curve, a ramp) plays the copy and slows smoothly instead of repeating frames. A long job: it says how long, and resumes where it stopped": "crée les images entre les images d'une vidéo (2 ou 4 fois plus), enregistrées dans une copie liée : un calque de cette vidéo ralenti sous 1× (une courbe de vitesse, une rampe) joue la copie et ralentit sans saccade au lieu de répéter des images. Une longue tâche : elle dit combien de temps, et reprend là où elle s'est arrêtée",
     "Picture or video": "Image ou vidéo",
     "the selected layer's by default": "celle du calque sélectionné par défaut",
-    "times as many frames: 2 for a slow motion down to 0.5×, 4 down to 0.25×": "fois plus d'images : 2 pour un ralenti jusqu'à 0,5×, 4 jusqu'à 0,25×"
+    "times as many frames: 2 for a slow motion down to 0.5×, 4 down to 0.25×": "fois plus d'images : 2 pour un ralenti jusqu'à 0,5×, 4 jusqu'à 0,25×",
+    "Blend slices": "Fondre les tranches",
+    "Delay map": "Carte du retard",
+    "Noise scale": "Échelle du bruit",
+    "Slices": "Tranches",
+    "Time": "Temps",
+    "Time displacement": "Déplacement temporel",
+    "a composition read later in some places than in others: slit-scan along a side, a time ripple from the centre, a liquid time with noise": "une composition lue plus tard à certains endroits qu'à d'autres : slit-scan le long d'un bord, une onde de temps depuis le centre, un temps liquide avec du bruit",
+    "how far back the most delayed point reads": "jusqu'où remonte le point le plus en retard",
+    "moments kept between now and the delay: more is smoother and costs memory": "instants gardés entre maintenant et le retard : plus, c'est plus fluide et plus coûteux en mémoire",
+    "patches across the height, for the noise map": "taches sur la hauteur, pour la carte de bruit",
+    "the picture to displace in time (put a video in a composition to displace it)": "l'image à déplacer dans le temps (mettez une vidéo dans une composition pour la déplacer)",
+    "where the delay is: left, right, top, bottom grow it across the frame (slit-scan), centre from the middle out, edges from the sides in, noise in patches": "où se trouve le retard : gauche, droite, haut, bas le font croître à travers l'image (slit-scan), centre du milieu vers l'extérieur, bords des côtés vers l'intérieur, bruit par taches"
   },
   "personal": {
     "cannotStart": "tramme ne peut pas démarrer ici",

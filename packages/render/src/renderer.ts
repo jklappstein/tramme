@@ -228,7 +228,8 @@ export class Renderer {
       assetInfo: (id: string) => assets.info(id),
       assetUrl: (id: string) => assets.url(id),
       compositionSize: (id: string) => { const c = this.doc.compositions[id]; return c ? { width: c.width, height: c.height, duration: c.duration } : null; },
-      drawComposition: (ctx: CanvasRenderingContext2D, id: string, t: number, instance?: Instance) => this.drawNested(ctx, id, t, instance),
+      // false when something it shows was still loading (it was deferred): a node keeping the picture draws it again
+      drawComposition: (ctx: CanvasRenderingContext2D, id: string, t: number, instance?: Instance) => { const n = this.pending.length; this.drawNested(ctx, id, t, instance); return this.pending.length === n; },
       drawLayer: (ctx: CanvasRenderingContext2D, id: string) => { const L = this.layerOf(id, f.t, compId, f.instance); if (L) drawLayers(ctx, [{ ...L, layer: { ...L.layer, visible: true } }], this.env(f, compId)); },
       layer: (id: string) => { const L = this.layerOf(id, f.t, compId, f.instance); return L ? { props: L.props, transform: L.transform, in: L.layer.in ?? 0, out: L.layer.out ?? comp.duration } : null; },
       state: <T>() => this.simState(compId, layerId, f.t, f.instance) as T,

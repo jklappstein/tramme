@@ -6,6 +6,7 @@
 import type { AiNotes } from '@tramme/core';
 
 export const NODE_NOTES: Record<string, AiNotes> = {
+  'time.shift': { when: 'slit-scan, a time ripple, a liquid time: one picture read later in some places than others (map left/right/top/bottom for a slit-scan, centre for a ripple, noise for patches); its source is a composition (a video goes in one); depth 0.3 to 1 s reads, the motion of the source makes the effect', avoid: 'a still source (nothing to see); slices over 32 at 4K (memory); more than one at a time', example: { comp: 'shot', depth: 0.6, slices: 24, map: 'centre' } },
   adjust: { when: 'a correction or an effect that must reach every layer under it at once (a grade over a scene, one blur for a set); it draws nothing by itself' },
   'shape.rect': { when: 'cards, bars, bands behind text, wipes, progress bars; radius for pills; bars and progress bars draw along their x, eased out over 0.3 to 0.6 s', avoid: 'pure white or pure black fills on a dark/light plate: use the tokens' },
   'shape.ellipse': { when: 'dots, rings (fill null + stroke), circular reveals used as a clip, soft glows with a radial gradient; dots and rings scale in with an ease out and a slight settle' },
