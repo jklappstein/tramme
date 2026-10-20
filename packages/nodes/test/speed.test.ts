@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Evaluator, integrate, layerClock, mediaMoments, mediaTime, validate, type Host, type TrammeDoc } from '@tramme/core';
+import { audioClips, clipFileTime, Evaluator, integrate, layerClock, mediaMoments, mediaTime, validate, type Host, type TrammeDoc } from '@tramme/core';
 import { captions } from '../src/captions.ts';
 import { builtinRegistry } from '../src/index.ts';
 
@@ -105,5 +105,23 @@ describe('a speed curve', () => {
     // at 2.9 s the ramp has played about 1.29 s of the file: "late"; at 1×, the transcript would be at 1.9 s, past it
     expect(said(2.9, 'v')).toMatch(/late/);
     expect(said(2.9, null)).not.toMatch(/late/);
+  });
+
+  it('plays the sound on the picture’s clock, the pitch with the speed', () => {
+    const ramp = film({ $k: [{ t: 1, v: 1 }, { t: 3, v: 0.3, ease: [0.42, 0, 0.58, 1] }, { t: 5, v: 1 }] });
+    const [clip] = audioClips(ramp, 'main');
+    expect(clip.rateCurve?.length).toBeGreaterThan(10);
+    const clock = layerClock(new Evaluator(ramp, builtinRegistry()), 'main', 'v');
+    // within a millisecond of the picture all along (the sound reads its curve sampled 50 times a second)
+    for (const t of [1, 1.7, 2.5, 3, 4.2, 6]) expect(Math.abs(clipFileTime(clip, t) - clock.fileTime(t))).toBeLessThan(1e-3);
+    // a held speed: the clip as before, no curve
+    const [held] = audioClips(film(2), 'main');
+    expect(held.rateCurve).toBeUndefined();
+    expect(clipFileTime(held, 3)).toBe(4);
+  });
+
+  it('never plays a sound backwards: under 0 it holds', () => {
+    const [clip] = audioClips(film({ $k: [{ t: 1, v: 1 }, { t: 2, v: -1 }] }), 'main');
+    expect(Math.min(...clip.rateCurve!.map(([, v]) => v))).toBe(0);
   });
 });

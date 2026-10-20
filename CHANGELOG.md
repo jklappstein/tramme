@@ -14,7 +14,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 - **The models in this browser, by hand**: the Models section says whether each model is downloaded and how much it weighs, downloads it ahead of its tool with its progress, deletes it, and lists the models no tool uses any more with the space they take.
 - **Transcription without a server or a companion**: the desktop app and the personal deployment transcribe in the browser itself when neither the server nor the local companion can, with the model chosen in the settings; the companion runs that model too (`TRAMME_WHISPER_MODEL` still overrides it on its machine).
 - **An asset made by a model says which**: the cut-out's masks, the pictures cut out, the depth maps, the people found, the tracks and the transcripts keep the models and versions that made them (`madeBy`, a new optional field of the document); another model chosen later never changes them.
-- **Speed curves**: the speed of a video or sound layer can be animated; the file plays at the integral of the speed, so a shot slows into its moment and speeds out of it, the same in the preview and the exports. 0 freezes the frame, a negative speed plays backwards. Tracks, callouts and the sounds placed on what is seen follow the ramp, and captions follow the layer whose speech they show (`follow`).
+- **Speed curves**: the speed of a video or sound layer can be animated; the file plays at the integral of the speed, so a shot slows into its moment and speeds out of it, the same in the preview and the exports. 0 freezes the frame, a negative speed plays backwards. Tracks, callouts and the sounds placed on what is seen follow the ramp, and captions follow the layer whose speech they show (`follow`). The sound follows the curve too, its pitch with the speed.
 - **A file already in the project is not imported twice**: importing it again from the assets panel, attaching it to a message for the assistant, or finding it twice among the sources of a new project gives back the asset that has it, and nothing is written again. Each imported asset keeps a hash of its content (`hash`, a new optional field of the document).
 - **An export says where a frame's time goes**: next to the `ms/frame`, `tramme render` prints the time per frame spent evaluating the document, drawing it, waiting for video frames, reading the pixels back from the GPU and waiting for the encoder, so a slow export tells whether the JavaScript, the GPU, the decoding or the transfer holds it back.
 - **Load cases to measure the renderer**: `tramme load` renders documents that each push one part of a frame (400 animated layers, blurs and effects with motion blur, a 4K source video, simulations) and prints, per case, the time per frame, its parts and what holds it back; `--json` keeps the figures and `--before` compares a later run with them, figure by figure.
@@ -25,6 +25,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Fixed
 
+- In the preview, a video played at another speed kept its pitch while the exports changed it: the pitch now goes with the speed everywhere.
 - An export of two layers playing the same video at different moments could draw one of them with a frame of the other: the shared decoder dropped the first layer's frame when the second one's came.
 
 ## [0.11.1] - 2026-10-19

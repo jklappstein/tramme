@@ -6,7 +6,7 @@
 // composition's loudness, its true peak held under -1 dBTP. Also: the WAV
 // encoder, and the synth that turns a sound's code into samples.
 
-import { audioClips, curveAt, gainAt, gainMoves, integratedLoudness, master, soundMix, type AudioClip, type SoundMix, type TrammeDoc } from '@tramme/core';
+import { audioClips, clipFileTime, curveAt, gainAt, gainMoves, integratedLoudness, master, soundMix, type AudioClip, type SoundMix, type TrammeDoc } from '@tramme/core';
 
 export const MIX_RATE = 48000;
 /** samples of a moving gain per second */
@@ -118,18 +118,26 @@ export function clipChain(ctx: BaseAudioContext, clip: AudioClip, out: AudioNode
 /** plays a decoded clip into `out`; null when it is over at `from` */
 export function playClip(ctx: BaseAudioContext, clip: AudioClip, buffer: AudioBuffer, out: AudioNode, startAt: number, from: number): AudioBufferSourceNode | null {
   const skip = Math.max(0, from - clip.at);
-  // the file goes by duration × rate
-  const length = (clip.duration - skip) * clip.rate;
+  // the file goes by duration × rate, or by the integral of the speed curve
+  const length = clipFileTime(clip, clip.at + clip.duration) - clipFileTime(clip, clip.at + skip);
   // a looped section plays again from its start as long as the clip runs: an offset past it (a late start) wraps into it
   // the section held to the file: one that starts past its end is no loop (its length would be 0, the wrap NaN)
   const loopStart = Math.max(0, clip.loopStart ?? 0), loopEnd = Math.min(clip.loopEnd ?? 0, buffer.duration);
   const loops = clip.loopStart !== undefined && clip.loopEnd !== undefined && loopEnd > loopStart;
-  const raw = clip.offset + skip * clip.rate;
+  const raw = clipFileTime(clip, clip.at + skip);
   const offset = loops && raw > loopStart ? loopStart + ((raw - loopStart) % (loopEnd - loopStart)) : raw;
   if (length <= 0 || offset >= buffer.duration) return null;
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   src.playbackRate.value = clip.rate;
+  if (clip.rateCurve) {
+    // the speed curve, sampled as the gain curves are: the same live and offline
+    const begin = clip.at + skip, end = clip.at + clip.duration, curve = clip.rateCurve;
+    const n = Math.max(2, Math.ceil((end - begin) * GAIN_RATE) + 1);
+    const values = Float32Array.from({ length: n }, (_, i) => curveAt(curve, begin + ((end - begin) * i) / (n - 1)));
+    src.playbackRate.value = values[0];
+    if (end > begin) src.playbackRate.setValueCurveAtTime(values, startAt + Math.max(0, clip.at - from), end - begin);
+  }
   if (loops) { src.loop = true; src.loopStart = loopStart; src.loopEnd = loopEnd; }
   src.connect(clipChain(ctx, clip, out, startAt, from));
   src.start(startAt + Math.max(0, clip.at - from), offset, length);

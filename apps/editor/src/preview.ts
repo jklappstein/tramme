@@ -14,7 +14,7 @@ const notchAtMost = (x: number) => [...NOTCHES].reverse().find((k) => k <= x + 1
 export const previewInfo = signal({ scale: 1, still: 1, motion: 0.5 });
 
 import { effect, signal } from '@preact/signals';
-import { audioClips, soundMix, type TrammeDoc, type EvaluatedFrame } from '@tramme/core';
+import { audioClips, clipFileTime, curveAt, soundMix, type TrammeDoc, type EvaluatedFrame } from '@tramme/core';
 import { editorRegistry } from './vocabulary.ts';
 import { clipChain, masterGainDb, mixBus, playClip, Renderer } from '@tramme/render';
 import { comp, compIdOf, S, setRegistry, setTime, toast, viewDoc } from './state.ts';
@@ -23,6 +23,9 @@ import { bindSandbox, blitSandboxFrame, declarationsModule, ensureSandboxDoc, pl
 import { t } from './i18n/index.ts';
 import { prefs } from './settings.ts';
 import { syncPluginTours } from './tours/index.ts';
+
+/** the slowest pace a media element takes (browsers refuse less): slower, it waits */
+const MIN_ELEMENT_RATE = 0.0625;
 
 class Preview {
   readonly canvas: HTMLCanvasElement;
@@ -424,15 +427,30 @@ class Preview {
     for (const c of clips.filter((x) => doc.assets[x.asset].type === 'video')) {
       const el = new Audio(r.assets.url(c.asset));
       el.preload = 'auto';
-      el.playbackRate = c.rate;
+      el.playbackRate = Math.max(MIN_ELEMENT_RATE, c.rate);
+      // the pitch goes with the speed, as in the exports (the browser keeps it by default)
+      el.preservesPitch = false;
       ctx.createMediaElementSource(el).connect(clipChain(ctx, c, bus(c), startAt, from));
       const skip = Math.max(0, from - c.at);
       // the element is timed like the file: the seek lands at the file's time (the pace included), wrapped into a loop it is past
       const looping = c.loopStart !== undefined && c.loopEnd !== undefined && c.loopEnd > c.loopStart;
       const loopStart = Math.max(0, c.loopStart ?? 0), len = (c.loopEnd ?? 0) - loopStart;
-      const raw = c.offset + skip * c.rate;
+      const raw = clipFileTime(c, c.at + skip);
       const at = looping && raw > loopStart && len > 0 ? loopStart + ((raw - loopStart) % len) : raw;
-      const begin = () => { el.currentTime = at; el.play().catch(() => {}); };
+      const begin = () => {
+        el.currentTime = at;
+        el.play().catch(() => {});
+        // a speed curve steers the element as it plays; under its slowest pace, it waits (a frozen frame is silent)
+        const curve = c.rateCurve;
+        if (!curve) return;
+        const steer = setInterval(() => {
+          const now = this.clock.t0 + (this.audio!.currentTime - this.clock.at), rate = curveAt(curve, now);
+          if (rate < MIN_ELEMENT_RATE) { if (!el.paused) el.pause(); return; }
+          el.playbackRate = rate;
+          if (el.paused && now < c.at + c.duration) el.play().catch(() => {});
+        }, 40);
+        this.timers.push(steer as unknown as ReturnType<typeof setTimeout>);
+      };
       // a looped section: the element cannot loopStart like a buffer, the wrap keeps it close (the exports are exact)
       if (looping) el.addEventListener('timeupdate', () => { if (el.currentTime >= c.loopEnd!) el.currentTime -= len; });
       const wait = Math.max(0, c.at - from) * 1000 + 30;

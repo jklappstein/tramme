@@ -6,7 +6,7 @@
 // mix the same clips with one mixer (@tramme/render, audio.ts).
 
 import { propKind, sampleKeyframes, staticValue } from './props.ts';
-import { mediaTime } from './track.ts';
+import { integrate, mediaTime } from './track.ts';
 import type { Composition, Keyframe, TrammeDoc } from './types.ts';
 
 /** what a sound is in the mix: effects share the room, music and ambience are the bed, the voice leads */
@@ -38,8 +38,10 @@ export interface AudioClip {
   /** seconds of fade at each end */
   fadeIn: number;
   fadeOut: number;
-  /** playback speed, pitch with it: 1 as recorded */
+  /** playback speed, pitch with it: 1 as recorded (its value at `at` when it moves) */
   rate: number;
+  /** the speed over time when it is animated (a speed curve): [composition time, speed] from the layer's in point to the clip's end, 0 and over (a sound does not play backwards) */
+  rateCurve?: [number, number][] | null;
   /** looping: the section [loopStart, loopEnd] (file seconds) starts over while the clip runs */
   loopStart?: number;
   loopEnd?: number;
@@ -99,14 +101,15 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
       at = Math.max(at, g.in ?? 0); end = Math.min(end, g.out ?? comp.duration);
     }
     if (hidden || end <= at) continue;
-    const duration = end - at, rate = clamp(num(staticValue(props.rate), 1), 0.25, 4);
+    const rateCurve = envelopeOf(props.rate, layer.in ?? 0, end, doc)?.map(([t, v]) => [t, clamp(v, 0, 4)] as [number, number]) ?? null;
+    const duration = end - at, rate = rateCurve ? curveAt(rateCurve, at) : clamp(num(staticValue(props.rate), 1), 0, 4);
     const envelope = envelopeOf(props.gain, at, end, doc), lowCutCurve = envelopeOf(props.lowCut, at, end, doc);
     const role = staticValue(props.role), visual = staticValue(props.visual);
     const start = Math.max(0, num(staticValue(props.start), 0));
     // looping: the section [start, loopEnd] wraps as long as the layer runs
     const loopEnd = num(staticValue(props.loopEnd), 0), loops = staticValue(props.loop) === true && loopEnd > start + 0.01;
     // where the clip starts in its file: the video node's clock, so picture and sound agree
-    const offset = mediaTime({ start, rate, loop: loops, loopEnd }, at, layer.in ?? 0);
+    const offset = mediaTime({ start, rate, loop: loops, loopEnd, ...(rateCurve ? { rateElapsed: curveIntegral(rateCurve, layer.in ?? 0, at) } : {}) }, at, layer.in ?? 0);
     clips.push({
       layerId, asset, at, duration,
       // unsaid: a video's sound is someone speaking; a sound is what its names say, an effect otherwise
@@ -121,6 +124,7 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
       fadeIn: clamp(num(staticValue(props.fadeIn), 0), 0, duration),
       fadeOut: clamp(num(staticValue(props.fadeOut), 0), 0, duration),
       rate,
+      ...(rateCurve ? { rateCurve } : {}),
       lowCut: Math.max(0, lowCutCurve ? lowCutCurve[0][1] : num(staticValue(props.lowCut), 0)),
       lowCutCurve,
       highCut: Math.max(0, num(staticValue(props.highCut), 0)),
@@ -152,6 +156,19 @@ export function curveAt(e: [number, number][], t: number): number {
   while (i < e.length - 2 && e[i + 1][0] <= t) i++;
   const [t0, v0] = e[i], [t1, v1] = e[Math.min(i + 1, e.length - 1)];
   return t <= t0 ? v0 : t >= t1 ? v1 : v0 + ((v1 - v0) * (t - t0)) / (t1 - t0);
+}
+
+/** ∫ of a sampled curve (linear between its samples) from a to b: exact, the samples cut it */
+export function curveIntegral(e: [number, number][], a: number, b: number): number {
+  return integrate((t) => curveAt(e, t), a, b, e.map(([t]) => t));
+}
+
+/**
+ * The file time a clip plays at composition time t (no loop wrap): its
+ * offset, then the file at its speed, or at the integral of its speed curve.
+ */
+export function clipFileTime(c: AudioClip, t: number): number {
+  return c.offset + (c.rateCurve ? curveIntegral(c.rateCurve, c.at, t) : (t - c.at) * c.rate);
 }
 
 /** the clip's gain (linear, 1 = as recorded) at composition time t: its curve or its level, times its fades */

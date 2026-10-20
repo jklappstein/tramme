@@ -90,3 +90,7 @@ its network policy) and has no GPU: no model was downloaded or run there.
   subject through the ramp; captions with `follow` on the video stay on the
   words. Rate 0 freezes; a negative rate plays backwards and stops at the
   file's first frame.
+- **Step 2 — the sound on a ramp.** Play the ramped video with its sound in
+  the preview: the voice slows and drops with the picture, without a gap; an
+  MP4 export sounds the same. A video at a fixed 0.5 speed now sounds lower in
+  the preview as in the export (the browser used to keep its pitch).
