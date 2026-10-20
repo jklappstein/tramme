@@ -161,3 +161,7 @@ its network policy) and has no GPU: no model was downloaded or run there.
   on a fast one); make the proxy, the preview plays smoothly; Settings →
   Preview → Play proxies off: the original plays again; an export uses the
   original (its size and sharpness).
+- **Step 9 — voices, heard.** A voice-over with each voice (pitch ±5
+  semitones, robot, telephone, radio, megaphone, echo) in the preview and in
+  an MP4 export: the same sound; a speech clip at 0.7× with Keep the pitch:
+  slow but at its pitch. Listen for the shifter's grain on deep voices.

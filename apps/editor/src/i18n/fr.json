@@ -590,6 +590,12 @@
     "noProjectNamed": "Rien qui s'appelle « {query} »."
   },
   "inspector": {
+    "voicePitch": "Hauteur",
+    "voiceRobot": "Robot",
+    "voiceTelephone": "Téléphone",
+    "voiceRadio": "Radio",
+    "voiceMegaphone": "Mégaphone",
+    "voiceEcho": "Écho",
     "followATrack": "Suivre un suivi",
     "noTrackYet": "Pas encore de suivi : suivez d'abord l'objet avec l'outil de suivi, le masque pourra alors le suivre",
     "maskSubtract": "Soustraire",
@@ -1164,6 +1170,11 @@
     "used": "Plugin {name} ajouté à ce projet."
   },
   "content": {
+    "Keep the pitch": "Garder la hauteur",
+    "Semitones": "Demi-tons",
+    "an effect on the sound: its pitch moved (semitones), a robot, a telephone, a radio, a megaphone, an echo": "un effet sur le son : sa hauteur déplacée (demi-tons), un robot, un téléphone, une radio, un mégaphone, un écho",
+    "at another speed (or along a speed curve), the voice keeps its pitch": "à une autre vitesse (ou le long d'une courbe de vitesse), la voix garde sa hauteur",
+    "the pitch moved, its length kept (the pitch voice)": "la hauteur déplacée, sa durée gardée (la voix hauteur)",
     "Height (lines)": "Hauteur (lignes)",
     "Make a proxy": "Créer un proxy",
     "a lighter copy of a video (540 lines by default) that the preview plays instead, so a 4K or a high frame rate file plays smoothly while editing; the exports keep the original": "une copie allégée d'une vidéo (540 lignes par défaut) que l'aperçu lit à sa place, pour qu'un fichier 4K ou à haute cadence se lise sans à-coups pendant le montage ; les exports gardent l'original",

@@ -92,7 +92,33 @@ function wheeled(fill: string, props: Record<string, unknown>) {
   };
 }
 
-let dir = '', server: Server, close: () => Promise<void>, still: (kind: string, t: number) => Promise<(x: number, y: number) => Pixel>;
+/** a 440 Hz tone of 2 s, 16-bit mono WAV at 48 kHz */
+function tone(): Buffer {
+  const rate = 48000, n = rate * 2, out = Buffer.alloc(44 + n * 2);
+  out.write('RIFF', 0); out.writeUInt32LE(36 + n * 2, 4); out.write('WAVEfmt ', 8); out.writeUInt32LE(16, 16); out.writeUInt16LE(1, 20); out.writeUInt16LE(1, 22);
+  out.writeUInt32LE(rate, 24); out.writeUInt32LE(rate * 2, 28); out.writeUInt16LE(2, 32); out.writeUInt16LE(16, 34); out.write('data', 36); out.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++) out.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 12000), 44 + i * 2);
+  return out;
+}
+/** the tone on a sound layer with the props given */
+function voiced(props: Record<string, unknown>) {
+  return {
+    schema: 'tramme/1', meta: { title: 'voice' }, tokens: {}, assets: { tone: { type: 'audio', src: 'tone.wav' } }, root: 'main',
+    compositions: { main: { name: 'Main', width: 320, height: 180, fps: 30, duration: 2, background: '#000000', sound: { loudness: null }, order: ['s'], layers: {
+      s: { type: 'audio', props: { audio: 'tone', ...props } },
+    } } },
+  };
+}
+/** the main frequency of a WAV's first channel, from 0.5 s to 1 s, by its rising zero crossings */
+function frequencyOf(b64: string): number {
+  const wav = Buffer.from(b64, 'base64'), channels = wav.readUInt16LE(22), rate = wav.readUInt32LE(24), data = 44;
+  const at = (i: number) => wav.readInt16LE(data + i * 2 * channels);
+  let n = 0;
+  for (let i = rate / 2 + 1; i < rate; i++) if (at(i - 1) < 0 && at(i) >= 0) n++;
+  return n / 0.5;
+}
+
+let dir = '', server: Server, close: () => Promise<void>, still: (kind: string, t: number) => Promise<(x: number, y: number) => Pixel>, mix: (kind: string) => Promise<string>;
 
 describe.skipIf(!CHROME)('effects, rendered', () => {
   beforeAll(async () => {
@@ -100,6 +126,11 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     for (const k of KINDS) fs.writeFileSync(path.join(dir, `${k}.tramme.json`), JSON.stringify(doc(k)));
     fs.writeFileSync(path.join(dir, 'key.tramme.json'), JSON.stringify(keyed('result')));
     fs.writeFileSync(path.join(dir, 'swap.cube'), SWAP_CUBE);
+    fs.writeFileSync(path.join(dir, 'tone.wav'), tone());
+    fs.writeFileSync(path.join(dir, 'voice-pitch.tramme.json'), JSON.stringify(voiced({ voice: 'pitch', semitones: 12 })));
+    fs.writeFileSync(path.join(dir, 'voice-fast.tramme.json'), JSON.stringify(voiced({ rate: 2 })));
+    fs.writeFileSync(path.join(dir, 'voice-kept.tramme.json'), JSON.stringify(voiced({ rate: 2, keepPitch: true })));
+    fs.writeFileSync(path.join(dir, 'voice-phone.tramme.json'), JSON.stringify(voiced({ voice: 'telephone' })));
     fs.writeFileSync(path.join(dir, 'curves-same.tramme.json'), JSON.stringify(toned({})));
     fs.writeFileSync(path.join(dir, 'wheels-same.tramme.json'), JSON.stringify(wheeled('#808080', {})));
     fs.writeFileSync(path.join(dir, 'wheels-lift.tramme.json'), JSON.stringify(wheeled('#000000', { liftLevel: 0.2 })));
@@ -121,6 +152,10 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
       const url: string = await page.evaluate((x) => (window as any).TRAMME.still(x), t);
       const png = PNG.sync.read(Buffer.from(url.split(',')[1], 'base64'));
       return (x, y) => { const i = (y * png.width + x) * 4; return [png.data[i], png.data[i + 1], png.data[i + 2]]; };
+    };
+    mix = async (kind) => {
+      await openDoc(page, port, `/project/${kind}.tramme.json`);
+      return page.evaluate(() => (window as any).TRAMME.mix(0, 2));
     };
   }, 120_000);
   afterAll(async () => { await close?.(); if (dir) fs.rmSync(dir, { recursive: true, force: true }); });
@@ -214,4 +249,13 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     expect(warm[1]).toBeLessThan(5);
     expect(warm[2]).toBeLessThan(5);
   }, 60_000);
+
+  it('moves a voice’s pitch and keeps its length, the same worklet as the preview’s', async () => {
+    expect(frequencyOf(await mix('voice-pitch'))).toBeCloseTo(880, -1.5);
+    // twice as fast: an octave up; kept, the tone stays at 440 Hz
+    expect(frequencyOf(await mix('voice-fast'))).toBeCloseTo(880, -1.5);
+    expect(frequencyOf(await mix('voice-kept'))).toBeCloseTo(440, -1.5);
+    // the telephone keeps the 440 Hz tone (in its band)
+    expect(frequencyOf(await mix('voice-phone'))).toBeCloseTo(440, -1.5);
+  }, 120_000);
 });

@@ -40,6 +40,11 @@ export interface AudioClip {
   fadeOut: number;
   /** a transition's crossfade (composition times): in, the clip rises over the window; out, it falls and stays silent after */
   cross?: { in?: [number, number]; out?: [number, number] };
+  /** an effect on the sound (none, pitch, robot, telephone, radio, megaphone, echo) and the semitones of the pitch voice */
+  voice: string;
+  semitones: number;
+  /** the pitch kept against the speed (a pitch shift by its inverse) */
+  keepPitch: boolean;
   /** playback speed, pitch with it: 1 as recorded (its value at `at` when it moves) */
   rate: number;
   /** the speed over time when it is animated (a speed curve): [composition time, speed] from the layer's in point to the clip's end, 0 and over (a sound does not play backwards) */
@@ -127,6 +132,9 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
       fadeOut: clamp(num(staticValue(props.fadeOut), 0), 0, duration),
       rate,
       ...(rateCurve ? { rateCurve } : {}),
+      voice: typeof staticValue(props.voice) === 'string' ? String(staticValue(props.voice)) : 'none',
+      semitones: clamp(num(staticValue(props.semitones), 0), -12, 12),
+      keepPitch: staticValue(props.keepPitch) === true,
       lowCut: Math.max(0, lowCutCurve ? lowCutCurve[0][1] : num(staticValue(props.lowCut), 0)),
       lowCutCurve,
       highCut: Math.max(0, num(staticValue(props.highCut), 0)),
@@ -209,6 +217,20 @@ function crossAt(c: AudioClip, t: number): number {
   if (c.cross?.out) { const o = x(c.cross.out); k *= o >= 1 ? 0 : Math.cos((Math.PI / 2) * o); }
   return k;
 }
+
+/**
+ * The pitch ratio a clip's voice stage applies at t: the semitones of the
+ * pitch voice, and the inverse of its speed when it keeps its pitch; 1 when
+ * it moves nothing (no worklet then).
+ */
+export function pitchRatio(c: AudioClip, t: number): number {
+  let k = c.voice === 'pitch' ? Math.pow(2, c.semitones / 12) : 1;
+  if (c.keepPitch) { const rate = c.rateCurve ? curveAt(c.rateCurve, t) : c.rate; if (rate > 0.05) k /= rate; }
+  return Math.min(4, Math.max(0.25, k));
+}
+
+/** whether a clip needs the pitch worklet */
+export const needsPitch = (c: AudioClip) => (c.voice === 'pitch' && c.semitones !== 0) || (c.keepPitch && (!!c.rateCurve || Math.abs(c.rate - 1) > 1e-6));
 
 /** whether the clip's gain moves (a curve, fades, a crossfade): it is then sampled over time */
 export const gainMoves = (c: AudioClip) => !!c.envelope || c.fadeIn > 0 || c.fadeOut > 0 || !!c.cross;

@@ -6,7 +6,8 @@
 // composition's loudness, its true peak held under -1 dBTP. Also: the WAV
 // encoder, and the synth that turns a sound's code into samples.
 
-import { audioClips, clipFileTime, curveAt, gainAt, gainMoves, integratedLoudness, master, soundMix, type AudioClip, type SoundMix, type TrammeDoc } from '@tramme/core';
+import { audioClips, clipFileTime, curveAt, gainAt, gainMoves, needsPitch, pitchRatio, integratedLoudness, master, soundMix, type AudioClip, type SoundMix, type TrammeDoc } from '@tramme/core';
+import { loadPitch } from './pitch.ts';
 
 export const MIX_RATE = 48000;
 /** samples of a moving gain per second */
@@ -69,6 +70,8 @@ export function mixBus(ctx: BaseAudioContext, mix: SoundMix, out: AudioNode): (c
  */
 export function clipChain(ctx: BaseAudioContext, clip: AudioClip, out: AudioNode, startAt: number, from: number): AudioNode {
   const stages: AudioNode[] = [];
+  /** a stage that branches inside (an echo): what the next stage takes from, when it is not the stage itself */
+  const outOf = new Map<AudioNode, AudioNode>();
   const begin = Math.max(from, clip.at), end = clip.at + clip.duration;
   /** a parameter following a curve over the clip, sampled GAIN_RATE times a second */
   const follow = (param: AudioParam, at: (t: number) => number) => {
@@ -77,6 +80,7 @@ export function clipChain(ctx: BaseAudioContext, clip: AudioClip, out: AudioNode
     param.value = curve[0];
     param.setValueCurveAtTime(curve, startAt + (begin - from), end - begin);
   };
+  voiceStages(ctx, clip, stages, outOf, startAt, from, begin, end);
   if (clip.lowCut > 0 || clip.lowCutCurve) {
     const f = ctx.createBiquadFilter(), curve = clip.lowCutCurve;
     f.type = 'highpass';
@@ -102,7 +106,7 @@ export function clipChain(ctx: BaseAudioContext, clip: AudioClip, out: AudioNode
   }
   const gain = ctx.createGain();
   stages.push(gain);
-  stages.reduce((a, b) => a.connect(b));
+  stages.reduce((a, b) => (outOf.get(a) ?? a).connect(b));
   gain.connect(out);
   if (clip.reverb > 0) {
     const send = ctx.createGain(), conv = ctx.createConvolver();
@@ -113,6 +117,74 @@ export function clipChain(ctx: BaseAudioContext, clip: AudioClip, out: AudioNode
   if (!gainMoves(clip)) gain.gain.value = gainAt(clip, begin);
   else if (end > begin) follow(gain.gain, (t) => gainAt(clip, t));
   return stages[0];
+}
+
+/** a soft clip (the distortion of a cheap speaker): tanh at `drive` */
+function shaper(ctx: BaseAudioContext, drive: number): WaveShaperNode {
+  const w = ctx.createWaveShaper(), n = 1024, curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; curve[i] = Math.tanh(drive * x) / Math.tanh(drive); }
+  w.curve = curve;
+  return w;
+}
+
+/** a band of the voice kept (a small speaker), optionally pushed at its middle */
+function band(ctx: BaseAudioContext, lo: number, hi: number, push = 0): AudioNode[] {
+  const h = ctx.createBiquadFilter(), l = ctx.createBiquadFilter();
+  h.type = 'highpass'; h.frequency.value = lo; l.type = 'lowpass'; l.frequency.value = hi;
+  if (!push) return [h, l];
+  const p = ctx.createBiquadFilter();
+  p.type = 'peaking'; p.frequency.value = Math.sqrt(lo * hi); p.Q.value = 1.2; p.gain.value = push;
+  return [h, p, l];
+}
+
+/**
+ * A clip's voice: the pitch moved (the worklet, loaded in the context
+ * beforehand by loadPitch) when its voice or its kept pitch asks, then the
+ * voice's own chain, of the stages the mixer has: band filters and a soft
+ * clip for a telephone, a radio, a megaphone; a ring modulation for a robot;
+ * a delay fed back for an echo.
+ */
+function voiceStages(ctx: BaseAudioContext, clip: AudioClip, stages: AudioNode[], outOf: Map<AudioNode, AudioNode>, startAt: number, from: number, begin: number, end: number) {
+  if (needsPitch(clip) && typeof AudioWorkletNode !== 'undefined') {
+    try {
+      const node = new AudioWorkletNode(ctx, 'tramme-pitch', { outputChannelCount: [2] }), ratio = node.parameters.get('ratio')!;
+      if (clip.rateCurve && clip.keepPitch && end > begin) {
+        const n = Math.max(2, Math.ceil((end - begin) * GAIN_RATE) + 1);
+        const curve = Float32Array.from({ length: n }, (_, i) => pitchRatio(clip, begin + ((end - begin) * i) / (n - 1)));
+        ratio.value = curve[0];
+        ratio.setValueCurveAtTime(curve, startAt + (begin - from), end - begin);
+      } else ratio.value = pitchRatio(clip, begin);
+      stages.push(node);
+    } catch { /* the worklet not loaded in this context: the pitch stays as it is */ }
+  }
+  switch (clip.voice) {
+    case 'telephone': stages.push(...band(ctx, 300, 3400, 3), shaper(ctx, 1.5)); break;
+    case 'radio': stages.push(...band(ctx, 500, 5000, 4), shaper(ctx, 2.5)); break;
+    case 'megaphone': stages.push(...band(ctx, 700, 3500, 8), shaper(ctx, 5)); break;
+    case 'robot': {
+      // the voice times a 50 Hz sine: a ring modulation, metallic
+      const ring = ctx.createGain(), osc = ctx.createOscillator();
+      ring.gain.value = 0;
+      osc.frequency.value = 50;
+      osc.connect(ring.gain);
+      osc.start(startAt + Math.max(0, clip.at - from));
+      osc.stop(startAt + Math.max(0, end - from) + 0.1);
+      stages.push(ring);
+      break;
+    }
+    case 'echo': {
+      // what comes in goes on, and again a quarter of a second later, each time a third quieter
+      const input = ctx.createGain(), output = ctx.createGain(), delay = ctx.createDelay(1), back = ctx.createGain(), wet = ctx.createGain();
+      delay.delayTime.value = 0.28; back.gain.value = 0.38; wet.gain.value = 0.55;
+      input.connect(output);
+      input.connect(delay);
+      delay.connect(back).connect(delay);
+      delay.connect(wet).connect(output);
+      stages.push(input);
+      outOf.set(input, output);
+      break;
+    }
+  }
 }
 
 /** plays a decoded clip into `out`; null when it is over at `from` */
@@ -166,6 +238,8 @@ export async function mixComposition(doc: TrammeDoc, compId: string, url: (asset
   const clips = audioClips(doc, compId).filter((c) => (!opts.only || opts.only(c)) && c.at < b && c.at + c.duration > a);
   if (!clips.length) return null;
   const ctx = new OfflineAudioContext(2, Math.max(1, Math.ceil((b - a) * MIX_RATE)), MIX_RATE);
+  // the pitch worklet, before any chain asks for it
+  if (clips.some(needsPitch)) await loadPitch(ctx).catch(() => {});
   const bus = mixBus(ctx, mix, ctx.destination);
   const decoded = new Map<string, Promise<AudioBuffer | null>>();
   for (const c of clips) {

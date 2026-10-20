@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation), step 8 done (proxies); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation), step 8 done (proxies), step 9 done (voice effects); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -112,8 +112,10 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 
 ### Step 9. Voice effects
 
-- [ ] A pitch shift that keeps the duration, in the mixer, the same live and offline (one AudioWorklet loaded in both contexts). With it, a speed curve can keep the voice at its pitch (`keepPitch` on the layer).
-- [ ] Effects on a sound or video layer: pitch, robot, telephone, radio, megaphone, echo — each a small chain of the stages the mixer already has (filters, delay, convolver) or of the new worklet.
+- [x] A pitch shift that keeps the duration, in the mixer, the same live and offline (one AudioWorklet loaded in both contexts). With it, a speed curve can keep the voice at its pitch (`keepPitch` on the layer).
+  `packages/render/src/pitch.ts`: two read heads crossfaded through a delay line (60 ms windows), one function run by the tests and, as its source, by the worklet (`tramme-pitch`, its `ratio` a parameter a speed curve automates); loaded before the chains in the preview and in each offline mix. In the preview, a video's sound (a media element) keeps its pitch through the browser instead. Mixed in Chrome: a 440 Hz tone at 12 semitones gives 880 Hz, at twice the speed with `keepPitch` stays at 440. To check on a device: how a voice sounds (the windows' grain on low voices).
+- [x] Effects on a sound or video layer: pitch, robot, telephone, radio, megaphone, echo — each a small chain of the stages the mixer already has (filters, delay, convolver) or of the new worklet.
+  `voice` and `semitones` on sound and video layers: telephone, radio and megaphone are bands of the voice and a soft clip; the robot a ring modulation at 50 Hz; the echo a delay of 0.28 s fed back.
 
 ### Step 10. A clean voice
 

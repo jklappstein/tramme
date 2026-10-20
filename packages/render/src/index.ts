@@ -5,3 +5,4 @@ export { CanvasPool, drawComposed, drawFrame, drawLayers, localMatrix, type Draw
 export { Compositor, type Finish, type Look } from './compositor.ts';
 export { addParts, bottleneck, CAUSE, formatParts, noParts, PARTS, perFrame, type FrameParts } from './timing.ts';
 export { finishOf, Renderer, SETTLE_LIMIT, subTimes, type RenderOptions } from './renderer.ts';
+export { createPitchShifter, loadPitch, PITCH_WORKLET } from './pitch.ts';

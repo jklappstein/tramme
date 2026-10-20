@@ -29,7 +29,7 @@ export const NODE_NOTES: Record<string, AiNotes> = {
   cloth: { when: 'a flag, a sail, a curtain that falls and catches the wind; pinned along its top edge, centred on the layer origin; wind breathes once every sway seconds; wireframe to read the weave', avoid: 'columns and rows over 32 each (slow); wind 0 with gravity 0 (nothing moves)', example: { columns: 16, rows: 12, wind: 240, sway: 1.6 } },
   flock: { when: 'a school of fish, birds, a drift of dots that steer together across the whole frame; deterministic on the seed: change it for variety; leave its own transform at rest', avoid: 'count over 300 (slow); size under 6 px (they read as noise)', example: { count: 80, speed: 140, seed: 7 } },
   code: { when: 'last resort for existing drawing code; prefer a node plugin for anything reusable' },
-  audio: { when: 'music, voice over and sound effects placed on the timeline; gain in dB (-12 to -18 for a music bed under a voice)' },
+  audio: { when: 'music, voice over and sound effects placed on the timeline; gain in dB (-12 to -18 for a music bed under a voice); voice: telephone or radio for a voice heard through a device, megaphone for a crowd call, echo for a hall or a dream, robot for a machine speaking, pitch (semitones) for a character; keepPitch on a voice with a speed curve' },
 };
 
 export const EFFECT_NOTES: Record<string, AiNotes> = {

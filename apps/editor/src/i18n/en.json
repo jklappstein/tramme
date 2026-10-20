@@ -590,6 +590,12 @@
     "noProjectNamed": "Nothing named “{query}”."
   },
   "inspector": {
+    "voicePitch": "Pitch",
+    "voiceRobot": "Robot",
+    "voiceTelephone": "Telephone",
+    "voiceRadio": "Radio",
+    "voiceMegaphone": "Megaphone",
+    "voiceEcho": "Echo",
     "followATrack": "Follow a track",
     "noTrackYet": "No track yet: follow the object with the track tool first, then the mask can ride on it",
     "maskSubtract": "Subtract",

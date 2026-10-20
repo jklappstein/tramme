@@ -14,9 +14,9 @@ const notchAtMost = (x: number) => [...NOTCHES].reverse().find((k) => k <= x + 1
 export const previewInfo = signal({ scale: 1, still: 1, motion: 0.5 });
 
 import { effect, signal } from '@preact/signals';
-import { audioClips, clipFileTime, curveAt, soundMix, type TrammeDoc, type EvaluatedFrame } from '@tramme/core';
+import { audioClips, clipFileTime, curveAt, needsPitch, soundMix, type TrammeDoc, type EvaluatedFrame } from '@tramme/core';
 import { editorRegistry } from './vocabulary.ts';
-import { clipChain, masterGainDb, mixBus, playClip, Renderer } from '@tramme/render';
+import { clipChain, loadPitch, masterGainDb, mixBus, playClip, Renderer } from '@tramme/render';
 import { comp, compIdOf, S, setRegistry, setTime, toast, viewDoc } from './state.ts';
 import { attachIsolated, filterModule, pluginHost } from './plugins/index.ts';
 import { bindSandbox, blitSandboxFrame, declarationsModule, ensureSandboxDoc, pluginItemsOf, resetSandbox, sandboxDeclaration, sandboxVideoFrames, type SandboxContext } from './plugins/sandbox-draw.ts';
@@ -419,6 +419,8 @@ class Preview {
     this.levelOf(doc, compId);
     const sounds = clips.filter((c) => doc.assets[c.asset].type !== 'video');
     const bufs = await Promise.all(sounds.map((c) => this.buffer(r.assets.url(c.asset))));
+    // the pitch worklet, before the clock starts
+    if (clips.some(needsPitch)) await loadPitch(ctx).catch(() => {});
     if (!S.playing.peek()) return;
     const startAt = ctx.currentTime + 0.03;
     this.clock = { at: startAt, t0: from, audio: true };
@@ -435,9 +437,9 @@ class Preview {
       const el = new Audio(r.assets.url(c.asset));
       el.preload = 'auto';
       el.playbackRate = Math.max(MIN_ELEMENT_RATE, c.rate);
-      // the pitch goes with the speed, as in the exports (the browser keeps it by default)
-      el.preservesPitch = false;
-      ctx.createMediaElementSource(el).connect(clipChain(ctx, c, bus(c), startAt, from));
+      // the pitch goes with the speed, as in the exports, unless the layer keeps it: the browser does it for an element
+      el.preservesPitch = c.keepPitch;
+      ctx.createMediaElementSource(el).connect(clipChain(ctx, { ...c, keepPitch: false }, bus(c), startAt, from));
       const skip = Math.max(0, from - c.at);
       // the element is timed like the file: the seek lands at the file's time (the pace included), wrapped into a loop it is past
       const looping = c.loopStart !== undefined && c.loopEnd !== undefined && c.loopEnd > c.loopStart;
