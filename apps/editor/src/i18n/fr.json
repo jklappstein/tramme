@@ -516,6 +516,13 @@
     "companionAgents": "Agents trouvés : {list}"
   },
   "curves": {
+    "speed": "Vitesse",
+    "speedRampIn": "Ralenti entrant",
+    "speedRampOut": "Ralenti sortant",
+    "speedHero": "Moment clé",
+    "speedBullet": "Bullet time",
+    "speedPresetHint": "{name} : la courbe de vitesse de la vidéo ou du son sélectionné, autour de la tête de lecture",
+    "speedCurveName": "Courbe de vitesse : {name}",
     "smooth": "Douce",
     "editKeyframe": "Modifier la clé",
     "segmentCurve": "Courbe du segment",

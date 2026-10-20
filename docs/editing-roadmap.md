@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 under way (speed curves: the clock, its inverse, frozen and backwards frames); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -47,7 +47,8 @@ The models already in use are each fixed in their file: the cut-out's U²-Net (`
   The minimum is -4 (backwards up to four times); the clock stops at the file's start, and the video's last frame holds past its end.
 - [x] The mixer follows the curve (`playbackRate` automated the same way live and offline, `packages/render/src/audio.ts`); the pitch follows the speed until step 9 makes it optional.
   The clip carries its curve sampled 50 times a second (`rateCurve`), its file time is the curve's integral (`clipFileTime`), within a millisecond of the picture's clock; the buffer's `playbackRate` follows it (the exports and the preview's sounds), and the preview's video sound, played by a media element, is steered every 40 ms and waits under 1/16 speed. A sound never plays backwards: under 0 it holds, silent. The preview's media elements no longer keep the pitch at another speed, as the exports never did.
-- [ ] Presets in the curves editor: ramp in, ramp out, hero moment (fast, slow on the hit, fast), bullet.
+- [x] Presets in the curves editor: ramp in, ramp out, hero moment (fast, slow on the hit, fast), bullet.
+  With a video or sound layer selected, a Speed row in the curves editor writes its speed curve around the playhead (`apps/editor/src/speed.ts`), the shape moved to stay inside the layer. The assistant writes the same keyframes through its notes on `rate` (no tool of its own).
 
 Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the preview and an MP4 export show the same frames, and a callout tracked on that video stays on its subject through the ramp.
 

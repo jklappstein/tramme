@@ -310,6 +310,8 @@
 .graph-side button.on { background: var(--field-active); color: var(--text); }
 .graph-side button i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
 .graph-presets { position: absolute; right: 60px; top: 8px; display: flex; gap: 2px; padding: 4px; border-radius: var(--r-pill); background: var(--float); backdrop-filter: blur(10px); box-shadow: var(--shadow-2); z-index: 2; }
+.graph-presets.speed { top: 48px; }
+.graph-presets.speed.alone { top: 8px; }
 
 /* ── inspector ─────────────────────────────────────────────── */
 .inspector { padding-bottom: 16px; }

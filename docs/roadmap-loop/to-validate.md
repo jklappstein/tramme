@@ -94,3 +94,6 @@ its network policy) and has no GPU: no model was downloaded or run there.
   the preview: the voice slows and drops with the picture, without a gap; an
   MP4 export sounds the same. A video at a fixed 0.5 speed now sounds lower in
   the preview as in the export (the browser used to keep its pitch).
+- **Step 2 — the speed presets.** Select a video layer, open Curves: the
+  Speed row writes each preset around the playhead (checked in the container
+  on a layer without a real file); play each one and judge its feel.

@@ -516,6 +516,13 @@
     "companionAgents": "Agents found: {list}"
   },
   "curves": {
+    "speed": "Speed",
+    "speedRampIn": "Ramp in",
+    "speedRampOut": "Ramp out",
+    "speedHero": "Hero moment",
+    "speedBullet": "Bullet",
+    "speedPresetHint": "{name}: the speed curve of the selected video or sound, around the playhead",
+    "speedCurveName": "Speed curve: {name}",
     "smooth": "Smooth",
     "editKeyframe": "Edit keyframe",
     "segmentCurve": "Segment curve",
