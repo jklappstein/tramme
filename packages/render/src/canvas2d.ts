@@ -10,7 +10,7 @@
 // When the environment isolates errors (the editor's preview), a layer that
 // fails is drawn as a red frame and reported; the rest of the frame renders.
 
-import { layerMatrix, pathD, type BlendMode, type PathValue, type EvaluatedFrame, type EvaluatedLayer, type EvaluatedTransform, type Host, type Registry } from '@tramme/core';
+import { layerMatrix, pathD, type BlendMode, type Lut3D, type PathValue, type EvaluatedFrame, type EvaluatedLayer, type EvaluatedTransform, type Host, type Registry } from '@tramme/core';
 import { glPass, nodeContext, resizeNode } from './gpu.ts';
 
 const BLEND: Record<BlendMode, GlobalCompositeOperation> = {
@@ -172,6 +172,12 @@ function applyMasks(off: CanvasRenderingContext2D, masks: EvaluatedLayer['masks'
   env.pool.release(all);
 }
 
+/** the LUT tables an effect's lut props name, as the asset store loaded them */
+const lutsOf = (env: DrawEnv, id: string) => (_name: string, value: unknown): Lut3D | null => {
+  if (typeof value !== 'string' || !value) return null;
+  try { const v = env.host(id).asset<Lut3D>(value); return v && v.kind === 'lut3d' ? v : null; } catch { return null; }
+};
+
 function drawLayer(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: DrawEnv) {
   if (L.transform.opacity <= 0) return;
   if (!L.node.render.canvas2d && !L.node.render.gl && !L.children.length) return;
@@ -206,7 +212,7 @@ function drawLayer(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: DrawEn
           // the layers named by the effect's layer props, drawn alone beside it
           const inputs: Record<string, CanvasRenderingContext2D | null> = {};
           for (const [name, d] of Object.entries(type!.props)) if (d.type === 'layer' && typeof e.props[name] === 'string' && e.props[name] !== L.id) inputs[name] = layerPicture(off, e.props[name] as string, env);
-          glPass(off, type!.gl.code, type!.props, e.props, env.t ?? 0, k, Object.fromEntries(Object.entries(inputs).map(([n, c]) => [n, c?.canvas ?? null])), L.layer.in ?? 0);
+          glPass(off, type!.gl.code, type!.props, e.props, env.t ?? 0, k, Object.fromEntries(Object.entries(inputs).map(([n, c]) => [n, c?.canvas ?? null])), L.layer.in ?? 0, lutsOf(env, L.id));
           for (const c of Object.values(inputs)) if (c) env.pool.release(c);
         } else type!.canvas2d?.apply?.(off, e.props, k, env.host(L.id));
       } catch (err) {
@@ -259,7 +265,7 @@ function adjustOver(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: DrawE
       if (type!.gl) {
         const inputs: Record<string, CanvasRenderingContext2D | null> = {};
         for (const [name, d] of Object.entries(type!.props)) if (d.type === 'layer' && typeof e.props[name] === 'string' && e.props[name] !== L.id) inputs[name] = layerPicture(off, e.props[name] as string, env);
-        glPass(off, type!.gl.code, type!.props, e.props, env.t ?? 0, k, Object.fromEntries(Object.entries(inputs).map(([n, c]) => [n, c?.canvas ?? null])), L.layer.in ?? 0);
+        glPass(off, type!.gl.code, type!.props, e.props, env.t ?? 0, k, Object.fromEntries(Object.entries(inputs).map(([n, c]) => [n, c?.canvas ?? null])), L.layer.in ?? 0, lutsOf(env, L.id));
         for (const c of Object.values(inputs)) if (c) env.pool.release(c);
       } else type!.canvas2d?.apply?.(off, e.props, k, env.host(L.id));
     } catch (err) {

@@ -2,7 +2,7 @@
 // never waits and never depends on timing. Paths resolve against the
 // document's URL. sync() follows edits: only new or changed assets load.
 
-import type { Asset, TrammeDoc } from '@tramme/core';
+import { parseCube, type Asset, type TrammeDoc } from '@tramme/core';
 import { VideoFrames } from './video.ts';
 
 /** the longest side, in pixels, of an SVG drawn without a size of its own */
@@ -127,6 +127,11 @@ export class AssetStore {
         const r = await fetch(url);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
+      }
+      case 'lut': {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return parseCube(await r.text());
       }
       default:
         return url;

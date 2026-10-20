@@ -702,6 +702,7 @@
     "camera": "Caméra (2.5D)"
   },
   "panel": {
+    "luts": "LUT",
     "text": "Texte",
     "newLayerName": "Nouveau calque : {name}",
     "deleteNLayers": "Supprimer {n} calques",
@@ -1156,6 +1157,9 @@
     "used": "Plugin {name} ajouté à ce projet."
   },
   "content": {
+    "LUT": "LUT",
+    "the colours through a .cube table: a look, or the conversion of log footage": "les couleurs à travers une table .cube : un look, ou la conversion d'images en log",
+    "a .cube file imported into the project": "un fichier .cube importé dans le projet",
     "Expansion": "Expansion",
     "Feather": "Contour progressif",
     "Invert": "Inverser",

@@ -6,10 +6,12 @@
 // since the in point of the layer it applies to), and one uniform per
 // property of its schema, declared here from the schema: u_<name> as float
 // (number, bool, enum: the rank of the option), vec2, vec4 (colour, 0..1
-// straight) or sampler2D (a layer, drawn alone at the same instant).
+// straight) or sampler2D (a layer, drawn alone at the same instant); a LUT
+// asset (assetType 'lut') as sampler3D u_<name> with u_<name>_size,
+// u_<name>_min and u_<name>_max (its table's size and domain).
 // Programs are compiled once per source.
 
-import { parseColor, type PropSchema } from '@tramme/core';
+import { parseColor, type Lut3D, type PropSchema } from '@tramme/core';
 
 const VERT = `#version 300 es
 out vec2 vUv;
@@ -23,6 +25,7 @@ export function uniformsOf(schema: PropSchema): string {
     if (d.type === 'vec2') return `uniform vec2 ${n};`;
     if (d.type === 'color') return `uniform vec4 ${n};`;
     if (d.type === 'layer') return `uniform sampler2D ${n};`;
+    if (d.type === 'asset' && d.assetType === 'lut') return `uniform highp sampler3D ${n}; uniform float ${n}_size; uniform vec3 ${n}_min; uniform vec3 ${n}_max;`;
     return '';
   }).filter(Boolean).join('\n');
 }
@@ -82,7 +85,7 @@ export function program(g: { gl: WebGL2RenderingContext; programs: Map<string, W
 }
 
 /** sets the uniforms of a schema's values; layer props are bound by the caller as textures (returned by name) */
-export function setUniforms(gl: WebGL2RenderingContext, p: WebGLProgram, schema: PropSchema, props: Record<string, unknown>, firstUnit: number, textureOf: (name: string, value: unknown) => WebGLTexture | null) {
+export function setUniforms(gl: WebGL2RenderingContext, p: WebGLProgram, schema: PropSchema, props: Record<string, unknown>, firstUnit: number, textureOf: (name: string, value: unknown) => WebGLTexture | null, lutOf: (name: string, value: unknown) => Lut3D | null = () => null) {
   let unit = firstUnit;
   for (const [k, d] of Object.entries(schema)) {
     const loc = gl.getUniformLocation(p, `u_${k.replace(/\W/g, '_')}`);
@@ -99,8 +102,35 @@ export function setUniforms(gl: WebGL2RenderingContext, p: WebGLProgram, schema:
       const tex = textureOf(k, v);
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.uniform1i(loc, unit++);
+    } else if (d.type === 'asset' && d.assetType === 'lut') {
+      const n = `u_${k.replace(/\W/g, '_')}`, lut = lutOf(k, v);
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_3D, lut ? lutTexture(gl, lut) : null);
+      gl.uniform1i(loc, unit++);
+      gl.uniform1f(gl.getUniformLocation(p, `${n}_size`), lut?.size ?? 0);
+      gl.uniform3fv(gl.getUniformLocation(p, `${n}_min`), lut?.domainMin ?? [0, 0, 0]);
+      gl.uniform3fv(gl.getUniformLocation(p, `${n}_max`), lut?.domainMax ?? [1, 1, 1]);
     }
   }
+}
+
+/** a LUT's table as a 3D texture (half floats, which WebGL2 always filters), made once per context */
+const LUTS = new WeakMap<WebGL2RenderingContext, WeakMap<Lut3D, WebGLTexture>>();
+function lutTexture(gl: WebGL2RenderingContext, lut: Lut3D): WebGLTexture {
+  let made = LUTS.get(gl);
+  if (!made) LUTS.set(gl, (made = new WeakMap()));
+  let t = made.get(lut);
+  if (t) return t;
+  t = gl.createTexture()!;
+  gl.bindTexture(gl.TEXTURE_3D, t);
+  // an array upload refuses the flips and premultiplication the pictures' uploads leave set
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage3D(gl.TEXTURE_3D, 0, gl.RGB16F, lut.size, lut.size, lut.size, 0, gl.RGB, gl.FLOAT, lut.data);
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_3D, k, v);
+  made.set(lut, t);
+  return t;
 }
 
 function texture(gl: WebGL2RenderingContext, src: TexImageSource): WebGLTexture {
@@ -157,7 +187,7 @@ export function resizeNode(g: import('@tramme/core').NodeGL, w: number, h: numbe
  * canvas is read as premultiplied sRGB and gets the result. `layers` gives
  * the pictures of the effect's layer props (canvases of the same size).
  */
-export function glPass(ctx: CanvasRenderingContext2D, code: string, schema: PropSchema, props: Record<string, unknown>, t: number, scale: number, layers: Record<string, CanvasImageSource | null> = {}, layerIn = 0) {
+export function glPass(ctx: CanvasRenderingContext2D, code: string, schema: PropSchema, props: Record<string, unknown>, t: number, scale: number, layers: Record<string, CanvasImageSource | null> = {}, layerIn = 0, lutOf: (name: string, value: unknown) => Lut3D | null = () => null) {
   const g = context(), { gl } = g, { width: w, height: h } = ctx.canvas;
   if (g.canvas.width !== w || g.canvas.height !== h) { g.canvas.width = w; g.canvas.height = h; }
   const p = program(g, fragmentOf(code, schema));
@@ -180,7 +210,7 @@ export function glPass(ctx: CanvasRenderingContext2D, code: string, schema: Prop
       const tex = texture(gl, src as TexImageSource);
       made.push(tex);
       return tex;
-    });
+    }, lutOf);
     gl.bindVertexArray(g.vao);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     ctx.save();

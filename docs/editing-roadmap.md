@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 under way (colour: LUTs; curves, wheels and scopes next); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -83,7 +83,8 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 
 ### Step 6. Colour
 
-- [ ] LUTs: a `.cube` file imported as an asset, `fx.lut` applying it with its strength (a 3D texture in the WebGL2 compositor). Log footage gets its conversion LUT the same way.
+- [x] LUTs: a `.cube` file imported as an asset, `fx.lut` applying it with its strength (a 3D texture in the WebGL2 compositor). Log footage gets its conversion LUT the same way.
+  A `lut` asset type (an addition to the format; `.cube` allowed in `assets/`, in the desktop store too), read by `parseCube` (`packages/core/src/lut.ts`, 3D tables up to 128³); a GL effect's `lut` asset prop becomes a 3D texture (half floats, which WebGL2 always filters) with its size and domain. Rendered in Chrome. 1D `.cube` files are refused with a message.
 - [ ] `fx.curves`: master, red, green and blue curves edited as points, read as a 1D texture.
 - [ ] Colour wheels: lift, gamma and gain, each a hue and an amount, with the master level.
 - [ ] Scopes beside the viewport while one of these is selected: waveform and vectorscope, read from the rendered frame.

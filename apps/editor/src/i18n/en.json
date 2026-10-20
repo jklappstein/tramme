@@ -702,6 +702,7 @@
     "camera": "Camera (2.5D)"
   },
   "panel": {
+    "luts": "LUTs",
     "text": "Text",
     "newLayerName": "New layer: {name}",
     "deleteNLayers": "Delete {n} layers",

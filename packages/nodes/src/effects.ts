@@ -349,3 +349,24 @@ vec4 effect(vec2 uv) {
 }`,
   },
 };
+
+/** a LUT: the colours of the layer through a .cube table (a grade, a log footage's conversion), at a strength */
+export const lut: EffectType<{ lut: string | null; strength: number }> = {
+  type: 'fx.lut', title: 'LUT', category: 'Effects', stage: 'layer',
+  description: 'the colours through a .cube table: a look, or the conversion of log footage',
+  props: {
+    lut: { type: 'asset', default: null, nullable: true, assetType: 'lut', label: 'LUT', animatable: false, description: 'a .cube file imported into the project' },
+    strength: { type: 'number', default: 1, min: 0, max: 1, step: 0.01, label: 'Strength' },
+  },
+  gl: {
+    code: `vec4 effect(vec2 uv) {
+  vec4 p = texture(uImage, uv);
+  if (u_lut_size < 2.0 || p.a <= 0.0) return p;
+  vec3 c = p.rgb / p.a;
+  vec3 x = clamp((c - u_lut_min) / max(u_lut_max - u_lut_min, vec3(0.00001)), 0.0, 1.0);
+  // the centres of the table's first and last cells, so its ends are read exactly
+  vec3 g = texture(u_lut, x * (u_lut_size - 1.0) / u_lut_size + 0.5 / u_lut_size).rgb;
+  return vec4(mix(c, g, u_strength) * p.a, p.a);
+}`,
+  },
+};

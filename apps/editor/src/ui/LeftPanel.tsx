@@ -415,7 +415,7 @@ function LayerTree() {
 
 // ── assets ───────────────────────────────────────────────────
 const ASSET_ICON: Record<string, string> = { image: 'image', font: 'text', audio: 'audio', video: 'film', module: 'code', json: 'code', model: 'box' };
-const ASSET_LABEL: Record<string, string> = { image: m('panel.images'), font: m('panel.fonts'), audio: m('panel.sounds'), video: m('panel.videos'), module: m('panel.code'), json: m('panel.data'), model: m('panel.models') };
+const ASSET_LABEL: Record<string, string> = { image: m('panel.images'), font: m('panel.fonts'), audio: m('panel.sounds'), video: m('panel.videos'), module: m('panel.code'), json: m('panel.data'), model: m('panel.models'), lut: m('panel.luts') };
 
 function typeOfFile(name: string): Asset['type'] | null {
   const ext = name.toLowerCase().split('.').pop()!;
@@ -426,6 +426,7 @@ function typeOfFile(name: string): Asset['type'] | null {
   if (['glb', 'gltf'].includes(ext)) return 'model';
   if (['js', 'mjs'].includes(ext)) return 'module';
   if (ext === 'json') return 'json';
+  if (ext === 'cube') return 'lut';
   return null;
 }
 

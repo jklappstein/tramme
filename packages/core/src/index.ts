@@ -27,3 +27,4 @@ export * from './cues.ts';
 export * from './analysis.ts';
 export * from './events.ts';
 export * from './track.ts';
+export * from './lut.ts';

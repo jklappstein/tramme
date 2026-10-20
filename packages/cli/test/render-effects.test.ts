@@ -61,6 +61,17 @@ const MASKS: Record<string, unknown[]> = {
   both: [{ id: 'a', props: { path: { v: [[-160, -90], [160, -90], [160, 90], [-160, 90]], closed: true } } }, { id: 'b', props: { path: DISC, mode: 'intersect' } }, { id: 'c', props: { path: BAND, mode: 'subtract' } }],
 };
 
+/** a red frame through a LUT that swaps red and blue, at a strength */
+const SWAP_CUBE = `LUT_3D_SIZE 2\n${[0, 1].flatMap((b) => [0, 1].flatMap((g) => [0, 1].map((r) => `${b} ${g} ${r}`))).join('\n')}\n`;
+function graded(strength: number) {
+  return {
+    schema: 'tramme/1', meta: { title: 'lut' }, tokens: {}, assets: { swap: { type: 'lut', src: 'swap.cube' } }, root: 'main',
+    compositions: { main: { name: 'Main', width: 320, height: 180, fps: 30, duration: 1, background: '#000000', motionBlur: { samples: 1, shutter: 0 }, order: ['frame'], layers: {
+      frame: { type: 'shape.rect', transform: { position: [160, 90] }, props: { size: [320, 180], fill: '#FF0000' }, effects: [{ id: 'g', type: 'fx.lut', props: { lut: 'swap', strength } }] },
+    } } },
+  };
+}
+
 let dir = '', server: Server, close: () => Promise<void>, still: (kind: string, t: number) => Promise<(x: number, y: number) => Pixel>;
 
 describe.skipIf(!CHROME)('effects, rendered', () => {
@@ -68,6 +79,9 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tramme-transitions-'));
     for (const k of KINDS) fs.writeFileSync(path.join(dir, `${k}.tramme.json`), JSON.stringify(doc(k)));
     fs.writeFileSync(path.join(dir, 'key.tramme.json'), JSON.stringify(keyed('result')));
+    fs.writeFileSync(path.join(dir, 'swap.cube'), SWAP_CUBE);
+    fs.writeFileSync(path.join(dir, 'lut.tramme.json'), JSON.stringify(graded(1)));
+    fs.writeFileSync(path.join(dir, 'lut-half.tramme.json'), JSON.stringify(graded(0.5)));
     for (const [name, masks] of Object.entries(MASKS)) fs.writeFileSync(path.join(dir, `mask-${name}.tramme.json`), JSON.stringify(masked(masks)));
     fs.writeFileSync(path.join(dir, 'key-matte.tramme.json'), JSON.stringify(keyed('matte')));
     server = new Server(readConfig(path.join(dir, 'crossfade.tramme.json')));
@@ -151,4 +165,9 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     expect(near(both(160, 45), WHITE)).toBe(true);
     expect(near(both(10, 170), WHITE)).toBe(true);
   }, 120_000);
+
+  it('grades through a .cube LUT, at its strength', async () => {
+    expect(near((await still('lut', 0.5))(160, 90), BLUE)).toBe(true);
+    expect(near((await still('lut-half', 0.5))(160, 90), [128, 0, 128])).toBe(true);
+  }, 60_000);
 });

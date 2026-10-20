@@ -133,3 +133,7 @@ its network policy) and has no GPU: no model was downloaded or run there.
   tool), draw a mask around it at a moment it shows, then Follow a track on
   the mask: it stays on the object as it moves. A rotated layer drifts (only
   its scale is counted).
+- **Step 6 — a real LUT.** Import a camera's log-to-Rec.709 `.cube` (33³ or
+  65³) and a look LUT; `fx.lut` on log footage at strength 1: the picture
+  looks like the camera's own conversion. In the desktop app too (`.cube`
+  added to its store's allowed files).
