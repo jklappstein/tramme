@@ -10,6 +10,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Added
 
+- **A file already in the project is not imported twice**: importing it again from the assets panel, attaching it to a message for the assistant, or finding it twice among the sources of a new project gives back the asset that has it, and nothing is written again. Each imported asset keeps a hash of its content (`hash`, a new optional field of the document).
 - **An export says where a frame's time goes**: next to the `ms/frame`, `tramme render` prints the time per frame spent evaluating the document, drawing it, waiting for video frames, reading the pixels back from the GPU and waiting for the encoder, so a slow export tells whether the JavaScript, the GPU, the decoding or the transfer holds it back.
 - **Load cases to measure the renderer**: `tramme load` renders documents that each push one part of a frame (400 animated layers, blurs and effects with motion blur, a 4K source video, simulations) and prints, per case, the time per frame, its parts and what holds it back; `--json` keeps the figures and `--before` compares a later run with them, figure by figure.
 

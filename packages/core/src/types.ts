@@ -66,6 +66,8 @@ export interface Asset {
   style?: string;
   /** image: region of interest in image pixels [x0, y0, x1, y1], used by fit and focus */
   box?: [number, number, number, number];
+  /** hash of the file's content, kept at import: a file already in the project is answered with this asset rather than imported again */
+  hash?: string;
 }
 
 export interface Transform {

@@ -72,7 +72,8 @@
               "audio",
               "video",
               "module",
-              "json"
+              "json",
+              "model"
             ]
           },
           "src": {
@@ -110,6 +111,9 @@
             "items": false,
             "minItems": 4,
             "maxItems": 4
+          },
+          "hash": {
+            "type": "string"
           }
         },
         "required": [

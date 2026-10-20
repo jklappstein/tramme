@@ -12,6 +12,7 @@ import { preview } from '../preview.ts';
 import { fromLottie } from '@tramme/interop';
 import { mediaOf, TranscribeButton, transcribeItem } from './Transcribe.tsx';
 import { safeName, takenPaths, upload } from '../files.ts';
+import { assetWithHash, contentHash } from '../hash.ts';
 import { m, t, tr } from '../i18n/index.ts';
 
 const tab = signal<'layers' | 'assets' | 'tokens'>('layers');
@@ -470,6 +471,8 @@ export async function importFiles(files: FileList | File[]) {
   const images = Array.from(files).filter((f) => typeOfFile(f.name) === 'image');
   const stem = images.length > 1 ? commonStem(images.map((f) => f.name)) : null;
   const folder = stem ? `assets/${safeName(stem)}` : 'assets';
+  // a file already in the project (or twice in this import) is answered with its asset, nothing written
+  const added = new Map<string, string>(), already: string[] = [];
   for (const f of Array.from(files)) {
     if (/\.json$/i.test(f.name)) {
       try { await importLottie(f); } catch (e) { toast(t('panel.couldNotImportLottie', { error: (e as Error).message }), 'error'); }
@@ -477,20 +480,25 @@ export async function importFiles(files: FileList | File[]) {
     }
     const type = typeOfFile(f.name);
     if (!type) { toast(t('panel.unsupportedFormatName', { name: f.name }), 'error'); continue; }
-    let src: string;
+    let src: string, hash: string;
     try {
+      hash = await contentHash(f);
+      const have = assetWithHash(doc, hash) ?? added.get(hash);
+      if (have) { already.push(t('panel.nameIsAsset', { name: f.name, asset: have })); continue; }
       paths ??= await takenPaths();
       src = await upload(paths, `${type === 'image' ? folder : 'assets'}/${safeName(f.name)}`, f);
     } catch (e) { toast(t('panel.couldNotImportName', { name: f.name, error: (e as Error).message }), 'error'); continue; }
     const id = freshId(taken, f.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9_-]+/g, '-'));
     taken[id] = 1;
-    const asset: Asset = { type, src, name: f.name.replace(/\.[^.]+$/, '') };
+    added.set(hash, id);
+    const asset: Asset = { type, src, name: f.name.replace(/\.[^.]+$/, ''), hash };
     if (type === 'font') asset.family = asset.name;
     ops.push({ op: 'add' as const, path: pointer('assets', id), value: asset });
   }
   if (ops.length && commit(ops.length > 1 ? t('panel.importNFiles', { n: ops.length }) : t('panel.importName', { name: (ops[0].value as Asset).name ?? '' }), ops) && stem) {
     toast(t('panel.nDrawingsInFolder', { n: images.length, folder }), 'info', 9000);
   }
+  if (already.length) toast(t('panel.alreadyInProject', { list: already.join(', ') }), 'info', 8000);
 }
 
 function Compositions() {

@@ -24,6 +24,7 @@ const asset = z.strictObject({
   weight: z.string().optional(),
   style: z.string().optional(),
   box: z.tuple([finite, finite, finite, finite]).optional(),
+  hash: z.string().optional(),
 });
 
 const transform = z.strictObject({
