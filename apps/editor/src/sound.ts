@@ -7,7 +7,7 @@
 // layer; the mixer of @tramme/render plays it the same in the preview and
 // the exports.
 
-import { audioClips, Evaluator, isAudioAnalysis, mediaClockOf, mediaMoments, pointer, searchSounds, soundCues, soundFigures, soundFlaws, staticValue, variantsOf, type Layer, type Op, type SoundCue, type SoundEntry, type SoundFigures, type SoundRole, type SoundVisual, type ToolContext, type ToolType } from '@tramme/core';
+import { audioClips, Evaluator, isAudioAnalysis, layerClock, pointer, searchSounds, soundCues, soundFigures, soundFlaws, staticValue, variantsOf, type Layer, type Op, type SoundCue, type SoundEntry, type SoundFigures, type SoundRole, type SoundVisual, type ToolContext, type ToolType } from '@tramme/core';
 import { encodeWav, renderSynth, SYNTH_MAX } from '@tramme/render';
 import { api } from './api.ts';
 import { payFor } from './confirm.ts';
@@ -82,10 +82,11 @@ export async function momentsOf(ctx: ToolContext, at: unknown, on: unknown, laye
   const visual = (Object.entries(c.layers) as [string, Layer][]).filter(([id, l]) => (named.length ? named.includes(id) : l.type !== 'audio' && l.visible !== false));
   const cued = (keep: (x: SoundCue) => boolean) => found.push(...cuesOf(ctx).filter((x) => keep(x) && (!named.length || named.includes(x.layer))).map((x) => ({ t: x.t, visual: x.kind, weight: x.weight })));
   // where a layer plays a file: composition times of a time in that file (at the layer's speed, once per turn of a loop)
-  const playing = (asset: string) => (Object.values(c.layers) as Layer[]).filter((l) => (l.type === 'audio' || l.type === 'video') && staticValue(l.props?.[l.type]) === asset);
-  const inFile = (asset: string, fileTimes: number[]) => playing(asset).flatMap((l) => {
-    const clock = mediaClockOf(l.props), from = l.in ?? 0, to = l.out ?? c.duration;
-    return fileTimes.flatMap((x) => mediaMoments(clock, x, from, to));
+  const playing = (asset: string) => (Object.entries(c.layers) as [string, Layer][]).filter(([, l]) => (l.type === 'audio' || l.type === 'video') && staticValue(l.props?.[l.type]) === asset).map(([id]) => id);
+  const ev = new Evaluator(ctx.doc, ctx.registry);
+  const inFile = (asset: string, fileTimes: number[]) => playing(asset).flatMap((id) => {
+    const { moments } = layerClock(ev, ctx.compId, id);
+    return fileTimes.flatMap(moments);
   });
   const read = words.some((w) => ['cuts', 'beats', 'bars'].includes(w)) ? await analyses(ctx) : () => undefined;
   const assets = Object.keys(ctx.doc.assets);

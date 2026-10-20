@@ -43,6 +43,12 @@ export interface PropDef {
   nullable?: boolean;
   /** text props: edited as code (monospace) */
   format?: 'code';
+  /**
+   * number props: the evaluated layer also carries, under this name, the
+   * integral of the value from the layer's in point to t (a speed curve's
+   * elapsed file time): exact for a static value, by fixed steps otherwise
+   */
+  integral?: string;
 }
 
 export type PropSchema = Record<string, PropDef>;

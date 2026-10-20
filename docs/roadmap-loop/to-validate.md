@@ -83,3 +83,10 @@ its network policy) and has no GPU: no model was downloaded or run there.
   asset has `madeBy` (the cut-out of a person: the matte and the detector).
   Change the model in the settings: the asset and its render stay as they
   were until the tool runs again.
+- **Step 2 — a speed ramp, seen.** A video layer with rate keyframes 1 →
+  0.3 → 1 over two seconds: the preview slows and speeds up smoothly; an MP4
+  export (`tramme render`) shows the same frames (`tramme still` at a few times
+  against the preview); a callout made by `track` on that video stays on its
+  subject through the ramp; captions with `follow` on the video stay on the
+  words. Rate 0 freezes; a negative rate plays backwards and stops at the
+  file's first frame.

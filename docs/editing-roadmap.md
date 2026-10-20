@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 under way (speed curves: the clock, its inverse, frozen and backwards frames); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -39,9 +39,12 @@ The models already in use are each fixed in their file: the cut-out's U²-Net (`
 
 ### Step 2. Speed curves
 
-- [ ] `rate` animatable on video and sound layers (it is `animatable: false` in `RATE_PROP`, `packages/nodes/src/sound.ts`). The file time becomes the integral of the rate from the layer's in point (`mediaTime`, `packages/core/src/track.ts`), computed from the keyframes in closed form where the curve allows it, by fixed-step integration otherwise — deterministic either way.
-- [ ] `mediaMoments` inverts that map (the file time is monotonic while the rate stays positive), so the tracks, the remapped transcripts and the captions follow a ramp.
-- [ ] A rate of 0 holds the frame (freeze frame); the minimum goes from 0.25 to 0. A negative rate plays backwards, with its clock clamped to the file.
+- [x] `rate` animatable on video and sound layers (it is `animatable: false` in `RATE_PROP`, `packages/nodes/src/sound.ts`). The file time becomes the integral of the rate from the layer's in point (`mediaTime`, `packages/core/src/track.ts`), computed from the keyframes in closed form where the curve allows it, by fixed-step integration otherwise — deterministic either way.
+  A property declares `integral` (`rate`: `rateElapsed`) and the Evaluator adds the integral from the in point when the value moves (`integrate` in `packages/core/src/track.ts`: Simpson's rule, 32 steps between keyframes, exact on held and linear stretches); a held speed keeps the multiplication it had, so documents without a curve render as before. The same clock reaches the video node, the callout and `track()`.
+- [x] `mediaMoments` inverts that map (the file time is monotonic while the rate stays positive), so the tracks, the remapped transcripts and the captions follow a ramp.
+  Inverted by looks every 1/120 s and bisection, every crossing found (a speed that turns back plays a moment twice); `layerClock` (core) gives the tools a layer's clock both ways (sound placement, track, callout). Captions follow a video or sound layer (`follow`) and keep its file time. Left out: the silence cuts (`cuts.ts`) still lay their clips at the layer's speed as a number; on a ramped layer, cut first, then ramp.
+- [x] A rate of 0 holds the frame (freeze frame); the minimum goes from 0.25 to 0. A negative rate plays backwards, with its clock clamped to the file.
+  The minimum is -4 (backwards up to four times); the clock stops at the file's start, and the video's last frame holds past its end.
 - [ ] The mixer follows the curve (`playbackRate` automated the same way live and offline, `packages/render/src/audio.ts`); the pitch follows the speed until step 9 makes it optional.
 - [ ] Presets in the curves editor: ramp in, ramp out, hero moment (fast, slow on the hit, fast), bullet.
 

@@ -29,5 +29,5 @@ export const MIX_PROPS: PropSchema = {
 
 /** an audio layer's own: its playback speed, the pitch with it */
 export const RATE_PROP: PropSchema = {
-  rate: { type: 'number', default: 1, min: 0.25, max: 4, step: 0.05, unit: 'x', label: 'Speed', group, animatable: false, description: 'playback speed, the pitch with it: under 1 lower and longer, over 1 higher and shorter' },
+  rate: { type: 'number', default: 1, min: -4, max: 4, step: 0.05, unit: 'x', label: 'Speed', group, integral: 'rateElapsed', description: 'playback speed, the pitch with it: under 1 lower and longer, over 1 higher and shorter; 0 holds the frame, under 0 plays backwards. Animated, it ramps (a speed curve): the file runs at the integral of the speed' },
 };

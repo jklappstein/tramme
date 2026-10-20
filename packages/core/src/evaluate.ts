@@ -7,7 +7,7 @@
 
 import { audioReader, type AudioReader } from './analysis.ts';
 import { eventsReader, type EventsReader } from './events.ts';
-import { mediaTime, trackId, trackReader, type TrackReader } from './track.ts';
+import { integrate, mediaClockOf, mediaMoments, mediaTime, trackId, trackReader, type MediaClock, type TrackReader } from './track.ts';
 import { compileExpr, type ExprScope } from './expr.ts';
 import { modifierParams, seedOf, type ModifierContext } from './modifiers.ts';
 import { asExpr, asKeyframed, asLink, easeFn, modsOf, propKind, resolveTokens, sampleKeyframes, staticValue, tokenValue } from './props.ts';
@@ -150,7 +150,9 @@ export class Evaluator {
       size: prop('size') as Vec2, fit: String(prop('fit')), focus: prop('focus') as Vec2,
       transform: this.evalSchema(ctx, `${layerId}.transform`, TRANSFORM_SCHEMA) as unknown as EvaluatedTransform,
     };
-    const clock = { start: Number(prop('start')), rate: Number(prop('rate')), loop: prop('loop') === true, loopEnd: Number(prop('loopEnd')) };
+    const def = this.registry.node('video').props.rate;
+    const elapsed = def?.integral ? this.integralOf(ctx, layerId, 'rate') : null;
+    const clock = { start: Number(prop('start')), rate: Number(prop('rate')), loop: prop('loop') === true, loopEnd: Number(prop('loopEnd')), ...(elapsed !== null ? { rateElapsed: elapsed } : {}) };
     return trackReader(this.data?.(id), mediaTime(clock, ctx.t, layer.in ?? 0), video);
   }
 
@@ -186,6 +188,18 @@ export class Evaluator {
     return this.read({ compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [] }, address);
   }
 
+  /**
+   * A layer's speed curve played to t: the integral of its `rate` from its in
+   * point (the file time it ran), or null when its speed holds one value.
+   * The editor's tools invert it (mediaMoments) to place what they found in
+   * the file back in composition time.
+   */
+  elapsed(layerId: string, t: number, compId = this.doc.root, prop = 'rate'): number | null {
+    const comp = this.comp(compId);
+    if (!comp.layers[layerId]) throw new Error(`unknown layer: ${layerId}`);
+    return this.integralOf({ compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [] }, layerId, prop);
+  }
+
   /** one layer at time t, whether or not it is active then (node loading, editor) */
   layerAt(id: string, t: number, compId = this.doc.root): EvaluatedLayer {
     const comp = this.comp(compId);
@@ -208,9 +222,15 @@ export class Evaluator {
     const layer = ctx.comp.layers[id];
     const node = this.registry.node(layer.type);
     const clipLayer = layer.clip ? ctx.comp.layers[layer.clip] : null;
+    const props = this.evalSchema(ctx, id, node.props);
+    for (const [name, def] of Object.entries(node.props)) {
+      if (!def.integral) continue;
+      const elapsed = this.integralOf(ctx, id, name);
+      if (elapsed !== null) props[def.integral] = elapsed;
+    }
     return {
       id, layer, node,
-      props: this.evalSchema(ctx, id, node.props),
+      props,
       transform: this.evalSchema(ctx, `${id}.transform`, TRANSFORM_SCHEMA) as unknown as EvaluatedTransform,
       effects: (layer.effects || []).filter((e) => e.enabled !== false).map((e) => ({
         id: e.id, type: e.type, props: this.evalSchema(ctx, `${id}.effects.${e.id}`, this.effectSchema(e.type)),
@@ -219,6 +239,23 @@ export class Evaluator {
       // a clip layer is used even when hidden; it follows its own in/out
       clip: layer.clip && clipLayer && layerActive(clipLayer, ctx.comp, ctx.t) ? this.layer(ctx, layer.clip) : null,
     };
+  }
+
+  /**
+   * ∫ of a layer's number property from its in point to ctx.t, when the
+   * property moves (keyframes, an expression, a link, modifiers); null when it
+   * holds one value, which its users multiply by the time themselves.
+   */
+  private integralOf(ctx: FrameCtx, layerId: string, name: string): number | null {
+    const address = `${layerId}.${name}`, { prop } = this.slot(ctx, address);
+    if (prop === undefined || (propKind(prop) === 'static' && !modsOf(prop))) return null;
+    const from = ctx.comp.layers[layerId].in ?? 0;
+    const breaks = propKind(prop) === 'keyframes' ? asKeyframed(prop).$k.map((k) => k.t) : [];
+    const at = (t: number) => {
+      const v = Number(t === ctx.t ? this.read(ctx, address) : this.read({ ...ctx, t, frame: Math.round(t * ctx.comp.fps), memo: new Map(), stack: [...ctx.stack] }, address));
+      return Number.isFinite(v) ? v : 0;
+    };
+    return integrate(at, from, ctx.t, breaks);
   }
 
   private effectSchema(type: string) {
@@ -435,6 +472,22 @@ function checkShape(def: PropDef, v: unknown): string | null {
     case 'assets': return Array.isArray(v) && v.every((x) => typeof x === 'string') ? null : 'list of asset ids expected';
     default: return null;
   }
+}
+
+/**
+ * How a video or sound layer plays its file, for the editor's tools: the
+ * file time at a composition time, and the composition times of a file time,
+ * through its start, loop and speed (a speed curve integrated, then inverted).
+ */
+export function layerClock(ev: Evaluator, compId: string, layerId: string): { clock: MediaClock; fileTime: (t: number) => number; moments: (fileTime: number) => number[] } {
+  const comp = ev.comp(compId), l = comp.layers[layerId];
+  const clock = mediaClockOf(l.props), from = l.in ?? 0, to = l.out ?? comp.duration;
+  const elapsedAt = ev.elapsed(layerId, from, compId) === null ? undefined : (t: number) => ev.elapsed(layerId, t, compId) ?? 0;
+  return {
+    clock,
+    fileTime: (t) => mediaTime(elapsedAt ? { ...clock, rateElapsed: elapsedAt(t) } : clock, t, from),
+    moments: (x) => mediaMoments(clock, x, from, to, elapsedAt),
+  };
 }
 
 /** shorthand: eval(doc, t) */
