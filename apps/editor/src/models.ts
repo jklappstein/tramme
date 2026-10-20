@@ -74,10 +74,11 @@ const ASR: PipelineAdapter = { kind: 'pipeline', pipeline: 'automatic-speech-rec
 const hub = (repo: string, revision: string, file: string) => `https://huggingface.co/${repo}/resolve/${revision}/${file}`;
 
 export const MODELS: ModelEntry[] = [
-  // the cut-out of a person: U²-Net trained on people (rembg's weights)
+  // the cut-out of a person: U²-Net trained on people (rembg's u2net_human_seg.onnx, the same bytes;
+  // BritishWerewolf/U-2-Net-Human-Seg holds U²-Netp's file under that name)
   {
-    id: 'u2net-human-seg', task: 'cutout-person', name: 'U²-Net human segmentation', revision: 'e6d4c494535f62778e47f3676a5a3674de96b844',
-    source: hub('BritishWerewolf/U-2-Net-Human-Seg', 'e6d4c494535f62778e47f3676a5a3674de96b844', 'onnx/model.onnx'),
+    id: 'u2net-human-seg', task: 'cutout-person', name: 'U²-Net human segmentation', revision: 'f5c523ea3d391bf2f366ba98a84b280b6bd23c61',
+    source: hub('jellybox/u2net-human-seg', 'f5c523ea3d391bf2f366ba98a84b280b6bd23c61', 'u2net-human-seg_320.onnx'),
     mb: 168, licence: 'Apache-2.0', commercial: true, checked: true, adapter: U2NET,
   },
   {
@@ -92,40 +93,41 @@ export const MODELS: ModelEntry[] = [
     mb: 4.6, licence: 'Apache-2.0', commercial: true, checked: true, adapter: U2NET,
   },
   {
-    id: 'u2net', task: 'cutout-any', name: 'U²-Net (full)', revision: 'main',
-    source: hub('BritishWerewolf/U-2-Net', 'main', 'onnx/model.onnx'),
-    mb: 168, licence: 'Apache-2.0', commercial: true, checked: false, adapter: U2NET,
+    id: 'u2net', task: 'cutout-any', name: 'U²-Net (full)', revision: 'c08042b462485d8597c89d3ce831d00be8582c5c',
+    source: hub('BritishWerewolf/U-2-Net', 'c08042b462485d8597c89d3ce831d00be8582c5c', 'onnx/model.onnx'),
+    mb: 168, licence: 'Apache-2.0', commercial: true, checked: true, adapter: U2NET,
   },
   {
-    id: 'isnet-general', task: 'cutout-any', name: 'IS-Net general use', revision: 'main',
-    source: hub('BritishWerewolf/IS-Net', 'main', 'onnx/model.onnx'),
-    mb: 170, licence: 'Apache-2.0', commercial: true, checked: false, adapter: ISNET,
+    id: 'isnet-general', task: 'cutout-any', name: 'IS-Net general use', revision: '9783722d9f964c0286a411e7e8e6fede947d5a53',
+    source: hub('BritishWerewolf/IS-Net', '9783722d9f964c0286a411e7e8e6fede947d5a53', 'onnx/model.onnx'),
+    mb: 170, licence: 'Apache-2.0', commercial: true, checked: true, adapter: ISNET,
   },
   // detection: boxes of people and things
   { id: 'yolos-tiny', task: 'detection', name: 'YOLOS tiny', source: 'Xenova/yolos-tiny', revision: 'main', mb: 26, licence: 'Apache-2.0', commercial: true, checked: true, adapter: DETECT },
-  { id: 'yolos-small', task: 'detection', name: 'YOLOS small', source: 'Xenova/yolos-small', revision: 'main', mb: 120, licence: 'Apache-2.0', commercial: true, checked: false, adapter: DETECT },
-  { id: 'detr-resnet-50', task: 'detection', name: 'DETR ResNet-50', source: 'Xenova/detr-resnet-50', revision: 'main', mb: 167, licence: 'Apache-2.0', commercial: true, checked: false, adapter: DETECT },
+  { id: 'yolos-small', task: 'detection', name: 'YOLOS small', source: 'Xenova/yolos-small', revision: 'main', mb: 120, licence: 'Apache-2.0', commercial: true, checked: true, adapter: DETECT },
+  { id: 'detr-resnet-50', task: 'detection', name: 'DETR ResNet-50', source: 'Xenova/detr-resnet-50', revision: 'main', mb: 167, licence: 'Apache-2.0', commercial: true, checked: true, adapter: DETECT },
   // depth
   { id: 'depth-anything-v2-small', task: 'depth', name: 'Depth Anything v2 small', source: 'onnx-community/depth-anything-v2-small', revision: 'main', mb: 99, licence: 'Apache-2.0', commercial: true, checked: true, adapter: DEPTH },
-  { id: 'depth-anything-small', task: 'depth', name: 'Depth Anything v1 small', source: 'Xenova/depth-anything-small-hf', revision: 'main', mb: 99, licence: 'Apache-2.0', commercial: true, checked: false, adapter: DEPTH },
-  { id: 'depth-anything-v2-base', task: 'depth', name: 'Depth Anything v2 base', source: 'onnx-community/depth-anything-v2-base', revision: 'main', mb: 390, licence: 'CC-BY-NC-4.0', commercial: false, checked: false, adapter: DEPTH },
-  // transcription: Whisper, in the companion or in the browser
-  { id: 'whisper-small', task: 'transcription', name: 'Whisper small', source: 'Xenova/whisper-small', revision: 'main', mb: 250, licence: 'MIT', commercial: true, checked: true, adapter: ASR },
-  { id: 'whisper-base', task: 'transcription', name: 'Whisper base', source: 'Xenova/whisper-base', revision: 'main', mb: 80, licence: 'MIT', commercial: true, checked: false, adapter: ASR },
-  { id: 'whisper-tiny', task: 'transcription', name: 'Whisper tiny', source: 'Xenova/whisper-tiny', revision: 'main', mb: 40, licence: 'MIT', commercial: true, checked: false, adapter: ASR },
+  { id: 'depth-anything-small', task: 'depth', name: 'Depth Anything v1 small', source: 'Xenova/depth-anything-small-hf', revision: 'main', mb: 99, licence: 'Apache-2.0', commercial: true, checked: true, adapter: DEPTH },
+  { id: 'depth-anything-v2-base', task: 'depth', name: 'Depth Anything v2 base', source: 'onnx-community/depth-anything-v2-base', revision: 'main', mb: 390, licence: 'CC-BY-NC-4.0', commercial: false, checked: true, adapter: DEPTH },
+  // transcription: Whisper, in the companion or in the browser (the model cards of the Hugging Face ports say Apache 2.0, OpenAI's code MIT)
+  { id: 'whisper-small', task: 'transcription', name: 'Whisper small', source: 'Xenova/whisper-small', revision: 'main', mb: 250, licence: 'Apache-2.0', commercial: true, checked: true, adapter: ASR },
+  { id: 'whisper-base', task: 'transcription', name: 'Whisper base', source: 'Xenova/whisper-base', revision: 'main', mb: 80, licence: 'Apache-2.0', commercial: true, checked: true, adapter: ASR },
+  { id: 'whisper-tiny', task: 'transcription', name: 'Whisper tiny', source: 'Xenova/whisper-tiny', revision: 'main', mb: 40, licence: 'Apache-2.0', commercial: true, checked: true, adapter: ASR },
   // where someone speaks (the hesitations the transcript leaves out)
   {
-    id: 'silero-vad', task: 'vad', name: 'Silero VAD', revision: 'main',
-    source: hub('onnx-community/silero-vad', 'main', 'onnx/model.onnx'),
-    mb: 2.2, licence: 'MIT', commercial: true, checked: false, adapter: { kind: 'vad', rate: 16000, window: 512 },
+    id: 'silero-vad', task: 'vad', name: 'Silero VAD', revision: 'e71cae966052b992a7eca6b17738916ce0eca4ec',
+    source: hub('onnx-community/silero-vad', 'e71cae966052b992a7eca6b17738916ce0eca4ec', 'onnx/model.onnx'),
+    mb: 2.2, licence: 'MIT', commercial: true, checked: true, adapter: { kind: 'vad', rate: 16000, window: 512 },
   },
   // the landmarks of faces (the skin tool)
   {
     id: 'face-landmarker', task: 'face', name: 'MediaPipe Face Landmarker', revision: 'float16/1',
     source: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-    mb: 3.6, licence: 'Apache-2.0', commercial: true, checked: false, adapter: { kind: 'mediapipe' },
+    mb: 3.8, licence: 'Apache-2.0', commercial: true, checked: true, adapter: { kind: 'mediapipe' },
   },
-  { id: 'whisper-large-v3-turbo', task: 'transcription', name: 'Whisper large v3 turbo', source: 'onnx-community/whisper-large-v3-turbo', revision: 'main', mb: 1600, licence: 'MIT', commercial: true, checked: false, adapter: ASR },
+  // the export that gives the cross attentions: onnx-community/whisper-large-v3-turbo has none, so it cannot time the words
+  { id: 'whisper-large-v3-turbo', task: 'transcription', name: 'Whisper large v3 turbo', source: 'onnx-community/whisper-large-v3-turbo_timestamped', revision: 'main', mb: 1090, licence: 'MIT', commercial: true, checked: true, adapter: ASR },
 ];
 
 /** the models known for a task, the default first */

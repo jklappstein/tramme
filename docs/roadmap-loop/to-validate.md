@@ -14,20 +14,24 @@ npm run typecheck && npm test
 ```
 
 The tests the loop ran passed in the container (with the GTK and WebKit
-development libraries installed for the desktop storage test).
+development libraries installed for the desktop storage test). On a
+computer (Windows 11, Chrome, an Intel HD 620, 4 cores), with
+`CHROME_PATH` set, all 667 pass; the parallel export's test read
+ffmpeg's first progress line (`frame=0` on a slower machine) and now reads
+its last.
 
 ## Performance
 
-- **Step 1 — reference figures.** On a machine with a real GPU and Chrome:
-  `npm run tramme -- load --json bench-before.json`. The figures in
-  `docs/performance-roadmap.md` (step 1) come from a container without a GPU,
-  where reading the pixels back weighs on every case and the `effects` case
-  takes 40 s a frame; replace them with yours.
-- **Step 1 — the 4K cases in H.264.** The load cases make their 4K source in
-  VP9 because the container's Chromium has no H.264. With Chrome, an H.264
-  source is the usual case: try `video4k` with a phone's MP4 in its place
-  (`<out>/video4k/media/source-4k.webm` replaced by your file under the same
-  name) and see whether the figures move.
+- **Step 1 — reference figures.** Taken on a laptop with a GPU (Intel HD
+  620, Chrome 155): the second table of step 1 in
+  `docs/performance-roadmap.md`. The readback falls to 27–67 ms a frame;
+  `effects` stays at 8.7 s, because an export draws its filters on the
+  processor by design (`raster: 'cpu'`). Worth taking again on a machine
+  with a dedicated GPU.
+- **Step 1 — the 4K cases in H.264.** Done with Chrome: the 4K source of
+  `video4k` and `crossfade4k` transcoded to H.264 (High) in its place.
+  Waiting for video moves by 1 to 4 ms a frame (5.3 → 6.5, 21 → 25): the
+  figures hold. Left: a real phone file (HEVC, variable frame rate).
 - **Step 5 — the crossfade in the preview.** Open the `crossfade4k` case
   (`tramme load crossfade4k --frames 1 --out ~/tramme-load`, then the folder
   `~/tramme-load/crossfade4k` in the editor) and play it: it should hold
@@ -48,21 +52,36 @@ its network policy) and has no GPU: no model was downloaded or run there.
   French: five rows (two for the cut-out), each with its default; choose
   another and run its tool (cut-out on a short clip, `detect` or `track`,
   `depth` on a photo, a transcription).
-- **Step 1 — the catalogue, model by model.** For each model in
-  `apps/editor/src/models.ts` not marked `checked`: the repository and file
-  exist (`BritishWerewolf/U-2-Net`, `BritishWerewolf/IS-Net`,
-  `Xenova/yolos-small`, `Xenova/detr-resnet-50`,
-  `Xenova/depth-anything-small-hf`, `onnx-community/depth-anything-v2-base`,
-  `Xenova/whisper-base`, `Xenova/whisper-tiny`,
-  `onnx-community/whisper-large-v3-turbo`), its licence on the model card
-  matches the catalogue, its size is about the one written (`mb`), and the tool
-  gives a right result with it. Set `checked: true` for the ones that pass,
-  remove the others. The IS-Net adapter (1024 px, mean 0.5, deviation 1, the
-  output stretched from its range) is the one to watch.
-- **Step 1 — the default cut-out's size.** The catalogue says about 168 MB for
-  U²-Net human segmentation (the full U²-Net network); the former comment in
-  `cutout.ts` said 4.6 MB for both. The cache listing of the next box shows the
-  real figure.
+- **Step 1 — the catalogue, model by model.** Done on a computer
+  (2026-10-20): every model of `apps/editor/src/models.ts` is `checked`. Each
+  file was downloaded from the hub, hashed, and run with the catalogue's
+  adapter in Node (onnxruntime-node, transformers.js on the processor, the
+  `cpu` dtype), the face landmarker in Chrome on the GPU. What it found:
+  - `BritishWerewolf/U-2-Net-Human-Seg` held U²-Netp's file (4.6 MB, the same
+    SHA-256 as `BritishWerewolf/U-2-Netp`): the default cut-out of a person
+    was the small general network. It now reads `jellybox/u2net-human-seg`
+    (Apache-2.0), byte for byte rembg's `u2net_human_seg.onnx` (176 MB), at a
+    pinned commit; on a man leaning on a car it keeps the man and not the car,
+    where U²-Net and IS-Net keep both.
+  - `BritishWerewolf/U-2-Net` and `IS-Net` are rembg's `u2net.onnx` and
+    `isnet-general-use.onnx` byte for byte; pinned to their commits, like
+    Silero VAD's file. The IS-Net adapter gives clean mattes (hair strands
+    kept).
+  - `onnx-community/whisper-large-v3-turbo` has no cross attentions in its
+    export: transformers.js refuses word timestamps with it, so the editor
+    could not use it. The catalogue now reads
+    `onnx-community/whisper-large-v3-turbo_timestamped`, which times the
+    words; its q8 download is about 1090 MB, not 1600.
+  - The Hugging Face Whisper ports' model cards say Apache-2.0 (OpenAI's
+    release says MIT): the catalogue follows the cards.
+  - Silero VAD (`onnx-community/silero-vad`) is v5: `input`, `state`, `sr`
+    in, `output`, `stateN` out, as `sileroVad()` reads it; the speech of
+    `jfk.wav` was found phrase by phrase.
+  - Detection (YOLOS small, DETR ResNet-50 and 101), depth (v1 small, v2
+    base) and Whisper base and tiny answer right on test pictures and
+    speech. Sizes in `mb` match the files (the mattes in MiB).
+  Not run: the browser's WebGPU path of each pipeline (fp32 on the GPU), and
+  Whisper turbo's fp32 encoder (2.5 GB, external data) on WebGPU.
 - **Step 1 — a model hub id.** Settings → Models → Other models: type a
   detection model (`Xenova/detr-resnet-101`, say) and Try and use; it should
   download, answer, and become the row's choice. A wrong id should say why.
@@ -98,8 +117,9 @@ its network policy) and has no GPU: no model was downloaded or run there.
   Speed row writes each preset around the playhead (checked in the container
   on a layer without a real file); play each one and judge its feel.
 - **Step 3 — transitions, on footage.** `CHROME_PATH=… npx vitest run
-  packages/cli/test/transitions.test.ts` renders every kind (it ran in the
-  container with Chromium's software GL). Then on two real clips that overlap:
+  packages/cli/test/render-effects.test.ts` renders every kind (it ran in the
+  container with Chromium's software GL, and passes on a computer with
+  Chrome and its GPU). Then on two real clips that overlap:
   each kind in the preview and an export, and the glitch, whose rows only show
   on a picture with detail.
 - **Step 3 — the sound of a transition.** Two clips with speech or music
@@ -250,13 +270,21 @@ its network policy) and has no GPU: no model was downloaded or run there.
   `tramme load --out`), play it, read the frame time in the preview's
   stats; it should hold 30 fps on a laptop.
 - `node bench/evaluate-instances.ts` prints the evaluation alone (12 ms
-  here, 29 before).
+  here, 29 before; 12.8 ms on a laptop's i5-7300U). On that laptop's GPU the
+  `instances` case exports at 132 ms a frame, of which draw 33 and the
+  evaluation on the page 1.4: the preview's 30 fps is what is left to see.
 
 ## Performance, step 2
 
+- **On a laptop with a GPU** (2 cores, 4 threads): the showreel (15 s,
+  450 frames) takes 132 s with one page and 117 s with the default 2
+  (1.13×), two cores being the limit. The MP4 decodes through with its 450
+  frames and no error, 54 dB PSNR against the single page's; a MOV and a
+  WebM made with 2 pages decode through too (120 frames each). Left: a
+  player's eye on the joins (VLC, QuickTime), and the speed-up below.
 - **The speed-up on a real machine.** Here (4 cores, a software GPU shared
   by the pages) a 2 s case renders 1.2× faster with 2 pages: the readback
-  through the software GPU is the limit. On a laptop with a GPU and 8+
+  through the software GPU is the limit. On a computer with a GPU and 8+
   cores: `tramme render <a long film> --pages 1` then without `--pages`
   (the default takes half the cores): the time should fall by close to the
   number of pages on the load cases (`tramme load --out` writes them).
@@ -285,15 +313,12 @@ its network policy) and has no GPU: no model was downloaded or run there.
 
 ## Editing, step 11
 
-- **Silero VAD was never run here**: huggingface.co was refused from this
-  container when the step was written. On a laptop: Settings → Models →
-  Where someone speaks → download Silero VAD (2.2 MB); then `/fillers` on a
-  talking video with its transcript. The tool's text says "speech found by
-  silero-vad@main" (and not "the energy of the sound"). If the model's
-  inputs differ from what the code reads (v5: input with 64 samples of
-  context, state 2×1×128, sr; v4: h and c), the tool falls back on the
-  energy and says so: then fix `sileroVad()` in `apps/editor/src/fillers.ts`
-  and mark the model `checked`.
+- **Silero VAD** was run on a computer with `sileroVad()`'s own loop: its
+  inputs are the v5 ones the code reads, and it is `checked`. Left to see in
+  the editor: Settings → Models → Where someone speaks → download it; then
+  `/fillers` on a talking video with its transcript, and the tool's text
+  says "speech found by silero-vad@e71cae9…" (and not "the energy of the
+  sound").
 - **The cuts.** Listen at each moment the tool lists; `fillers` with
   `restore: [n]` puts one back (the layers joined again, the captions
   following). The roadmap's "one click" is a re-run with a number for now:
@@ -308,14 +333,14 @@ its network policy) and has no GPU: no model was downloaded or run there.
 
 ## Editing, step 12
 
-- **The face landmarker was never run here** (its runtime comes from
-  cdn.jsdelivr.net, its model from storage.googleapis.com: neither was
-  reachable from this container). On a laptop: an interview close-up,
-  `/skin` on it: progress "Finding the faces", then a hidden layer
+- **The face landmarker** was run on a computer in Chrome, its runtime from
+  jsDelivr (1.1.1) and its model from storage.googleapis.com: the GPU
+  delegate opens, 478 landmarks on a face seen from the front and on one in
+  profile; it is `checked`. Left to see in the editor: an interview
+  close-up, `/skin` on it: progress "Finding the faces", then a hidden layer
   "Skin · …" and fx.smooth on the video. Check the mask (make the hidden
   layer visible): white skin, black eyes, brows, lips, hair and background;
-  it follows the face as it turns; a second person gets a mask too. Then
-  mark `face-landmarker` checked in `apps/editor/src/models.ts`.
+  it follows the face as it turns; a second person gets a mask too.
 - **fx.smooth's look** at 0.2–0.4 on real skin (pores soften, the eyes and
   edges stay sharp); at 1 it must look plastic, the reason for the light
   default. Tested here on stripes and a hard edge only.
@@ -347,12 +372,13 @@ its network policy) and has no GPU: no model was downloaded or run there.
 
 ## Editing, step 14
 
-- **10 bits on a real machine.** `tramme render <film> --depth 10`: an MP4
-  in H.265 Main 10 (tagged hvc1: QuickTime and Safari play it), a MOV in
-  ProRes 4444, a WebM in VP9 profile 2, PNGs at 16 bits. A slow dark
-  gradient with a vignette or a grade shows no banding where the 8-bit
-  export does (look on a 10-bit display). Checked here: 16-bit PNG levels
-  between the 8-bit steps, HEVC Main 10 written.
+- **10 bits on a real machine.** Checked on a computer with
+  `tramme render <film> --depth 10`: the MP4 is H.265 Main 10
+  (yuv420p10le, tagged hvc1) and decodes through, the MOV ProRes 4444
+  (yuva444p12le), the WebM VP9 profile 2 (yuv420p10le), the PNGs 16 bits
+  RGBA. Left, by eye: a slow dark gradient with a vignette or a grade shows
+  no banding where the 8-bit export does (on a 10-bit display), and the MP4
+  plays in QuickTime and Safari.
 - **The browser's export**: Export → 10 bits appears with the codec this
   browser encodes (here, headless Chromium: VP9 profile 2 only; Chrome on
   Windows/macOS with a GPU may offer H.265 Main 10 or AV1); "cannot encode"
@@ -429,15 +455,17 @@ its network policy) and has no GPU: no model was downloaded or run there.
 
 ## Performance, step 4
 
-- **The filters over a layer's box**: `tramme load effects --json before.json`
-  on the previous commit, then `--before before.json` on this one, on a
-  machine with a GPU. Here (software GL): 27.4 s → 6.8 s a frame. With GPU
-  raster the gain should be smaller but real (less area to blur).
-- **Same pixels on real films**: render a few of your projects with blurs,
-  shadows and glows (text with a glow, a stroked shape with a shadow, a
-  rotated or scaled layer) before and after, then `tramme compare before/
-  after --threshold 0`. If a stroke or glyph is cut at an edge, a node's
-  `bounds` is smaller than what it draws by more than the margin (48 px plus 5 %).
+- **The filters over a layer's box**: measured on a laptop with a GPU,
+  27.2 s → 6.1 s a frame on `effects` (−78 %, as in the container: exports
+  draw their filters on the processor). In that Chrome a filter on the GPU
+  raster (the preview's) is about ten times cheaper, and the box still
+  divides it by three: the preview's gain is to be seen in the editor.
+- **Same pixels on real films**: 16 stills of the three examples are
+  identical before and after (`tramme compare --threshold 0`, PSNR ∞).
+  Left: your own projects with blurs, shadows and glows (text with a glow,
+  a stroked shape with a shadow, a rotated or scaled layer). If a stroke or
+  glyph is cut at an edge, a node's `bounds` is smaller than what it draws
+  by more than the margin (48 px plus 5 %).
 - **Not done (by the measures):** WebGL2 blurs and Rust. Nothing measured
   here calls for them; take `tramme load --json` on a GPU machine to decide.
 

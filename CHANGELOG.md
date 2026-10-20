@@ -53,6 +53,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 - In the preview, a video played at another speed kept its pitch while the exports changed it: the pitch now goes with the speed everywhere.
 - An export of two layers playing the same video at different moments could draw one of them with a frame of the other: the shared decoder dropped the first layer's frame when the second one's came.
+- The cut-out of a person ran the small general network (U²-Netp) instead of U²-Net trained on people: the model hub repository it read held the wrong file. It now downloads rembg's human segmentation weights (176 MB), which keep the person and leave the objects they lean on. Whisper large v3 turbo, in the settings, now comes from the export that can time the words; the former one could not transcribe for the editor.
 
 ## [0.11.1] - 2026-10-19
 

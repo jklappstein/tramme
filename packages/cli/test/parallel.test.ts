@@ -73,7 +73,8 @@ describe.skipIf(!CHROME)('a parallel export, rendered', () => {
     expect(r.audio).toBe(true);
     // ffmpeg reads it through: every frame of the video, the sound over the whole length
     const read = (map: string) => spawnSync(FFMPEG, ['-hide_banner', '-i', out, '-map', map, '-f', 'null', '-'], { encoding: 'utf8' }).stderr;
-    expect(Number(/frame=\s*(\d+)/.exec(read('0:v'))?.[1])).toBe(90);
+    // the last progress line: a slow machine prints frame=0 first
+    expect(Number([...read('0:v').matchAll(/frame=\s*(\d+)/g)].at(-1)?.[1])).toBe(90);
     expect(/time=00:00:0(2\.9\d|3\.0\d)/.test(read('0:a'))).toBe(true);
     expect(read('0:v')).not.toMatch(/error|corrupt/i);
   }, 300_000);

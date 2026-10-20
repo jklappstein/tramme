@@ -40,7 +40,7 @@ describe('the models of the editor', () => {
   });
 
   it('name what made an asset, model and version', () => {
-    expect(madeBy(defaultModel('cutout-person'))).toBe('u2net-human-seg@e6d4c494535f62778e47f3676a5a3674de96b844');
+    expect(madeBy(defaultModel('cutout-person'))).toBe('u2net-human-seg@f5c523ea3d391bf2f366ba98a84b280b6bd23c61');
     expect(madeBy(defaultModel('depth'))).toBe('depth-anything-v2-small@main');
   });
 
