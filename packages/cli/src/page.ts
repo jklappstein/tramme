@@ -108,15 +108,17 @@ const api = {
     return btoa(s);
   },
   /** stream frames [f0, f1) over the WebSocket: 'yuv' (4:2:0 BT.709) or 'rgba' (straight alpha); returns ms per frame, and its parts */
-  async capture(f0: number, f1: number, opts: RenderOptions = {}, kind: 'yuv' | 'rgba' = 'yuv', sink?: string): Promise<{ ms: number; parts: FrameParts }> {
+  async capture(f0: number, f1: number, opts: RenderOptions = {}, kind: 'yuv' | 'rgba' | 'rgba64' = 'yuv', sink?: string): Promise<{ ms: number; parts: FrameParts }> {
     const { width: W, height: H, fps } = renderer.comp;
     const ws = new WebSocket(`ws://${location.host}/__tramme/ws${sink ? `?sink=${encodeURIComponent(sink)}` : ''}`);
     ws.binaryType = 'arraybuffer';
     await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
     let waiting: (() => void) | null = null;
     ws.onmessage = () => { const r = waiting; waiting = null; r?.(); };
-    const size = kind === 'rgba' ? W * H * 4 : (W * H * 3) / 2;
+    const size = kind === 'rgba64' ? W * H * 8 : kind === 'rgba' ? W * H * 4 : (W * H * 3) / 2;
     const bufs = [new Uint8Array(size), new Uint8Array(size)];
+    // 16 bits a channel, little-endian as the page's typed arrays are (ffmpeg rgba64le)
+    const wide = kind === 'rgba64' ? bufs.map((b) => new Uint16Array(b.buffer)) : null;
     const t0 = performance.now();
     // where the time goes: the renderer counts evaluation, drawing and video; readback and send are counted here
     const parts = noParts();
@@ -133,7 +135,8 @@ const api = {
       }
       const buf = bufs[f & 1];
       const r0 = performance.now();
-      if (kind === 'rgba') renderer.compositor.readRGBA(buf, renderer.lastSeed);
+      if (wide) renderer.compositor.readRGBA16(wide[f & 1]);
+      else if (kind === 'rgba') renderer.compositor.readRGBA(buf, renderer.lastSeed);
       else renderer.compositor.readYUV(buf, renderer.lastSeed);
       const s0 = performance.now();
       parts.readback += s0 - r0;

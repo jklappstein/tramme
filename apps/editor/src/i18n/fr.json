@@ -1046,6 +1046,8 @@
     "goToKey": "Aller à l'image clé"
   },
   "topbar": {
+    "tenBit": "10 bits",
+    "tenBitUnavailable": "Ce navigateur ne sait pas encoder de vidéo 10 bits à cette taille : l'export reste en 8 bits",
     "couldNotSaveTo": "Enregistrement dans le projet impossible : {error}",
     "blur": "Flou",
     "documentSetting": "Réglage du document",
@@ -1117,6 +1119,9 @@
     "removeAVertex": "Retirer un sommet"
   },
   "export": {
+    "noTenBit": "Ce navigateur ne sait pas encoder de vidéo 10 bits à cette taille",
+    "tenBitPlugins": "Les modules du projet dessinent en 8 bits : le film a été exporté en 8 bits",
+    "tenBitWith": "10 bits, en {codec}",
     "encoderStalled": "l'encodeur vidéo ne répond plus ({s} s sans progrès)",
     "softwareEncoder": "l'encodeur vidéo matériel n'a plus répondu pendant {s} s : le film a été encodé à nouveau en logiciel",
     "exportCancelled": "export annulé",

@@ -1,7 +1,7 @@
 // tramme: command line.
 //   tramme validate <doc>
 //   tramme still    <doc> --t 0.5,1.2 [--out dir] [--samples n] [--comp id]
-//   tramme render   <doc> [--format mp4|mov|webm|gif|png] [--out file] [--samples n] [--from s] [--to s] [--crf 16] [--mute] [--comp id] [--pages n]
+//   tramme render   <doc> [--format mp4|mov|webm|gif|png] [--out file] [--samples n] [--from s] [--to s] [--crf 16] [--mute] [--comp id] [--pages n] [--depth 8|10]
 //   tramme export   <doc> --format lottie|svg|wav [--t s] [--comp id] [--out file]
 //   tramme import   <animation.json> [--out folder]                     Lottie to a tramme project folder
 //   tramme film     <film.json> [--out folder] [--seed n]               a project folder built from a film description (docs/film.md)
@@ -109,7 +109,7 @@ async function cmdRender(file: string) {
     const pages = num('pages') ?? defaultPages(s.info.width, s.info.height);
     console.log(`rendering ${stem(file)} (${format}): ${s.info.width}x${s.info.height} at ${s.info.fps} fps${pages > 1 ? `, up to ${pages} pages at once` : ''}`);
     const r = await renderVideo(s.server, s.page, {
-      docUrl: s.docUrl, doc, compId: str('comp'), format, samples: num('samples'), from: num('from'), to: num('to'), crf: num('crf'), mute: !!flags.mute, out, pages,
+      docUrl: s.docUrl, doc, compId: str('comp'), format, samples: num('samples'), from: num('from'), to: num('to'), crf: num('crf'), mute: !!flags.mute, out, pages, depth: num('depth') === 10 ? 10 : 8,
     });
     console.log(`${r.frames} frames in ${r.seconds.toFixed(1)} s (${r.msPerFrame.toFixed(0)} ms/frame${'pages' in r ? `, ${r.pages} pages` : ''})${r.audio ? ', with sound' : ''} -> ${path.relative(process.cwd(), out)}`);
     console.log(`  per frame: ${formatParts(r.parts)}`);

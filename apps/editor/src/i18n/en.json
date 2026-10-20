@@ -1046,6 +1046,8 @@
     "goToKey": "Go to the keyframe"
   },
   "topbar": {
+    "tenBit": "10 bits",
+    "tenBitUnavailable": "This browser cannot encode 10-bit video at this size: the export stays at 8 bits",
     "couldNotSaveTo": "Could not save to the project: {error}",
     "blur": "Blur",
     "documentSetting": "Document setting",
@@ -1117,6 +1119,9 @@
     "removeAVertex": "Remove a vertex"
   },
   "export": {
+    "noTenBit": "This browser cannot encode 10-bit video at this size",
+    "tenBitPlugins": "The project's plugins draw at 8 bits: the film was exported at 8 bits",
+    "tenBitWith": "10 bits, in {codec}",
     "encoderStalled": "the video encoder stopped answering ({s} s without progress)",
     "softwareEncoder": "the hardware video encoder stopped answering for {s} s: the film was encoded again in software",
     "exportCancelled": "export cancelled",

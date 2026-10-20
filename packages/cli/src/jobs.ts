@@ -25,6 +25,8 @@ export interface VideoJob {
   out: string;
   /** pages of the same Chrome rendering segments at once (1: one after the other); defaultPages() is a fair choice */
   pages?: number;
+  /** bits a channel: 10 reads the half-float frame at 16 bits and encodes at 10 (media.ts) */
+  depth?: 8 | 10;
 }
 
 /**
@@ -74,12 +76,12 @@ export async function renderVideo(server: Server, page: Page, job: VideoJob, onP
     try { return await renderSegments(server, page, job, info, format, f0, f1, n, audio, onProgress); }
     finally { if (audio) fs.rmSync(mix, { force: true }); }
   }
-  const enc = encoder({ format, W: info.width, H: info.height, fps: info.fps, frames: f1 - f0, out: job.out, audio, crf: job.crf });
+  const enc = encoder({ format, W: info.width, H: info.height, fps: info.fps, frames: f1 - f0, out: job.out, audio, crf: job.crf, depth: job.depth });
   server.sink = enc.write;
   if (onProgress) await page.exposeFunction('__trammeProgress', onProgress).catch(() => {});
   const t0 = Date.now();
   try {
-    const { ms, parts }: { ms: number; parts: FrameParts } = await page.evaluate((a) => (window as any).TRAMME.capture(a.f0, a.f1, a.opts, a.kind), { f0, f1, opts: { samples: job.samples }, kind: frameKind(format) });
+    const { ms, parts }: { ms: number; parts: FrameParts } = await page.evaluate((a) => (window as any).TRAMME.capture(a.f0, a.f1, a.opts, a.kind), { f0, f1, opts: { samples: job.samples }, kind: frameKind(format, job.depth) });
     await enc.end();
     return { info, frames: f1 - f0, audio: !!audio, msPerFrame: ms, parts, seconds: (Date.now() - t0) / 1000 };
   } finally {
@@ -111,11 +113,11 @@ async function renderSegments(server: Server, first: Page, job: VideoJob, info: 
     const results = await Promise.all(spans.map(async ([a, b], i) => {
       const p = pages[i], name = `segment-${process.pid}-${i}`;
       const out = format === 'png' ? job.out : path.join(tmp, `${String(i).padStart(3, '0')}.${format}`);
-      const enc = encoder({ format, W: info.width, H: info.height, fps: info.fps, frames: b - a, out, crf: job.crf, startNumber: a - f0 });
+      const enc = encoder({ format, W: info.width, H: info.height, fps: info.fps, frames: b - a, out, crf: job.crf, startNumber: a - f0, depth: job.depth });
       server.sinks.set(name, enc.write);
       if (onProgress) await p.exposeFunction('__trammeProgress', (d: number) => { done[i] = d; onProgress(done.reduce((x, y) => x + y, 0), f1 - f0); }).catch(() => {});
       try {
-        const r: { ms: number; parts: FrameParts } = await p.evaluate((x) => (window as any).TRAMME.capture(x.a, x.b, x.opts, x.kind, x.name), { a, b, opts: { samples: job.samples }, kind: frameKind(format), name });
+        const r: { ms: number; parts: FrameParts } = await p.evaluate((x) => (window as any).TRAMME.capture(x.a, x.b, x.opts, x.kind, x.name), { a, b, opts: { samples: job.samples }, kind: frameKind(format, job.depth), name });
         await enc.end();
         return { ...r, frames: b - a, out };
       } finally { server.sinks.delete(name); }

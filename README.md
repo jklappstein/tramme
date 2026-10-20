@@ -55,7 +55,7 @@ npm run deploy
 ```
 tramme validate <doc>                                 structure, references, types, plugins included
 tramme still    <doc> --t 0.5,1.2 [--samples n]       PNG stills
-tramme render   <doc> [--format mp4|mov|webm|gif|png] [--from s --to s] [--samples n] [--mute] [--pages n]
+tramme render   <doc> [--format mp4|mov|webm|gif|png] [--from s --to s] [--samples n] [--mute] [--pages n] [--depth 8|10]
 tramme export   <doc> --format lottie|svg|wav [--t s] vector export, or sound only
 tramme import   <animation.json> [--out folder]       Lottie to a tramme project
 tramme pack     <folder> [--out project.tramme]        a project folder as a .tramme archive (checked)

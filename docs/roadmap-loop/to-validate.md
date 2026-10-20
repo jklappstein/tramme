@@ -344,3 +344,20 @@ its network policy) and has no GPU: no model was downloaded or run there.
 - The jobs' chunks stay in the project under `assets/jobs/` after the job:
   delete the folder by hand when the result is kept (there is no file
   delete for tools yet).
+
+## Editing, step 14
+
+- **10 bits on a real machine.** `tramme render <film> --depth 10`: an MP4
+  in H.265 Main 10 (tagged hvc1: QuickTime and Safari play it), a MOV in
+  ProRes 4444, a WebM in VP9 profile 2, PNGs at 16 bits. A slow dark
+  gradient with a vignette or a grade shows no banding where the 8-bit
+  export does (look on a 10-bit display). Checked here: 16-bit PNG levels
+  between the 8-bit steps, HEVC Main 10 written.
+- **The browser's export**: Export → 10 bits appears with the codec this
+  browser encodes (here, headless Chromium: VP9 profile 2 only; Chrome on
+  Windows/macOS with a GPU may offer H.265 Main 10 or AV1); "cannot encode"
+  shows otherwise. The MP4 format row still reads "H.264" when 10 bits
+  are on (the result is then VP9, AV1 or H.265): say so in the label if it
+  confuses. A project with plugins (drawn by the sandbox) exports at 8 bits
+  with a warning.
+- **Not done (by design):** HDR (PQ, HLG) waits for Canvas 2D above 8 bits.
