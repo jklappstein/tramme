@@ -52,18 +52,39 @@ The document format is described in [docs/document.md](docs/document.md), the pr
 - **The interface works on small screens and touch.** Check layouts down to 360 px wide.
 - **Match the surrounding code:** naming, comment density, formatting. Add tests for engine and format changes.
 
+## Branches
+
+| Branch | Role |
+|---|---|
+| `develop` | Where the work comes together, and the base of every pull request. Its checks always pass. |
+| `main` | What is released: a new version that reaches it is published by itself (see [Releases](#releases)). Only releases and urgent fixes go into it. |
+| `feat/…`, `fix/…`, `docs/…`, `refactor/…`, `test/…`, `chore/…` | One change each, made from `develop`, deleted once merged. A short name for what it does: `feat/timeline-snapping`, `fix/export-black-frame`. |
+| `release/X.Y.Z` | A version bump, made by a maintainer. |
+
+Nobody pushes to `develop` or `main` directly: everything goes through a pull request whose checks pass.
+
 ## Pull requests
 
-1. Fork the repository and create a branch from `main`.
-2. Keep each pull request focused on one change.
+1. Fork the repository (or, with write access, work in the repository itself) and create a branch from `develop`: `git switch -c feat/timeline-snapping origin/develop`.
+2. Keep each pull request focused on one change. Open it as a draft for early feedback.
 3. Make sure `npm test` and `npm run typecheck` pass.
-4. Write commit messages in the [Conventional Commits](https://www.conventionalcommits.org/) style (`feat(editor): …`, `fix(core): …`, `docs: …`).
+4. Open the pull request against `develop`. Its title follows [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`, the type among `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`, `ci`, `build`, `style`, `revert`, the scope optional (`editor`, `core`, `render`, `cli`, `worker`, `desktop`, `site`…). A check enforces it: pull requests are squashed, so the title becomes the commit on `develop`. The branch's own commits can say anything.
 5. Add a line to the `Unreleased` section of [CHANGELOG.md](CHANGELOG.md) when the change is visible to users.
 6. Describe what changed and why, and how you tested it. Add a screenshot for interface changes.
+7. When `develop` has moved and the branch conflicts with it, rebase it (`git fetch origin && git rebase origin/develop`) or merge `develop` into it.
+
+Every pull request runs the CI ([.github/workflows/ci.yml](.github/workflows/ci.yml): typecheck, tests, site build) and the title check ([.github/workflows/pr-title.yml](.github/workflows/pr-title.yml)). A maintainer reviews it and merges it once both pass.
 
 ## Releases
 
-A new version on `main` is released by itself. `node scripts/version.ts 0.2.0` sets the version of every package and of the desktop app, and dates the changelog's `Unreleased` section as `0.2.0`; commit and push it to `main`. The desktop workflow (`.github/workflows/desktop.yml`) then builds the app on Windows, macOS and Linux, publishes the GitHub release `v0.2.0` with that changelog section as its notes, and deploys the site again. No tag to push by hand: the workflow makes it.
+Maintainers release what `develop` holds:
+
+1. On a branch `release/0.12.0` made from `develop`, `node scripts/version.ts 0.12.0` sets the version of every package and of the desktop app and dates the changelog's `Unreleased` section as `0.12.0`. Commit it as `chore(release): 0.12.0` and merge it into `develop`.
+2. Open a pull request from `develop` into `main` and merge it with **Create a merge commit**, never a squash: `main` must keep `develop`'s commits, or the next release conflicts.
+
+The desktop workflow ([.github/workflows/desktop.yml](.github/workflows/desktop.yml)) then finds a version on `main` without a tag: it builds the app on Windows, macOS and Linux, publishes the GitHub release `v0.12.0` with that changelog section as its notes, and deploys the site again. No tag to push by hand: the workflow makes it.
+
+An urgent fix to the released version starts from `main` instead: a `fix/…` branch with the fix and a patch version (`node scripts/version.ts 0.11.2`), merged into `main`, which releases it the same way. A pull request from `main` into `develop` (a merge commit too) then brings it back; in the changelog, keep both sides.
 
 ## License
 

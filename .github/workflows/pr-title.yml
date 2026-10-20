@@ -1,0 +1,26 @@
+# A pull request's title becomes its commit (pull requests are squashed into
+# develop), so it follows Conventional Commits as the history does. Run again
+# when the title is edited.
+
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  title:
+    name: PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conventional Commits
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|test|refactor|perf|chore|ci|build|style|revert)(\([a-z0-9./-]+\))?!?: [^ ]'
+          if ! printf '%s' "$TITLE" | grep -Eq "$pattern"; then
+            echo "::error::the title must read type(scope): summary, as in feat(editor): snap keyframes to beats (CONTRIBUTING.md, Pull requests)"
+            exit 1
+          fi

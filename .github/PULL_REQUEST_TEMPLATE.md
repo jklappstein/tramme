@@ -1,6 +1,6 @@
 ## What and why
 
-<!-- What does this change, and why? Link the issue if there is one. -->
+<!-- What does this change, and why? Link the issue if there is one (Closes #123). -->
 
 ## How it was tested
 
@@ -8,6 +8,8 @@
 
 ## Checklist
 
+- [ ] The base branch is `develop` (`main` only for a release or an urgent fix)
+- [ ] The title follows Conventional Commits (`feat(editor): …`): it becomes the commit
 - [ ] `npm test` and `npm run typecheck` pass
 - [ ] New interface text goes through `t()` with a key in `en.json` and `fr.json`
 - [ ] Works on small screens and touch, if the interface changed
