@@ -23,6 +23,7 @@ const TASK: Record<ModelTask, string> = {
   detection: m('localModels.detection'),
   depth: m('localModels.depth'),
   transcription: m('localModels.transcription'),
+  vad: m('localModels.vad'),
 };
 
 /** what to know before choosing a model, by its id */

@@ -1356,6 +1356,7 @@
     "done": "\"{name}\" tightened: {saved} saved."
   },
   "localModels": {
+    "vad": "Where someone speaks",
     "title": "Models",
     "hint": "The models the editor runs on this computer (cut-out, detection, depth, transcription): each downloads the first time its tool runs and stays in this browser. Nothing is sent anywhere. The choice is for this computer.",
     "cutoutPerson": "Cut-out of a person",
@@ -1410,6 +1411,13 @@
     "cleanName": "Clean voice",
     "label": "Clean voice",
     "done": "The voice of {name} is cleaned."
+  },
+  "fillers": {
+    "listening": "Listening for the voice",
+    "restored": "{n} cut(s) put back",
+    "none": "No hesitation found",
+    "done": "{n} hesitation(s) cut",
+    "listName": "Hesitations cut"
   },
   "stabilize": {
     "reading": "reading the shake"

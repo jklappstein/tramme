@@ -31,3 +31,4 @@ export * from './lut.ts';
 export * from './stabilize.ts';
 export * from './components.ts';
 export * from './denoise.ts';
+export * from './hesitations.ts';

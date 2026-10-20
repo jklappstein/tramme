@@ -2234,7 +2234,16 @@
     "Clean a voice": "Nettoyer une voix",
     "takes the background noise out of a voice (a sound or a video layer): the cleaned voice saved beside the original, which stays; the layer plays the two mixed by its Clean voice amount": "retire le bruit de fond d'une voix (un calque son ou vidéo) : la voix nettoyée enregistrée à côté de l'originale, qui reste ; le calque joue les deux mêlées selon sa propriété Voix nettoyée",
     "The voice stands only {snr} dB over its noise ({floor} dBFS between the words): clean it (denoise)": "La voix n'est qu'à {snr} dB au-dessus de son bruit ({floor} dBFS entre les mots) : nettoyez-la (denoise)",
-    "how much of the cleaned voice plays: 0.85 keeps the voice alive, 1 takes all the noise and some of the life": "la part de voix nettoyée jouée : 0,85 garde la voix vivante, 1 retire tout le bruit et un peu de vie"
+    "how much of the cleaned voice plays: 0.85 keeps the voice alive, 1 takes all the noise and some of the life": "la part de voix nettoyée jouée : 0,85 garde la voix vivante, 1 retire tout le bruit et un peu de vie",
+    "Cut the hesitations": "Couper les hésitations",
+    "cuts the \"uh\"s and \"um\"s of a voice (a sound or a video): the speech heard where the transcript has no word, and the hesitations a transcription model wrote; the layer split, the parts laid back to back, the transcript of the edit remapped, the captions reconnected. Each cut is listed with its moment; restore puts some back by their number": "coupe les « euh » et les « hum » d'une voix (un son ou une vidéo) : la parole entendue là où la transcription n'a pas de mot, et les hésitations qu'un modèle de transcription a écrites ; le calque découpé, les parties mises bout à bout, la transcription du montage recalée, les sous-titres reconnectés. Chaque coupe est listée avec son moment ; restore en remet certaines par leur numéro",
+    "the file; the selected or the last video by default": "le fichier ; la vidéo sélectionnée ou la dernière par défaut",
+    "Put back": "Remettre",
+    "the numbers of cuts made before to put back (a word cut by mistake)": "les numéros des coupes faites avant à remettre (un mot coupé par erreur)",
+    "Shortest (s)": "Plus courte (s)",
+    "a hesitation shorter than this stays (0.15 by default)": "une hésitation plus courte reste (0,15 par défaut)",
+    "Longest (s)": "Plus longue (s)",
+    "speech without words longer than this is a passage the transcript missed, not a hesitation (1.2 by default)": "une parole sans mots plus longue est un passage manqué par la transcription, pas une hésitation (1,2 par défaut)"
   },
   "personal": {
     "cannotStart": "tramme ne peut pas démarrer ici",
@@ -2401,6 +2410,7 @@
     "done": "« {name} » resserré : {saved} gagnées."
   },
   "localModels": {
+    "vad": "Où quelqu'un parle",
     "title": "Modèles",
     "hint": "Les modèles que l'éditeur fait tourner sur cet ordinateur (détourage, détection, profondeur, transcription) : chacun se télécharge la première fois que son outil sert et reste dans ce navigateur. Rien n'est envoyé nulle part. Le choix vaut pour cet ordinateur.",
     "cutoutPerson": "Détourage d'une personne",
@@ -2455,6 +2465,13 @@
     "cleanName": "Voix nettoyée",
     "label": "Voix nettoyée",
     "done": "La voix de {name} est nettoyée."
+  },
+  "fillers": {
+    "listening": "Écoute de la voix",
+    "restored": "{n} coupe(s) remise(s)",
+    "none": "Aucune hésitation trouvée",
+    "done": "{n} hésitation(s) coupée(s)",
+    "listName": "Hésitations coupées"
   },
   "stabilize": {
     "reading": "lecture du tremblement"

@@ -9,8 +9,8 @@
 // their model cards (licence, size, input) and are listed in
 // docs/roadmap-loop/to-validate.md until they are tried.
 
-export type ModelTask = 'cutout-person' | 'cutout-any' | 'detection' | 'depth' | 'transcription';
-export const MODEL_TASKS: ModelTask[] = ['cutout-person', 'cutout-any', 'detection', 'depth', 'transcription'];
+export type ModelTask = 'cutout-person' | 'cutout-any' | 'detection' | 'depth' | 'transcription' | 'vad';
+export const MODEL_TASKS: ModelTask[] = ['cutout-person', 'cutout-any', 'detection', 'depth', 'transcription', 'vad'];
 
 /** a matte network read with onnxruntime: a square picture in, a matte out */
 export interface MatteAdapter {
@@ -34,6 +34,15 @@ export interface PipelineAdapter {
   cpu: 'fp32' | 'q8';
 }
 
+/** a voice activity detector read with onnxruntime: windows of sound in, the probability of speech out (Silero) */
+export interface VadAdapter {
+  kind: 'vad';
+  /** the sample rate it listens at */
+  rate: number;
+  /** samples a window */
+  window: number;
+}
+
 export interface ModelEntry {
   id: string;
   task: ModelTask;
@@ -50,7 +59,7 @@ export interface ModelEntry {
   commercial: boolean | null;
   /** tried with the tool in this version (what to know before choosing the others: the settings' notes) */
   checked: boolean;
-  adapter: MatteAdapter | PipelineAdapter;
+  adapter: MatteAdapter | PipelineAdapter | VadAdapter;
 }
 
 const U2NET: MatteAdapter = { kind: 'matte', side: 320, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225], byMax: true, output: 'prob' };
@@ -101,6 +110,12 @@ export const MODELS: ModelEntry[] = [
   { id: 'whisper-small', task: 'transcription', name: 'Whisper small', source: 'Xenova/whisper-small', revision: 'main', mb: 250, licence: 'MIT', commercial: true, checked: true, adapter: ASR },
   { id: 'whisper-base', task: 'transcription', name: 'Whisper base', source: 'Xenova/whisper-base', revision: 'main', mb: 80, licence: 'MIT', commercial: true, checked: false, adapter: ASR },
   { id: 'whisper-tiny', task: 'transcription', name: 'Whisper tiny', source: 'Xenova/whisper-tiny', revision: 'main', mb: 40, licence: 'MIT', commercial: true, checked: false, adapter: ASR },
+  // where someone speaks (the hesitations the transcript leaves out)
+  {
+    id: 'silero-vad', task: 'vad', name: 'Silero VAD', revision: 'main',
+    source: hub('onnx-community/silero-vad', 'main', 'onnx/model.onnx'),
+    mb: 2.2, licence: 'MIT', commercial: true, checked: false, adapter: { kind: 'vad', rate: 16000, window: 512 },
+  },
   { id: 'whisper-large-v3-turbo', task: 'transcription', name: 'Whisper large v3 turbo', source: 'onnx-community/whisper-large-v3-turbo', revision: 'main', mb: 1600, licence: 'MIT', commercial: true, checked: false, adapter: ASR },
 ];
 
@@ -135,5 +150,5 @@ export const madeBy = (m: ModelEntry) => `${m.id}@${m.revision}`;
 
 /** the cache key a model's files are kept under (the URL of a matte; the hub path of a pipeline model) */
 export function cachePrefix(m: ModelEntry): string {
-  return m.adapter.kind === 'matte' ? m.source : `https://huggingface.co/${m.source}/resolve/`;
+  return m.adapter.kind !== 'pipeline' ? m.source : `https://huggingface.co/${m.source}/resolve/`;
 }

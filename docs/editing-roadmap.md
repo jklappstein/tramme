@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation), step 8 done (proxies), step 9 done (voice effects), step 10 done (a clean voice, by RNNoise; DeepFilterNet, the better model where the machine allows, not yet); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation), step 8 done (proxies), step 9 done (voice effects), step 10 done (a clean voice, by RNNoise; DeepFilterNet, the better model where the machine allows, not yet), step 11 done (hesitations: Silero VAD, the energy of the sound when it cannot load; a cut put back by its number, not yet by a button on the proposal); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -125,9 +125,9 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 
 ### Step 11. Hesitations
 
-- [ ] Find the "uh"s and "um"s that the transcript leaves out: Whisper drops them from the text, so a voice activity detector (Silero VAD, in the browser) marks speech where the transcript has no word, and those spans are the hesitations. A disfluency-aware transcription model (one that writes the hesitations) can be picked instead in the settings; it is never the default unless its licence allows commercial use.
-- [ ] The `fillers` tool cuts them like `silences` does (`apps/editor/src/cuts.ts`): the layer split, the spans laid back to back, the transcript remapped and the captions reconnected.
-- [ ] Each cut listed in the proposal with a moment to hear it, so a word cut by mistake is put back in one click.
+- [x] Find the "uh"s and "um"s that the transcript leaves out: Whisper drops them from the text, so a voice activity detector (Silero VAD, in the browser) marks speech where the transcript has no word, and those spans are the hesitations. A disfluency-aware transcription model (one that writes the hesitations) can be picked instead in the settings; it is never the default unless its licence allows commercial use.
+- [x] The `fillers` tool cuts them like `silences` does (`apps/editor/src/cuts.ts`): the layer split, the spans laid back to back, the transcript remapped and the captions reconnected.
+- [x] Each cut listed in the proposal with a moment to hear it, so a word cut by mistake is put back in one click.
 
 ### Step 12. Faces
 

@@ -343,6 +343,7 @@ Dressing a video where someone speaks:
 - Read what is said (get_transcript) and look at the frame (media_frame) before deciding.
 - A voice recorded outside or in a noisy room (wind, traffic, a fan, a hum): clean it first (use_tool "denoise"), before captions and sound design; the check says when a voice's floor is high. Leave its amount at 0.85 unless asked: a voice cleaned through sounds dead.
 - Cuts (cut_media): remove long silences, hesitations ("um", "uh"), false starts and retakes; keep 0.1 to 0.2 s of air around sentences. Then place everything on the transcript of the edit.
+- The "uh"s and "um"s the transcript leaves out: use_tool "fillers" (after the transcript, before the captions); it lists each cut with its moment: give the user the ones to listen to, and put back a word cut by mistake (restore).
 - Captions (apply_template "captions") on the transcript of the edit, placed so they do not cover the face.
 - Section titles when the subject changes, keywords at the exact moment they are said (the word's time in the transcript), a name and role lower third at the start if the person introduces themselves. Not too much: one strong element every few seconds at most, never two overlapping.
 - Fit the composition to the requested format (size, video framed as "cover") before dressing.

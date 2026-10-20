@@ -282,3 +282,26 @@ its network policy) and has no GPU: no model was downloaded or run there.
 - **Not done:** DeepFilterNet (ONNX), the better model "where the machine
   allows": it needs its own feature extraction around the ONNX graph; the
   tool's engine is RNNoise only for now.
+
+## Editing, step 11
+
+- **Silero VAD was never run here**: huggingface.co was refused from this
+  container when the step was written. On a laptop: Settings → Models →
+  Where someone speaks → download Silero VAD (2.2 MB); then `/fillers` on a
+  talking video with its transcript. The tool's text says "speech found by
+  silero-vad@main" (and not "the energy of the sound"). If the model's
+  inputs differ from what the code reads (v5: input with 64 samples of
+  context, state 2×1×128, sr; v4: h and c), the tool falls back on the
+  energy and says so: then fix `sileroVad()` in `apps/editor/src/fillers.ts`
+  and mark the model `checked`.
+- **The cuts.** Listen at each moment the tool lists; `fillers` with
+  `restore: [n]` puts one back (the layers joined again, the captions
+  following). The roadmap's "one click" is a re-run with a number for now:
+  a button on each listed cut in the proposal card is not done.
+- **A disfluency-aware transcription model** (one that writes "uh"s) can be
+  named in Settings → Models → Transcription (a hub id); the tool then cuts
+  the words it wrote as well. None is in the catalogue: the ones known
+  (CrisperWhisper) are not for commercial use and not in transformers.js'
+  format.
+- The tool was run in unit tests only (its pure parts); the browser path
+  (decoding, the layers laid back to back) is to try on a real file.
