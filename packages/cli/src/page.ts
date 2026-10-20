@@ -108,9 +108,9 @@ const api = {
     return btoa(s);
   },
   /** stream frames [f0, f1) over the WebSocket: 'yuv' (4:2:0 BT.709) or 'rgba' (straight alpha); returns ms per frame, and its parts */
-  async capture(f0: number, f1: number, opts: RenderOptions = {}, kind: 'yuv' | 'rgba' = 'yuv'): Promise<{ ms: number; parts: FrameParts }> {
+  async capture(f0: number, f1: number, opts: RenderOptions = {}, kind: 'yuv' | 'rgba' = 'yuv', sink?: string): Promise<{ ms: number; parts: FrameParts }> {
     const { width: W, height: H, fps } = renderer.comp;
-    const ws = new WebSocket(`ws://${location.host}/__tramme/ws`);
+    const ws = new WebSocket(`ws://${location.host}/__tramme/ws${sink ? `?sink=${encodeURIComponent(sink)}` : ''}`);
     ws.binaryType = 'arraybuffer';
     await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
     let waiting: (() => void) | null = null;

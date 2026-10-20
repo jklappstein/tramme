@@ -2,7 +2,7 @@
 
 How tramme renders faster without leaving its stack: measure where a frame's time goes, export in parallel, prepare the Evaluator for documents with hundreds of instances, and move to WebGL or to Rust compiled to WebAssembly only what a measure points at.
 
-Status: steps 1 and 5 done (the breakdown per frame, the load cases and `tramme load`; a pool of readers per video file, one asset per file), step 3 done (the Evaluator for many instances: 400 instances under a time field evaluated in 12 ms a frame instead of 29, in Node; the `instances` load case); the figures on a machine with a real GPU are still to take. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: steps 1 and 5 done (the breakdown per frame, the load cases and `tramme load`; a pool of readers per video file, one asset per file), step 2 done (a parallel export: `tramme render --pages n`, segments joined without encoding again, frames identical to one page's, simulations included; 1.2× here on 4 cores and a software GPU), step 3 done (the Evaluator for many instances: 400 instances under a time field evaluated in 12 ms a frame instead of 29, in Node; the `instances` load case); the figures on a machine with a real GPU are still to take. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Where things stand
 
@@ -47,10 +47,10 @@ Without a GPU, the readback weighs on everything, and the filters of the `effect
 
 ### Step 2. Parallel export
 
-- [ ] The film cut into N segments rendered by N pages of the same Chrome, each encoding its segment; the segments joined by ffmpeg without re-encoding (cuts on keyframes).
-- [ ] N bounded by memory (each page opens its own video decoders) and by the GPU; a sensible default from the machine, overridable.
-- [ ] Simulations started mid-film: check that `particles`, `cloth`, `rope` and `flock` give at frame k the same result whether rendering started at 0 or at k; fix those that keep state across frames.
-- [ ] Sound mixed once over the whole film, not per segment.
+- [x] The film cut into N segments rendered by N pages of the same Chrome, each encoding its segment; the segments joined by ffmpeg without re-encoding (cuts on keyframes).
+- [x] N bounded by memory (each page opens its own video decoders) and by the GPU; a sensible default from the machine, overridable.
+- [x] Simulations started mid-film: check that `particles`, `cloth`, `rope` and `flock` give at frame k the same result whether rendering started at 0 or at k; fix those that keep state across frames.
+- [x] Sound mixed once over the whole film, not per segment.
 
 Done when: an export with N pages is identical frame by frame to the sequential one, and faster by close to N on a multi-core machine for the load cases.
 

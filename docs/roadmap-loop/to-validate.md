@@ -251,3 +251,17 @@ its network policy) and has no GPU: no model was downloaded or run there.
   stats; it should hold 30 fps on a laptop.
 - `node bench/evaluate-instances.ts` prints the evaluation alone (12 ms
   here, 29 before).
+
+## Performance, step 2
+
+- **The speed-up on a real machine.** Here (4 cores, a software GPU shared
+  by the pages) a 2 s case renders 1.2× faster with 2 pages: the readback
+  through the software GPU is the limit. On a laptop with a GPU and 8+
+  cores: `tramme render <a long film> --pages 1` then without `--pages`
+  (the default takes half the cores): the time should fall by close to the
+  number of pages on the load cases (`tramme load --out` writes them).
+  Check the MP4 plays through its joins (no stutter at a segment's start)
+  in a few players (VLC, QuickTime, a browser), and a MOV and a WebM too.
+- Identity was checked here: PNG frames byte for byte (the simulations
+  case), MP4 decoded at 53 dB PSNR against the single-page MP4 (only the
+  encoder's keyframes differ).

@@ -1,7 +1,7 @@
 // tramme: command line.
 //   tramme validate <doc>
 //   tramme still    <doc> --t 0.5,1.2 [--out dir] [--samples n] [--comp id]
-//   tramme render   <doc> [--format mp4|mov|webm|gif|png] [--out file] [--samples n] [--from s] [--to s] [--crf 16] [--mute] [--comp id]
+//   tramme render   <doc> [--format mp4|mov|webm|gif|png] [--out file] [--samples n] [--from s] [--to s] [--crf 16] [--mute] [--comp id] [--pages n]
 //   tramme export   <doc> --format lottie|svg|wav [--t s] [--comp id] [--out file]
 //   tramme import   <animation.json> [--out folder]                     Lottie to a tramme project folder
 //   tramme film     <film.json> [--out folder] [--seed n]               a project folder built from a film description (docs/film.md)
@@ -25,7 +25,7 @@ import { fileAssetReader } from '@tramme/interop/node';
 import { launch, openDoc } from './browser.ts';
 import { compareFiles } from './compare.ts';
 import { formatParts } from '@tramme/render/src/timing.ts';
-import { renderAudio, renderVideo } from './jobs.ts';
+import { defaultPages, renderAudio, renderVideo } from './jobs.ts';
 import { VIDEO_FORMATS, type VideoFormat } from './media.ts';
 import { docRegistry, filesRegistry } from './plugins.ts';
 import { readConfig, Server } from './server.ts';
@@ -105,11 +105,13 @@ async function cmdRender(file: string) {
     const format = (str('format') ?? 'mp4') as VideoFormat;
     if (!VIDEO_FORMATS.includes(format)) throw new Error(`unknown video format: ${format} (${VIDEO_FORMATS.join(', ')})`);
     const out = path.resolve(str('out') ?? path.join('out', format === 'png' ? `${stem(file)}_png` : `${stem(file)}.${format}`));
-    console.log(`rendering ${stem(file)} (${format}): ${s.info.width}x${s.info.height} at ${s.info.fps} fps`);
+    // pages rendering segments at once: as many as the machine takes, unless --pages says otherwise (1: one after the other)
+    const pages = num('pages') ?? defaultPages(s.info.width, s.info.height);
+    console.log(`rendering ${stem(file)} (${format}): ${s.info.width}x${s.info.height} at ${s.info.fps} fps${pages > 1 ? `, up to ${pages} pages at once` : ''}`);
     const r = await renderVideo(s.server, s.page, {
-      docUrl: s.docUrl, doc, compId: str('comp'), format, samples: num('samples'), from: num('from'), to: num('to'), crf: num('crf'), mute: !!flags.mute, out,
+      docUrl: s.docUrl, doc, compId: str('comp'), format, samples: num('samples'), from: num('from'), to: num('to'), crf: num('crf'), mute: !!flags.mute, out, pages,
     });
-    console.log(`${r.frames} frames in ${r.seconds.toFixed(1)} s (${r.msPerFrame.toFixed(0)} ms/frame)${r.audio ? ', with sound' : ''} -> ${path.relative(process.cwd(), out)}`);
+    console.log(`${r.frames} frames in ${r.seconds.toFixed(1)} s (${r.msPerFrame.toFixed(0)} ms/frame${'pages' in r ? `, ${r.pages} pages` : ''})${r.audio ? ', with sound' : ''} -> ${path.relative(process.cwd(), out)}`);
     console.log(`  per frame: ${formatParts(r.parts)}`);
   } finally { await s.close(); }
 }
