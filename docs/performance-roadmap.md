@@ -2,7 +2,7 @@
 
 How tramme renders faster without leaving its stack: measure where a frame's time goes, export in parallel, prepare the Evaluator for documents with hundreds of instances, and move to WebGL or to Rust compiled to WebAssembly only what a measure points at.
 
-Status: step 1 done (the breakdown per frame, the load cases and `tramme load`); the figures on a machine with a real GPU are still to take. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: steps 1 and 5 done (the breakdown per frame, the load cases and `tramme load`; a pool of readers per video file, one asset per file); the figures on a machine with a real GPU are still to take. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Where things stand
 
@@ -58,7 +58,8 @@ Done when: each move is justified by a figure from step 1 and improves it, with 
 
 ### Step 5. Media used in several places
 
-- [ ] A pool of decoders per video asset: one reader per play position in use, so two layers showing the same file at different moments at the same instant (a transition between two shots of one take, a split screen, the cut-out's footage drawn over itself, the clips of a cut overlapping) each read forward instead of making the one decoder seek back and forth at every frame. Bounded (a few readers per file, the least recently used closed), the frames of one reader shared when two layers ask for the same moment.
+- [x] A pool of decoders per video asset: one reader per play position in use, so two layers showing the same file at different moments at the same instant (a transition between two shots of one take, a split screen, the cut-out's footage drawn over itself, the clips of a cut overlapping) each read forward instead of making the one decoder seek back and forth at every frame. Bounded (a few readers per file, the least recently used closed), the frames of one reader shared when two layers ask for the same moment.
+  `packages/render/src/video-pool.ts`: three readers per file at most, each with its own decoder, its own six kept frames and its own ring of canvases (a kept frame is never overwritten by another reader). Measured on `crossfade4k` (30 frames, software GL): waiting for video 359 → 84 ms a frame (-77 %), the frame 831 → 584 ms (-30 %). Same pixels: `video4k` (one layer) exports identical frames; `crossfade4k` does not, and the new frames are the right ones: the single decoder kept its frames sorted by time and dropped the earliest when the other layer's arrived, so a layer was drawn with a frame of the other shot (frame 20 showed 4.533 s on the first shot, which plays 0.633 s). To check on a device: the crossfade playing in the preview at 30 fps with a real GPU.
 - [x] The same file imported twice becomes one asset: a hash of its content computed at import, an import of a file already in the project answered with the existing asset (its id returned, nothing written), for the editor, the assistant's attachments and the sources of a film alike.
   The hash is kept on the asset (`hash`, an optional field added to the format): SHA-256 of the whole file up to 64 MB, of its size and 32 evenly spread slices above (`apps/editor/src/hash.ts`), so a long video is not read into memory. Left out: assets imported before this version carry no hash and are not matched; files written by tools (stills, cut-outs, sounds) are not imports and keep their own paths.
 

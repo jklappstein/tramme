@@ -14,6 +14,14 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 - **An export says where a frame's time goes**: next to the `ms/frame`, `tramme render` prints the time per frame spent evaluating the document, drawing it, waiting for video frames, reading the pixels back from the GPU and waiting for the encoder, so a slow export tells whether the JavaScript, the GPU, the decoding or the transfer holds it back.
 - **Load cases to measure the renderer**: `tramme load` renders documents that each push one part of a frame (400 animated layers, blurs and effects with motion blur, a 4K source video, simulations) and prints, per case, the time per frame, its parts and what holds it back; `--json` keeps the figures and `--before` compares a later run with them, figure by figure.
 
+### Changed
+
+- **Two layers showing one video at different moments read it at once**: a crossfade between two shots of one take, a split screen or the clips of a cut that overlap each read forward on a decoder of their own (three per file at most) instead of making one decoder seek at every frame. On a crossfade within a 4K file, the time spent waiting for video frames drops by three quarters.
+
+### Fixed
+
+- An export of two layers playing the same video at different moments could draw one of them with a frame of the other: the shared decoder dropped the first layer's frame when the second one's came.
+
 ## [0.11.1] - 2026-10-19
 
 ### Fixed
