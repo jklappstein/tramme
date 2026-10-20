@@ -299,3 +299,53 @@ vec4 effect(vec2 uv) {
 }`,
   },
 };
+
+/**
+ * A chroma key: the layer made transparent where its colour is near the key
+ * colour, measured on the chroma alone (Cb, Cr in BT.709), so a green screen
+ * in shade keys like one in light. Spill takes the key's colour out of what
+ * stays (green fringes on hair), choke eats the matte's edge, matte shows it.
+ */
+export const key: EffectType<{ color: string; tolerance: number; softness: number; spill: number; choke: number; view: 'result' | 'matte' }> = {
+  type: 'fx.key', title: 'Chroma key', category: 'Effects', stage: 'layer',
+  description: 'a green or blue screen made transparent, its spill taken out of the edges',
+  props: {
+    color: { type: 'color', default: '#00B140', label: 'Key colour', description: 'the screen colour: pick it in the viewport' },
+    tolerance: { type: 'number', default: 0.12, min: 0, max: 1, step: 0.005, label: 'Tolerance', description: 'how far from the key a colour still goes' },
+    softness: { type: 'number', default: 0.08, min: 0, max: 1, step: 0.005, label: 'Softness', description: 'the width of the edge between kept and gone' },
+    spill: { type: 'number', default: 0.6, min: 0, max: 1, step: 0.01, label: 'Spill', description: 'how much of the key colour is taken out of what stays' },
+    choke: { type: 'number', default: 0, min: 0, max: 20, step: 0.5, unit: 'px', label: 'Choke', description: 'eats the edge of the matte' },
+    view: { type: 'enum', default: 'result', options: ['result', 'matte'], label: 'View', animatable: false, description: 'matte: white kept, black gone, to judge the key' },
+  },
+  gl: {
+    code: `vec2 chroma(vec3 c) { return vec2(-0.1146 * c.r - 0.3854 * c.g + 0.5 * c.b, 0.5 * c.r - 0.4542 * c.g - 0.0458 * c.b); }
+vec3 straight(vec4 p) { return p.a > 0.0 ? p.rgb / p.a : vec3(0.0); }
+float kept(vec2 uv, vec2 k) {
+  vec4 p = texture(uImage, uv);
+  float d = length(chroma(straight(p)) - k);
+  return p.a * smoothstep(u_tolerance, u_tolerance + max(u_softness, 0.0001), d);
+}
+vec4 effect(vec2 uv) {
+  vec4 p = texture(uImage, uv);
+  vec3 c = straight(p);
+  vec2 k = chroma(u_color.rgb);
+  float a = kept(uv, k);
+  if (u_choke > 0.0) {
+    // the matte eroded: the least kept of eight looks around, choke pixels away
+    vec2 r = u_choke * uScale / uRes;
+    for (int i = 0; i < 8; i++) {
+      float t = float(i) * 0.785398;
+      a = min(a, kept(uv + vec2(cos(t), sin(t)) * r, k));
+    }
+  }
+  if (u_view > 0.5) return vec4(vec3(a), 1.0);
+  // spill: the part of the colour's chroma that goes the key's way, taken out (its brightness kept)
+  vec2 dir = length(k) > 0.0001 ? normalize(k) : vec2(0.0), q = chroma(c);
+  float toward = max(0.0, dot(q, dir)) * u_spill;
+  vec2 q2 = q - dir * toward;
+  float y = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  vec3 rgb = clamp(vec3(y + 1.5748 * q2.y, y - 0.1873 * q2.x - 0.4681 * q2.y, y + 1.8556 * q2.x), 0.0, 1.0);
+  return vec4(rgb * a, a);
+}`,
+  },
+};

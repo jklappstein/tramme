@@ -1,5 +1,6 @@
-// The transitions drawn by Chrome, read back pixel by pixel: a red shot, a
-// blue one overlapping it from 1 s, a transition of 1 s on the blue one.
+// Effects drawn by Chrome, read back pixel by pixel. The transitions: a red
+// shot, a blue one overlapping it from 1 s, a transition of 1 s on the blue
+// one. The key: a red subject on a green screen, keyed over white.
 // Contributors without Chrome skip these (CHROME_PATH points to one).
 
 import fs from 'node:fs';
@@ -26,12 +27,27 @@ function doc(kind: string) {
   };
 }
 
+/** a red disc on a green screen (a little lighter at the top: a screen is never even), keyed */
+function keyed(view: 'result' | 'matte', tolerance = 0.12) {
+  const full = { transform: { position: [160, 90] } };
+  return {
+    schema: 'tramme/1', meta: { title: 'key' }, tokens: {}, assets: {}, root: 'main',
+    compositions: { main: { name: 'Main', width: 320, height: 180, fps: 30, duration: 1, background: '#FFFFFF', motionBlur: { samples: 1, shutter: 0 }, order: ['shot'], layers: {
+      shot: { type: 'group', children: ['screen', 'subject'], effects: [{ id: 'k', type: 'fx.key', props: { color: '#00B140', tolerance, view } }] },
+      screen: { type: 'shape.rect', ...full, props: { size: [320, 180], fill: { type: 'linear', from: [0, -90], to: [0, 90], stops: [[0, '#10C850'], [1, '#00A038']] } } },
+      subject: { type: 'shape.ellipse', ...full, props: { size: [80, 80], fill: '#D02020' } },
+    } } },
+  };
+}
+
 let dir = '', server: Server, close: () => Promise<void>, still: (kind: string, t: number) => Promise<(x: number, y: number) => Pixel>;
 
-describe.skipIf(!CHROME)('transitions, rendered', () => {
+describe.skipIf(!CHROME)('effects, rendered', () => {
   beforeAll(async () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tramme-transitions-'));
     for (const k of KINDS) fs.writeFileSync(path.join(dir, `${k}.tramme.json`), JSON.stringify(doc(k)));
+    fs.writeFileSync(path.join(dir, 'key.tramme.json'), JSON.stringify(keyed('result')));
+    fs.writeFileSync(path.join(dir, 'key-matte.tramme.json'), JSON.stringify(keyed('matte')));
     server = new Server(readConfig(path.join(dir, 'crossfade.tramme.json')));
     const port = await server.start();
     const { browser, page } = await launch();
@@ -76,4 +92,15 @@ describe.skipIf(!CHROME)('transitions, rendered', () => {
       expect(near((await still(k, 2.5))(160, 90), BLUE), `${k} after`).toBe(true);
     }
   }, 120_000);
+
+  it('keys a green screen out, the subject kept, the matte to judge it', async () => {
+    const f = await still('key', 0.5);
+    // the screen gone at the top and the bottom (light and shade alike): the white background through it
+    expect(near(f(10, 5), [255, 255, 255])).toBe(true);
+    expect(near(f(10, 175), [255, 255, 255])).toBe(true);
+    expect(near(f(160, 90), [208, 32, 32])).toBe(true);
+    const m = await still('key-matte', 0.5);
+    expect(near(m(10, 5), [0, 0, 0])).toBe(true);
+    expect(near(m(160, 90), [255, 255, 255])).toBe(true);
+  }, 60_000);
 });

@@ -112,3 +112,7 @@ its network policy) and has no GPU: no model was downloaded or run there.
   follows. A clip that starts at the very beginning of its file, against a
   first one at the very end of its own: the toast says how much is missing.
   (Checked in the container on two shapes, without video files.)
+- **Step 4 — the key on real footage.** A green-screen clip with
+  `fx.key`: the screen gone in the matte view with the default tolerance or a
+  little more; hair keeps its strands, spill takes the green off them; choke
+  for a hard edge. Its rendered test ran in the container on drawn shapes.
