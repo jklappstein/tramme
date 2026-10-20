@@ -34,7 +34,7 @@ export async function runLoad(names: string[], opts: LoadOptions = {}): Promise<
   const cases = names.length ? all.filter((c) => names.includes(c.id)) : all;
   const root = path.resolve(opts.out ?? path.join(os.tmpdir(), 'tramme-load'));
   const before: LoadResult[] = opts.before ? JSON.parse(fs.readFileSync(opts.before, 'utf8')) : [];
-  const results: LoadResult[] = [];
+  const results: LoadResult[] = [], failed: string[] = [];
   for (const c of cases) {
     const dir = path.join(root, c.id);
     fs.mkdirSync(dir, { recursive: true });
@@ -56,12 +56,16 @@ export async function runLoad(names: string[], opts: LoadOptions = {}): Promise<
     try {
       const r = await renderVideo(server, page, { docUrl: '/project/' + DOCUMENT, doc: c.doc, to, mute: true, out: path.join(dir, 'out.mp4') });
       results.push({ id: c.id, title: c.title, frames: r.frames, ms: r.msPerFrame, parts: r.parts });
+    } catch (e) {
+      // one case that cannot run here (a codec this Chrome lacks) does not lose the others' figures
+      failed.push(`${c.id}: ${(e as Error).message.split('\n')[0]}`);
     } finally {
       await browser.close();
       server.close();
     }
   }
   console.log('\n' + loadTable(results, before));
+  for (const f of failed) console.log(`not measured: ${f}`);
   if (opts.json) {
     fs.mkdirSync(path.dirname(path.resolve(opts.json)), { recursive: true });
     fs.writeFileSync(opts.json, JSON.stringify(results, null, 2) + '\n');

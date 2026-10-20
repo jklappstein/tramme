@@ -61,7 +61,7 @@ without a model, to look at what the compiler makes of it.
 |---|---|
 | `layers` | 400 animated shapes: evaluation and Canvas 2D drawing |
 | `effects` | 20 layers with blur, shadow and glow, the composition's look, motion blur: Canvas 2D filters and the GPU |
-| `video4k` | a 4K H.264 source in a 1080p frame: video decoding (the file is made by ffmpeg on the first run) |
+| `video4k` | a 4K VP9 source in a 1080p frame: video decoding (the file is made by ffmpeg on the first run; VP9 because Chromium builds without H.264 decode it too) |
 | `crossfade4k` | a crossfade between two shots of that 4K file, 4 s apart: one file read at two moments at once |
 | `simulation` | particles, cloth, a rope and a flock stepped every frame |
 

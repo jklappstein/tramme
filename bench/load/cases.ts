@@ -80,13 +80,16 @@ function effects(): LoadCase {
   return { id: 'effects', title: '20 layers with blur, shadow and glow, a look and motion blur (Canvas 2D filters, the GPU)', doc: doc('Load: blurs and effects', main) };
 }
 
-const SOURCE_4K = 'media/source-4k.mp4';
-/** a 4K H.264 test picture, a keyframe a second, long enough for two shots 4 s apart */
+const SOURCE_4K = 'media/source-4k.webm';
+/**
+ * a 4K test picture, a keyframe a second, long enough for two shots 4 s apart;
+ * VP9, which every Chromium decodes (the open builds the tests run on have no H.264)
+ */
 const source4k = (): Record<string, string[]> => ({
-  [SOURCE_4K]: ['-f', 'lavfi', '-i', `testsrc2=size=3840x2160:rate=${FPS}:duration=${DURATION + 5}`, '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-g', String(FPS)],
+  [SOURCE_4K]: ['-f', 'lavfi', '-i', `testsrc2=size=3840x2160:rate=${FPS}:duration=${DURATION + 5}`, '-c:v', 'libvpx-vp9', '-deadline', 'realtime', '-cpu-used', '8', '-row-mt', '1', '-b:v', '20M', '-pix_fmt', 'yuv420p', '-g', String(FPS)],
 });
 
-/** a 4K H.264 source drawn into a 1080p frame: video decoding */
+/** a 4K VP9 source drawn into a 1080p frame: video decoding */
 function video4k(): LoadCase {
   const src = SOURCE_4K;
   const main = comp('4K source', {
