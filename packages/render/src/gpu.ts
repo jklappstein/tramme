@@ -25,7 +25,8 @@ export function uniformsOf(schema: PropSchema): string {
     if (d.type === 'number' || d.type === 'bool' || d.type === 'enum') return `uniform float ${n};`;
     if (d.type === 'vec2') return `uniform vec2 ${n};`;
     if (d.type === 'color') return `uniform vec4 ${n};`;
-    if (d.type === 'layer') return `uniform sampler2D ${n};`;
+    // a layer, and whether one is named (a mask left out acts as all white, by the effect's choice)
+    if (d.type === 'layer') return `uniform sampler2D ${n}; uniform float ${n}_set;`;
     if (d.type === 'asset' && d.assetType === 'lut') return `uniform highp sampler3D ${n}; uniform float ${n}_size; uniform vec3 ${n}_min; uniform vec3 ${n}_max;`;
     if (d.type === 'path' && d.format === 'curve') return `uniform sampler2D ${n};`;
     return '';
@@ -104,6 +105,7 @@ export function setUniforms(gl: WebGL2RenderingContext, p: WebGLProgram, schema:
       const tex = textureOf(k, v);
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.uniform1i(loc, unit++);
+      gl.uniform1f(gl.getUniformLocation(p, `u_${k.replace(/\W/g, '_')}_set`), typeof v === 'string' && v ? 1 : 0);
     } else if (d.type === 'path' && d.format === 'curve') {
       gl.activeTexture(gl.TEXTURE0 + unit);
       gl.bindTexture(gl.TEXTURE_2D, curveTexture(gl, ((v as PathValue | undefined)?.v ?? []) as number[][]));

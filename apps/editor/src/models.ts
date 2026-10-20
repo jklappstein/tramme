@@ -9,8 +9,8 @@
 // their model cards (licence, size, input) and are listed in
 // docs/roadmap-loop/to-validate.md until they are tried.
 
-export type ModelTask = 'cutout-person' | 'cutout-any' | 'detection' | 'depth' | 'transcription' | 'vad';
-export const MODEL_TASKS: ModelTask[] = ['cutout-person', 'cutout-any', 'detection', 'depth', 'transcription', 'vad'];
+export type ModelTask = 'cutout-person' | 'cutout-any' | 'detection' | 'depth' | 'transcription' | 'vad' | 'face';
+export const MODEL_TASKS: ModelTask[] = ['cutout-person', 'cutout-any', 'detection', 'depth', 'transcription', 'vad', 'face'];
 
 /** a matte network read with onnxruntime: a square picture in, a matte out */
 export interface MatteAdapter {
@@ -43,6 +43,9 @@ export interface VadAdapter {
   window: number;
 }
 
+/** a MediaPipe task file (its graph and weights in one), run by MediaPipe's own runtime */
+export interface MediaPipeAdapter { kind: 'mediapipe' }
+
 export interface ModelEntry {
   id: string;
   task: ModelTask;
@@ -59,7 +62,7 @@ export interface ModelEntry {
   commercial: boolean | null;
   /** tried with the tool in this version (what to know before choosing the others: the settings' notes) */
   checked: boolean;
-  adapter: MatteAdapter | PipelineAdapter | VadAdapter;
+  adapter: MatteAdapter | PipelineAdapter | VadAdapter | MediaPipeAdapter;
 }
 
 const U2NET: MatteAdapter = { kind: 'matte', side: 320, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225], byMax: true, output: 'prob' };
@@ -115,6 +118,12 @@ export const MODELS: ModelEntry[] = [
     id: 'silero-vad', task: 'vad', name: 'Silero VAD', revision: 'main',
     source: hub('onnx-community/silero-vad', 'main', 'onnx/model.onnx'),
     mb: 2.2, licence: 'MIT', commercial: true, checked: false, adapter: { kind: 'vad', rate: 16000, window: 512 },
+  },
+  // the landmarks of faces (the skin tool)
+  {
+    id: 'face-landmarker', task: 'face', name: 'MediaPipe Face Landmarker', revision: 'float16/1',
+    source: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+    mb: 3.6, licence: 'Apache-2.0', commercial: true, checked: false, adapter: { kind: 'mediapipe' },
   },
   { id: 'whisper-large-v3-turbo', task: 'transcription', name: 'Whisper large v3 turbo', source: 'onnx-community/whisper-large-v3-turbo', revision: 'main', mb: 1600, licence: 'MIT', commercial: true, checked: false, adapter: ASR },
 ];

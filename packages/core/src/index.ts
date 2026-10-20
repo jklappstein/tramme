@@ -32,3 +32,4 @@ export * from './stabilize.ts';
 export * from './components.ts';
 export * from './denoise.ts';
 export * from './hesitations.ts';
+export * from './faces.ts';

@@ -2243,7 +2243,17 @@
     "Shortest (s)": "Plus courte (s)",
     "a hesitation shorter than this stays (0.15 by default)": "une hésitation plus courte reste (0,15 par défaut)",
     "Longest (s)": "Plus longue (s)",
-    "speech without words longer than this is a passage the transcript missed, not a hesitation (1.2 by default)": "une parole sans mots plus longue est un passage manqué par la transcription, pas une hésitation (1,2 par défaut)"
+    "speech without words longer than this is a passage the transcript missed, not a hesitation (1.2 by default)": "une parole sans mots plus longue est un passage manqué par la transcription, pas une hésitation (1,2 par défaut)",
+    "Smooth skin": "Lisser la peau",
+    "softens the skin and keeps its edges: a surface blur where the mask is white (the skin tool makes it), eyes, brows and mouth left sharp": "adoucit la peau et garde ses contours : un flou de surface là où le masque est blanc (l'outil skin le fait), les yeux, les sourcils et la bouche laissés nets",
+    "Skin mask": "Masque de peau",
+    "a layer white where the skin is (usually hidden, made by the skin tool); without one, the whole layer": "un calque blanc là où est la peau (caché d'ordinaire, fait par l'outil skin) ; sans lui, tout le calque",
+    "how much of the smoothed skin replaces the original: light by default, a face stays a face": "la part de peau lissée qui remplace l'originale : légère par défaut, un visage reste un visage",
+    "the size of what is smoothed (pores, small marks)": "la taille de ce qui est lissé (pores, petites marques)",
+    "how different a neighbour's colour may be and still be averaged in: low keeps more edges": "à quel point la couleur d'un voisin peut différer et compter encore dans la moyenne : bas garde plus de contours",
+    "Smooth the skin": "Lisser la peau",
+    "finds the faces of a video and softens their skin (eyes, brows and mouth left sharp): a mask video of the skin saved beside it, and fx.smooth on the layer through that mask": "trouve les visages d'une vidéo et adoucit leur peau (yeux, sourcils et bouche laissés nets) : une vidéo masque de la peau enregistrée à côté, et fx.smooth sur le calque à travers ce masque",
+    "light by default: a face stays a face": "légère par défaut : un visage reste un visage"
   },
   "personal": {
     "cannotStart": "tramme ne peut pas démarrer ici",
@@ -2410,6 +2420,7 @@
     "done": "« {name} » resserré : {saved} gagnées."
   },
   "localModels": {
+    "face": "Visages",
     "vad": "Où quelqu'un parle",
     "title": "Modèles",
     "hint": "Les modèles que l'éditeur fait tourner sur cet ordinateur (détourage, détection, profondeur, transcription) : chacun se télécharge la première fois que son outil sert et reste dans ce navigateur. Rien n'est envoyé nulle part. Le choix vaut pour cet ordinateur.",
@@ -2472,6 +2483,12 @@
     "none": "Aucune hésitation trouvée",
     "done": "{n} hésitation(s) coupée(s)",
     "listName": "Hésitations coupées"
+  },
+  "skin": {
+    "finding": "Recherche des visages",
+    "maskName": "Peau · {name}",
+    "label": "Lisser la peau",
+    "done": "La peau est lissée ({frames} images)."
   },
   "stabilize": {
     "reading": "lecture du tremblement"

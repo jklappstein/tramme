@@ -73,7 +73,7 @@ export type DownloadProgress = (loaded: number, total: number) => void;
 /** a model's files fetched into the cache ahead of its tool, with their progress (bytes of all its files) */
 export async function downloadModel(m: ModelEntry, progress?: DownloadProgress): Promise<void> {
   // one file read with onnxruntime (a matte, a voice detector): fetched into the cache as it is
-  if (m.adapter.kind === 'matte' || m.adapter.kind === 'vad') {
+  if (m.adapter.kind !== 'pipeline') {
     const cache = await caches.open(CACHE);
     if (await cache.match(m.source)) return;
     const res = await fetch(m.source);

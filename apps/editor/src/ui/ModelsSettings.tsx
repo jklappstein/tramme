@@ -24,6 +24,7 @@ const TASK: Record<ModelTask, string> = {
   depth: m('localModels.depth'),
   transcription: m('localModels.transcription'),
   vad: m('localModels.vad'),
+  face: m('localModels.face'),
 };
 
 /** what to know before choosing a model, by its id */

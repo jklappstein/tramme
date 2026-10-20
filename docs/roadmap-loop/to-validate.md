@@ -305,3 +305,21 @@ its network policy) and has no GPU: no model was downloaded or run there.
   format.
 - The tool was run in unit tests only (its pure parts); the browser path
   (decoding, the layers laid back to back) is to try on a real file.
+
+## Editing, step 12
+
+- **The face landmarker was never run here** (its runtime comes from
+  cdn.jsdelivr.net, its model from storage.googleapis.com: neither was
+  reachable from this container). On a laptop: an interview close-up,
+  `/skin` on it: progress "Finding the faces", then a hidden layer
+  "Skin · …" and fx.smooth on the video. Check the mask (make the hidden
+  layer visible): white skin, black eyes, brows, lips, hair and background;
+  it follows the face as it turns; a second person gets a mask too. Then
+  mark `face-landmarker` checked in `apps/editor/src/models.ts`.
+- **fx.smooth's look** at 0.2–0.4 on real skin (pores soften, the eyes and
+  edges stay sharp); at 1 it must look plastic, the reason for the light
+  default. Tested here on stripes and a hard edge only.
+- The runtime's URL is pinned to @mediapipe/tasks-vision@1.1.1 on jsDelivr:
+  the desktop app offline cannot run it until it was fetched once (check
+  the service worker keeps it), or the wasm files could be served from the
+  app itself.

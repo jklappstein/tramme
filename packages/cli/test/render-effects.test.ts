@@ -167,6 +167,25 @@ function detachedBadges(): TrammeDoc {
   return d;
 }
 
+/**
+ * Fine grey stripes (4 px) beside a red and blue edge, smoothed through a
+ * mask over the left half only
+ */
+function smoothed(props: Record<string, unknown>) {
+  const stops: [number, string][] = [];
+  for (let i = 0; i <= 80; i++) stops.push([i / 80, i % 2 ? '#909090' : '#707070'], [Math.min(1, (i + 0.999) / 80), i % 2 ? '#909090' : '#707070']);
+  return {
+    schema: 'tramme/1', meta: { title: 'smooth' }, tokens: {}, assets: {}, root: 'main',
+    compositions: { main: { name: 'Main', width: 320, height: 180, fps: 30, duration: 1, background: '#000000', motionBlur: { samples: 1, shutter: 0 }, order: ['mask', 'face'], layers: {
+      mask: { type: 'shape.rect', visible: false, transform: { position: [80, 90] }, props: { size: [160, 180], fill: '#FFFFFF' } },
+      face: { type: 'group', children: ['stripes', 'red', 'blue'], effects: [{ id: 's', type: 'fx.smooth', props: { mask: 'mask', ...props } }] },
+      stripes: { type: 'shape.rect', transform: { position: [160, 45] }, props: { size: [320, 90], fill: { type: 'linear', from: [-160, 0], to: [160, 0], stops } } },
+      red: { type: 'shape.rect', transform: { position: [40, 135] }, props: { size: [80, 90], fill: '#FF0000' } },
+      blue: { type: 'shape.rect', transform: { position: [120, 135] }, props: { size: [80, 90], fill: '#0000FF' } },
+    } } },
+  };
+}
+
 let dir = '', server: Server, close: () => Promise<void>, still: (kind: string, t: number) => Promise<(x: number, y: number) => Pixel>, mix: (kind: string) => Promise<string>;
 
 describe.skipIf(!CHROME)('effects, rendered', () => {
@@ -193,6 +212,8 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     for (const [name, masks] of Object.entries(MASKS)) fs.writeFileSync(path.join(dir, `mask-${name}.tramme.json`), JSON.stringify(masked(masks)));
     fs.writeFileSync(path.join(dir, 'key-matte.tramme.json'), JSON.stringify(keyed('matte')));
     fs.writeFileSync(path.join(dir, 'badges.tramme.json'), JSON.stringify(badges()));
+    fs.writeFileSync(path.join(dir, 'smooth.tramme.json'), JSON.stringify(smoothed({ strength: 1, radius: 8, tolerance: 0.2 })));
+    fs.writeFileSync(path.join(dir, 'smooth-off.tramme.json'), JSON.stringify(smoothed({ strength: 0 })));
     fs.writeFileSync(path.join(dir, 'badges-detached.tramme.json'), JSON.stringify(detachedBadges()));
     const row = badges();
     row.compositions.main.layers = { row: { type: 'comp', transform: { position: [160, 90] }, props: { comp: 'badge' }, distribute: { count: 3, layout: { type: 'list', spacing: 100 }, params: { color: { $palette: 'order', colors: ['#FF0000', '#00FF00', '#0000FF'] }, spin: { $expr: 'index * 45' } } } } };
@@ -350,5 +371,17 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     expect(near(f(215, 125), [32, 48, 64])).toBe(true);
     const g = await still('badges-wave', 1.7);
     expect(near(g(215, 125), [240, 208, 32])).toBe(true);
+  }, 60_000);
+
+  it('smooths the skin where its mask is, and keeps the edges', async () => {
+    const on = await still('smooth', 0.5), off = await still('smooth-off', 0.5);
+    // the stripes: 112 and 144 as drawn; through the mask, close to their mean; outside it, as drawn
+    const spread = (f: (x: number, y: number) => Pixel, x0: number) => { let lo = 255, hi = 0; for (let x = x0; x < x0 + 16; x++) { const g = f(x, 45)[1]; lo = Math.min(lo, g); hi = Math.max(hi, g); } return hi - lo; };
+    expect(spread(off, 40)).toBeGreaterThan(25);
+    expect(spread(on, 40)).toBeLessThan(10);
+    expect(spread(on, 240)).toBeGreaterThan(25);
+    // red against blue: far apart in colour, never averaged: the edge stays where it was
+    expect(near(on(77, 135), RED)).toBe(true);
+    expect(near(on(83, 135), BLUE)).toBe(true);
   }, 60_000);
 });

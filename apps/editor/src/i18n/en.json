@@ -1356,6 +1356,7 @@
     "done": "\"{name}\" tightened: {saved} saved."
   },
   "localModels": {
+    "face": "Faces",
     "vad": "Where someone speaks",
     "title": "Models",
     "hint": "The models the editor runs on this computer (cut-out, detection, depth, transcription): each downloads the first time its tool runs and stays in this browser. Nothing is sent anywhere. The choice is for this computer.",
@@ -1418,6 +1419,12 @@
     "none": "No hesitation found",
     "done": "{n} hesitation(s) cut",
     "listName": "Hesitations cut"
+  },
+  "skin": {
+    "finding": "Finding the faces",
+    "maskName": "Skin · {name}",
+    "label": "Smooth the skin",
+    "done": "The skin is smoothed ({frames} frames)."
   },
   "stabilize": {
     "reading": "reading the shake"

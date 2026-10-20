@@ -109,6 +109,50 @@ export const matte: EffectType<{ source: string | null; mode: 'alpha' | 'alpha-i
   },
 };
 
+/**
+ * Skin smoothing (docs/editing-roadmap.md, step 12): a surface blur that
+ * keeps edges (each pixel averaged with its neighbours of a close colour
+ * only, so pores and blemishes soften and the outlines stay), limited to a
+ * mask layer (the skin the skin tool found, eyes, brows and mouth left out)
+ * and to its strength.
+ */
+export const smooth: EffectType<{ mask: string | null; strength: number; radius: number; tolerance: number }> = {
+  type: 'fx.smooth', title: 'Smooth skin', category: 'Effects', stage: 'layer',
+  description: 'softens the skin and keeps its edges: a surface blur where the mask is white (the skin tool makes it), eyes, brows and mouth left sharp',
+  props: {
+    mask: { type: 'layer', default: null, nullable: true, label: 'Skin mask', animatable: false, description: 'a layer white where the skin is (usually hidden, made by the skin tool); without one, the whole layer' },
+    strength: { type: 'number', default: 0.35, min: 0, max: 1, step: 0.05, label: 'Strength', description: 'how much of the smoothed skin replaces the original: light by default, a face stays a face' },
+    radius: { type: 'number', default: 6, min: 1, max: 24, step: 0.5, unit: 'px', label: 'Radius', description: 'the size of what is smoothed (pores, small marks)' },
+    tolerance: { type: 'number', default: 0.08, min: 0.01, max: 0.4, step: 0.01, label: 'Tolerance', description: 'how different a neighbour\'s colour may be and still be averaged in: low keeps more edges' },
+  },
+  gl: {
+    code: `vec4 effect(vec2 uv) {
+  vec4 c = texture(uImage, uv);
+  float m = 1.0;
+  if (u_mask_set > 0.5) { vec4 k = texture(u_mask, uv); m = k.a > 0.0 ? dot(k.rgb / k.a, vec3(0.2126, 0.7152, 0.0722)) * k.a : 0.0; }
+  float amount = clamp(u_strength, 0.0, 1.0) * m;
+  if (amount <= 0.001 || c.a <= 0.0) return c;
+  vec3 base = c.rgb / c.a;
+  vec2 px = u_radius * uScale / uRes;
+  vec3 sum = base;
+  float wsum = 1.0;
+  float tol2 = 2.0 * u_tolerance * u_tolerance;
+  // 64 taps on a golden-angle spiral over the radius (no grid to beat against a fine pattern): near in space and in colour counts
+  for (int i = 1; i <= 64; i++) {
+    float r = sqrt(float(i) / 64.0), a = float(i) * 2.39996323;
+    vec4 s = texture(uImage, uv + vec2(cos(a), sin(a)) * r * px);
+    if (s.a <= 0.0) continue;
+    vec3 sc = s.rgb / s.a, d = sc - base;
+    float w = exp(-r * r * 2.0) * exp(-dot(d, d) / tol2);
+    sum += sc * w;
+    wsum += w;
+  }
+  vec3 smoothed = wsum > 0.0 ? sum / wsum : base;
+  return vec4(mix(base, smoothed, amount) * c.a, c.a);
+}`,
+  },
+};
+
 /** a displacement: the pixels of the layer moved by the colours of another layer (red: x, green: y) */
 export const displace: EffectType<{ source: string | null; amount: number }> = {
   type: 'fx.displace', title: 'Displacement', category: 'Effects', stage: 'layer',

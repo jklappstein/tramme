@@ -3,9 +3,9 @@ import { cachePrefix, defaultModel, HUB_PREFIX, isHubId, madeBy, MODEL_TASKS, MO
 
 describe('the models of the editor', () => {
   it('have a default per task, the one each tool ran before the settings', () => {
-    expect(MODEL_TASKS.map((t) => defaultModel(t).id)).toEqual(['u2net-human-seg', 'u2netp', 'yolos-tiny', 'depth-anything-v2-small', 'whisper-small', 'silero-vad']);
-    // the voice detector could not be fetched where it was written: tried on a device first (docs/roadmap-loop/to-validate.md); its tool falls back on the energy of the sound
-    for (const t of MODEL_TASKS) if (t !== 'vad') expect(defaultModel(t).checked, t).toBe(true);
+    expect(MODEL_TASKS.map((t) => defaultModel(t).id)).toEqual(['u2net-human-seg', 'u2netp', 'yolos-tiny', 'depth-anything-v2-small', 'whisper-small', 'silero-vad', 'face-landmarker']);
+    // the voice detector and the face landmarker could not be fetched where they were written: tried on a device first (docs/roadmap-loop/to-validate.md); its tool falls back on the energy of the sound
+    for (const t of MODEL_TASKS) if (t !== 'vad' && t !== 'face') expect(defaultModel(t).checked, t).toBe(true);
   });
 
   it('only offer defaults a commercial project may use', () => {
