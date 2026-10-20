@@ -386,3 +386,43 @@ its network policy) and has no GPU: no model was downloaded or run there.
   `<name>--files.js`.
 - **Not done:** the system's share sheet and the installed web app's share
   target; a plugin shared from another app does not land here yet.
+
+## Installed plugins, steps 3 to 7
+
+- **In a project**: install a plugin with a node, a tool and a kit (the
+  sample in `docs/document.md`, or `plugins/charts.js` from this repo), then
+  open a project. Check that its tool is in the `/` menu and its kit in the
+  kit tool. Add a layer of its node from the add menu: a toast says it was
+  copied, `plugins/<file>.js` is in the project's files, and one undo removes
+  the layer and the copy. Checked here headless (a dot node, a tool, a kit,
+  then undo).
+- **Per project**: Settings, Plugins with a project open: the "this project"
+  switch turns it off for this project only (`meta.pluginsOff`).
+- **A newer version**: install 1.1 of a plugin a project copied at 1.0. The
+  project's row offers "Use 1.1 here"; other projects keep 1.0.
+- **The sandbox for copies.** A project with a copied plugin draws through
+  the sandbox even with the experimental flag off. **To check:** in the
+  headless run, the "eyes" scene of the Evening Breeze example came out dark
+  blue in the filmstrip once drawn by the sandbox (pink on the page). The
+  sandbox's whole-frame render seems to miss something there, an effect or a
+  blend. Compare the page and the sandbox on that scene with the flag on
+  (Settings, Preview, sandbox) before shipping. The worker's CSP now allows
+  `eval` (expressions such as `frame + 1` failed in the sandbox without it).
+- **Permissions**: a plugin that declares `permissions.network:
+  ['https://api.example.com']` gets `ctx.fetch` to that origin only from its
+  tools; another origin is refused with its name. Provider routes
+  (`providers: ['generate']`) go through the user's keys. Checked here in
+  unit tests only, with no real network.
+- **Three failures**: a tool that throws three times in a row stops the plugin
+  for the session (a toast, and "stopped this session" in Settings, Plugins);
+  reopening the editor brings it back.
+- **The assistant**: with a plugin installed, ask for something only it does.
+  The assistant should search with `list_nodes { query }` and use it. The
+  system prompt lists the installed plugins in one line each.
+- **A `.trammeplugin` with a font**: the font is copied next to the module
+  in `plugins/` when a layer first uses the plugin; check that the plugin
+  finds it (`new URL('fonts/x.woff2', import.meta.url)`). An installed plugin
+  that is not copied yet runs from a blob URL, where that relative URL does
+  not resolve.
+- **Not done:** a hanging tool is not timed out (tools may run long);
+  step 8, the marketplace, is blocked until tramme has its API.

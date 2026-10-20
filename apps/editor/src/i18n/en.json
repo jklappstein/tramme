@@ -214,6 +214,7 @@
   },
   "editor": {
     "softwareGpu": "No graphics card is drawing the preview: the processor does it, the whole computer may slow down. Check that hardware acceleration is on (browser settings) and that the graphics drivers are up to date.",
+    "installedRefused": "An installed plugin could not be loaded in this project's sandbox: {error}. Its tools are unavailable here; turn it off in Settings, Plugins.",
     "pluginSandbox": "The project's plugins could not be loaded in the sandbox: {error}. Their tools and checks are unavailable; the layers they bring still draw.",
     "newLayerNameType": "new layer \"{name}\" ({type})",
     "deleteName": "delete \"{name}\"",
@@ -1486,6 +1487,15 @@
     "newerApi": "{name} needs the plugin API {api}; this tramme has {ours}: update tramme",
     "restored": "{n} plugin(s) put back",
     "updated": "{name} updated to {version}",
+    "inProject": "this project",
+    "onHere": "Installed plugin on in this project",
+    "offHere": "Installed plugin off in this project",
+    "copied": "{names} copied into the project: it opens the same anywhere",
+    "olderHere": "This project uses {name} {copy}; {version} is installed",
+    "useHere": "Use {version} here",
+    "usedHere": "{name} {version} in this project",
+    "stopped": "{name} failed {n} times in a row: it is stopped until the editor opens again",
+    "stoppedBadge": "stopped this session",
     "installed": "{name} installed"
   },
   "stabilize": {

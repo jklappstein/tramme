@@ -7,12 +7,14 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { PLUGIN_API } from '@tramme/core';
 import { asksMore, compareVersions } from '@tramme/project';
-import { backup, canPickFolder, candidateOf, folderAccess, folderName, forgetFolder, install, installed, persistence, pickFolder, refreshInstalled, restoreBackup, setEnabled, storageKind, uninstall, type Candidate, type Installed } from '../installed.ts';
+import { backup, canPickFolder, copiesIn, stopped, copyId, copyOps, offIn, candidateOf, folderAccess, folderName, forgetFolder, install, installed, persistence, pickFolder, refreshInstalled, restoreBackup, setEnabled, storageKind, uninstall, type Candidate, type Installed } from '../installed.ts';
 import { tauri } from '../tauri.ts';
+import { api } from '../api.ts';
+import { preview } from '../preview.ts';
 import { KIND_LABEL } from '../importer.ts';
 import { confirmWith } from '../confirm.ts';
 import { saveBlob } from '../download.ts';
-import { toast } from '../state.ts';
+import { commit, S, toast } from '../state.ts';
 import { t } from '../i18n/index.ts';
 import { Toggle } from './controls.tsx';
 import { Icon } from './icons.tsx';
@@ -53,12 +55,32 @@ async function importFiles(list: FileList | File[]) {
   }
 }
 
+/** an installed plugin turned off or on in the open project (its document keeps the list) */
+function setInProject(id: string, on: boolean) {
+  const doc = S.doc.peek(), off = offIn(doc).filter((x) => x !== id);
+  const value = on ? off : [...off, id];
+  commit(on ? t('plugins.onHere') : t('plugins.offHere'), [{ op: doc.meta.pluginsOff === undefined ? 'add' : 'replace', path: '/meta/pluginsOff', value }]);
+}
+
+/** the installed version put in the open project in place of its copy (asked per project, never done alone) */
+async function useInProject(p: Installed) {
+  const doc = S.doc.peek(), { ops, files } = copyOps(doc, p);
+  for (const [path, blob] of files) await api.write(S.project.peek().id, path, blob, blob.type ? { type: blob.type } : {});
+  if (commit(t('plugins.usedHere', { name: p.manifest.name, version: p.manifest.version }), ops)) await preview.reload([copyId(p)]);
+}
+
 function PluginRow({ p }: { p: Installed }) {
   const [sure, setSure] = useState(false);
   const m = p.manifest;
+  // this project's copy, older than the one installed: offered, never applied alone
+  const copy = S.project.value ? copiesIn(S.doc.value)[m.id] : undefined;
+  const older = copy !== undefined && compareVersions(copy, m.version) < 0;
   return (
-    <Row label={`${m.name} ${m.version}`} badge={m.id.startsWith('local/') ? undefined : m.id} hint={[m.description, m.kinds.length ? t('plugins.brings', { kinds: kinds(m.kinds) }) : '', asksMore(m.permissions) ? t('plugins.mayReach', { reach: reach(m.permissions) }) : '', `${(p.size / 1024).toFixed(1)} KB${p.files.size ? ` · ${t('plugins.nFiles', { n: p.files.size })}` : ''}`].filter(Boolean).join(' · ')}>
+    <Row label={`${m.name} ${m.version}`} badge={stopped.value.has(m.id) ? t('plugins.stoppedBadge') : m.id.startsWith('local/') ? undefined : m.id} hint={[m.description, m.kinds.length ? t('plugins.brings', { kinds: kinds(m.kinds) }) : '', asksMore(m.permissions) ? t('plugins.mayReach', { reach: reach(m.permissions) }) : '', `${(p.size / 1024).toFixed(1)} KB${p.files.size ? ` · ${t('plugins.nFiles', { n: p.files.size })}` : ''}`].filter(Boolean).join(' · ')}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        {older && <button class="btn sm" title={t('plugins.olderHere', { name: m.name, copy, version: m.version })} onClick={() => useInProject(p).catch((e) => toast((e as Error).message, 'error'))}>{t('plugins.useHere', { version: m.version })}</button>}
+        {S.project.value && p.enabled && <span class="hint" style={{ fontSize: 11 }}>{t('plugins.inProject')}</span>}
+        {S.project.value && p.enabled && <Toggle on={!offIn(S.doc.value).includes(m.id)} onChange={(v) => setInProject(m.id, v)} />}
         <Toggle on={p.enabled} onChange={(v) => setEnabled(p, v)} />
         {sure
           ? <button class="btn sm danger" onClick={() => uninstall(p).catch((e) => toast((e as Error).message, 'error'))}>{t('plugins.removeSure')}</button>

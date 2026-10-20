@@ -150,14 +150,15 @@ export class Renderer {
    * (and `reload` ones), re-registers plugins, validates, prepares new layers.
    * Throws on an invalid document and keeps the previous state.
    * trusted: the caller already validated it (an editor's drafts): no validation.
+   * fresh: the registry built again from the base and the plugins (the installed plugins attached to the old one changed).
    */
-  async setDoc(doc: TrammeDoc, { compId, reload = [], trusted = false }: { compId?: string; reload?: string[]; trusted?: boolean } = {}): Promise<void> {
+  async setDoc(doc: TrammeDoc, { compId, reload = [], trusted = false, fresh = false }: { compId?: string; reload?: string[]; trusted?: boolean; fresh?: boolean } = {}): Promise<void> {
     if (!trusted) {
       const parsed = DocSchema.safeParse(doc);
       if (!parsed.success) throw new Error(`invalid document: ${parsed.error.issues[0]?.message}`);
     }
     await this.assets.sync(doc, reload);
-    const samePlugins = this.registry && !reload.length && doc.plugins === this.doc?.plugins && (doc.plugins || []).every((id) => doc.assets[id] === this.doc.assets[id]);
+    const samePlugins = this.registry && !fresh && !reload.length && doc.plugins === this.doc?.plugins && (doc.plugins || []).every((id) => doc.assets[id] === this.doc.assets[id]);
     const registry = samePlugins ? this.registry : this.base.clone();
     if (!samePlugins) for (const id of doc.plugins || []) {
       if (this.sandboxModules) registry.use(this.sandboxDeclarations!(id), id);

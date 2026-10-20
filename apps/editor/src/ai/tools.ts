@@ -4,6 +4,7 @@
 // project's text files, and the tools its plugins bring. The document itself
 // only changes through proposals the user applies.
 
+import { installedTypes } from '../installed.ts';
 import { applyOps, Evaluator, getAt, isTranscript, pointer, remapTranscript, silences, toolInputIssues, toolOutput, validate, type TrammeDoc, type Op, type Registry, type ToolContext, type Transcript } from '@tramme/core';
 import { DOCUMENT, isChatPath, MANIFEST, pathIssue, srcPath } from '@tramme/project';
 import { VideoFrames } from '@tramme/render';
@@ -197,7 +198,9 @@ ${r.content[0].type === 'text' ? r.content[0].text : ''}`);
         }
         case 'list_nodes': {
           const reg = await this.registry(this.liveDoc());
-          return text(Array.isArray(input.types) && input.types.length ? vocabularyDetail(reg, input.types.map(String)) : vocabularyIndex(reg));
+          // the installed plugins' entries: tools by where they come from, the rest by the types they brought
+          const installed = (section: string, name: string, from?: string) => (section === 'tools' ? !!from?.startsWith('installed:') : installedTypes.has(`${section.slice(0, -1)}:${name}`));
+          return text(Array.isArray(input.types) && input.types.length ? vocabularyDetail(reg, input.types.map(String)) : vocabularyIndex(reg, { query: typeof input.query === 'string' ? input.query : undefined, installed }));
         }
         case 'evaluate': {
           const doc = this.liveDoc(), reg = await this.registry(doc);

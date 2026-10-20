@@ -172,9 +172,10 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'list_nodes',
-    description: "The vocabulary of the project: node, effect and modifier types (built-in and the project's plugins) and the tools they bring (run them with use_tool). Without types: an index, each entry with its properties as name:type=default and notes on when to use it, each tool with its input as name:type (? when optional). With types: the full entries of these names (property labels, descriptions, ranges, options, examples; a tool's input schema).",
+    description: "The vocabulary of the project: node, effect and modifier types (built-in and the project's plugins) and the tools they bring (run them with use_tool). Without types: an index, each entry with its properties as name:type=default and notes on when to use it, each tool with its input as name:type (? when optional); the plugins installed on the device are left out of it. With query: the entries whose name, description or notes hold its words, the installed plugins' included (built-in and the project's first). With types: the full entries of these names (property labels, descriptions, ranges, options, examples; a tool's input schema).",
     schema: z.object({
       types: z.array(z.string()).optional().describe('node, effect or modifier types and tool names to give in full'),
+      query: z.string().optional().describe("words to search the vocabulary for, the installed plugins' included: 'chart bar', 'weather'"),
     }),
     label: (i) => (Array.isArray(i.types) && i.types.length ? t('Reading the details of {types}', { types: i.types.join(', ') }) : t('Reading the node vocabulary')),
   },
@@ -305,7 +306,8 @@ TOOLS.push({
 export const SILENT = new Set(['propose_changes', 'discard_proposal']);
 
 /** the system prompt; reference is docs/document.md; brief is the project's own taste (assets/brief.json), when there is one */
-export function systemPrompt(reference: string, brief?: string): string {
+/** installed: the plugins installed on the user's device, one line each (name: what it is for); they change rarely, so the prompt stays cached */
+export function systemPrompt(reference: string, brief?: string, installed?: string[]): string {
   return `You are the assistant built into tramme, a motion design editor. You work on a project: a JSON document (described below) and its files (assets/, plugins/, renders/).
 
 Rules:
@@ -369,7 +371,7 @@ Sources: when the project holds the material of the video — documents, picture
 
 Shorts: to cut a long video into shorts (use_tool "shorts"), read the candidates first and say which you would pick and why: a short stands alone, opens on a claim, a number or a question — never on "in this video" — and ends on a point; one that starts mid-idea is skipped, not rescued. Build with a plan (one passage per short: its title in a few words, and the strong word the passage turns on as keyword — it pops on screen the moment it is said; a word never said comes back to you, pick one that is said). The build lands the title with the first sentence, and where the project has a brand (the plate and ink tokens) it adds the progress bar and the end card itself. Then check each composition (use_tool "check", after switching to it) and fix what matters. The frame follows the speaker when a subjects analysis of the video exists: run subjects first (use_tool "subjects") when the format crops the picture, and the build keeps them centred.
 
-${brief ? `The brief of the project (assets/brief.json), the taste of this project, over your defaults where they differ:\n${brief}\n\n` : ''}${reference}`;
+${installed?.length ? `Plugins installed on this device, offered in every project (their nodes and tools are not in the list_nodes index: search them with list_nodes { query }; a layer of one copies the plugin into the project):\n${installed.map((x) => `- ${x}`).join('\n')}\n\n` : ''}${brief ? `The brief of the project (assets/brief.json), the taste of this project, over your defaults where they differ:\n${brief}\n\n` : ''}${reference}`;
 }
 
 export interface TurnContext {

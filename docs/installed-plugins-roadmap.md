@@ -2,7 +2,7 @@
 
 How a user installs a plugin once and uses it everywhere: imported from the settings, kept on their own device, offered in every project to them and to the assistant — then, once tramme has its API, found in a marketplace. Today a plugin lives in a project (`plugins/*.js`), and the shared library (`library-add`, `library-use`, `apps/editor/src/library.ts`) is reached only through commands, and only where a server or the desktop app answers `/api/library`.
 
-Status: steps 1 and 2 done (the share target of step 2 waits). What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: steps 1 to 7 done (the share target of step 2 waits); step 8, the marketplace, waits for tramme's API. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -48,34 +48,34 @@ Where the installed plugins live, per platform:
 
 ### Step 3. Installed plugins in every project
 
-- [ ] The registry of a project takes the enabled installed plugins and the project's own (`Registry.use` for both). When both bring the same type or tool name, the project's wins: a project opens the same everywhere.
-- [ ] Their tools, workflows, checks, kits and presets are offered in every project: the `/` menu, the add menu, the checks after a change, the kit tool.
-- [ ] Disabled per project when one is not wanted there, kept in the project's settings.
+- [x] The registry of a project takes the enabled installed plugins and the project's own (`Registry.use` for both). When both bring the same type or tool name, the project's wins: a project opens the same everywhere. Done: `attachInstalled` (`apps/editor/src/plugins/vocabulary.ts`) loads them in the project's sandbox from blob URLs; built-in names and the project's own are never taken.
+- [x] Their tools, workflows, checks, kits and presets are offered in every project: the `/` menu, the add menu, the checks after a change, the kit tool. Done: tools and checks bridged to the sandbox, the rest as the plain data the sandbox declares (`PluginDecl` grew `prompts`, `kits`, `presets`).
+- [x] Disabled per project when one is not wanted there, kept in the project's settings. Done: `meta.pluginsOff` (ids), a second switch in the Plugins section while a project is open.
 
 ### Step 4. What draws is copied into the project
 
-- [ ] When a layer, an effect or a modifier of an installed plugin enters a project (the add menu, a preset, a recipe, the assistant's proposal), the plugin is copied into the project's `plugins/` at the version installed and added to the document's `plugins`, in the same proposal: one undo removes both.
-- [ ] The copy is what the project uses from then on. A newer installed version is offered per project ("this project uses charts 1.2, 1.4 is installed"), never applied on its own, so an export made today is made the same way next year.
-- [ ] A project opened on a device where the plugin is not installed works as it did: its copy is in it. The command line, which knows nothing of installed plugins, renders it unchanged.
-- [ ] A tool's result needs no copy: it is operations and files in the project already. A workflow, a check or a kit is not copied either.
+- [x] When a layer, an effect or a modifier of an installed plugin enters a project (the add menu, a preset, a recipe, the assistant's proposal), the plugin is copied into the project's `plugins/` at the version installed and added to the document's `plugins`, in the same proposal: one undo removes both. Done: any commit (`state.ts`) that draws with a type an installed plugin brought writes `plugins/<file>` (and its own files) first, then applies the change and the copy together; `meta.installedCopies` keeps the version.
+- [x] The copy is what the project uses from then on. A newer installed version is offered per project ("this project uses charts 1.2, 1.4 is installed"), never applied on its own, so an export made today is made the same way next year. Done: "Use 1.4 here" in the Plugins section.
+- [x] A project opened on a device where the plugin is not installed works as it did: its copy is in it. The command line, which knows nothing of installed plugins, renders it unchanged.
+- [x] A tool's result needs no copy: it is operations and files in the project already. A workflow, a check or a kit is not copied either.
 
 ### Step 5. Permissions and the sandbox
 
-- [ ] Installed plugins never run on the page: a project that uses one previews, stills and exports through the sandbox (the experimental flag of [evaluator-sandbox.md](evaluator-sandbox.md) forced on for it), and its module loads only in the worker.
-- [ ] Permissions declared in `meta`: the network origins it may reach at authoring time (the worker's CSP opened to those origins only, closed otherwise), the provider routes it may call with the user's keys (through `api.reach`, never the keys themselves), the project files it may write beyond `assets/`. A plugin that declares none gets none.
-- [ ] A plugin that throws or hangs repeatedly is disabled for the session, with its name in the error bar and the settings.
+- [x] Installed plugins never run on the page: a project that uses one previews, stills and exports through the sandbox (the experimental flag of [evaluator-sandbox.md](evaluator-sandbox.md) forced on for it), and its module loads only in the worker. Done: a project with `meta.installedCopies` draws through the sandbox (`sandboxedDoc`), wherever the flag is off; the worker's CSP now allows `eval` (the document's expressions are compiled there; the network stays closed).
+- [x] Permissions declared in `meta`: the network origins it may reach at authoring time (the worker's CSP opened to those origins only, closed otherwise), the provider routes it may call with the user's keys (through `api.reach`, never the keys themselves), the project files it may write beyond `assets/`. A plugin that declares none gets none. Done differently for the network: the worker stays closed, and a tool asks the page through `ctx.fetch`, which checks the origin or the provider route the plugin declared (`permitted`, `apps/editor/src/installed.ts`). Writes: `assets/` and the declared paths.
+- [x] A plugin that throws or hangs repeatedly is disabled for the session, with its name in the error bar and the settings. Done for throws (three in a row, `counted`); a hang is not timed out, as tools may run long.
 
 ### Step 6. The assistant with many plugins
 
-- [ ] `use_tool` stays the one generic tool, so the tools sent to the model never change with what is installed and prompt caching keeps working.
-- [ ] `list_nodes` stops listing everything once the vocabulary grows: a search over names, descriptions and `ai` notes (`list_nodes { query }`), the built-ins and the project's own listed first, the installed plugins found on demand.
-- [ ] The installed plugins named in one line of the system prompt (name and what it is for), so the assistant knows to search for them.
+- [x] `use_tool` stays the one generic tool, so the tools sent to the model never change with what is installed and prompt caching keeps working.
+- [x] `list_nodes` stops listing everything once the vocabulary grows: a search over names, descriptions and `ai` notes (`list_nodes { query }`), the built-ins and the project's own listed first, the installed plugins found on demand. Done: the installed plugins' entries are counted, not listed, in the index, and found by `list_nodes { query }`.
+- [x] The installed plugins named in one line of the system prompt (name and what it is for), so the assistant knows to search for them.
 
 ### Step 7. The package and its manifest
 
-- [ ] `meta` grows what an installed plugin needs: a stable id (`author/name`), a version (semver), the API range, the permissions of step 5, the licence, the author, a home page. Missing fields keep today's plugins valid: an id is made from the name, the version is `0.0.0`.
-- [ ] A package format for plugins that carry more than code: `.trammeplugin`, a zip of the module, its translations, its icons, its own assets (fonts, LUTs, images, sounds), checked on import like a `.tramme` archive (`packages/project`). A single `.js` stays valid.
-- [ ] A plugin's own assets copied into the project with the plugin when it draws with them, so step 4's promise holds.
+- [x] `meta` grows what an installed plugin needs: a stable id (`author/name`), a version (semver), the API range, the permissions of step 5, the licence, the author, a home page. Missing fields keep today's plugins valid: an id is made from the name, the version is `0.0.0`. Done: `manifestOf` (`packages/project/src/plugin.ts`); the API range is the `api` number of today.
+- [x] A package format for plugins that carry more than code: `.trammeplugin`, a zip of the module, its translations, its icons, its own assets (fonts, LUTs, images, sounds), checked on import like a `.tramme` archive (`packages/project`). A single `.js` stays valid. Done: `readPluginPackage` / `writePluginPackage`, checked paths and sizes.
+- [x] A plugin's own assets copied into the project with the plugin when it draws with them, so step 4's promise holds. Done: beside its module under `plugins/`, where `import.meta.url` finds them.
 
 ### Step 8. The marketplace
 

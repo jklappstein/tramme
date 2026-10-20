@@ -9,9 +9,10 @@
 // beside it in a companion module `<name>--files.js`.
 
 import { signal } from '@preact/signals';
-import { recordBucket } from '@tramme/api';
+import { PROVIDER_ROUTES, recordBucket } from '@tramme/api';
+import { applyOps, type Op, type ToolContext, type TrammeDoc } from '@tramme/core';
 import { compareVersions, manifestOf, packInstalled, permissionsAdded, readPluginPackage, unpackInstalled, type PluginManifest } from '@tramme/project';
-import { api } from './api.ts';
+import { api, reach } from './api.ts';
 import { folderRecords, type DirHandle } from './local/folder.ts';
 import { personal } from './mode.ts';
 import { prefs, setPrefs } from './settings.ts';
@@ -201,6 +202,154 @@ export function setEnabled(p: Installed, on: boolean): void {
   const off = prefs.peek().pluginsOff.filter((x) => x !== p.file);
   setPrefs({ pluginsOff: on ? off : [...off, p.file] });
   installed.value = installed.peek().map((x) => (x.file === p.file ? { ...x, enabled: on } : x));
+}
+
+// ── in each project (step 3) ──
+
+/** the blob url of each installed plugin's text, kept while its text is the same (the sandbox imports a url once) */
+const urls = new Map<string, { code: string; url: string }>();
+function urlOf(p: Installed): string {
+  const had = urls.get(p.file);
+  if (had?.code === p.code) return had.url;
+  if (had) URL.revokeObjectURL(had.url);
+  const url = URL.createObjectURL(new Blob([p.code], { type: 'text/javascript' }));
+  urls.set(p.file, { code: p.code, url });
+  return url;
+}
+
+/** the installed plugins a project turned off, by id (kept in the document: the project opens the same everywhere) */
+export const offIn = (doc: TrammeDoc): string[] => (Array.isArray(doc.meta?.pluginsOff) ? (doc.meta.pluginsOff as unknown[]).filter((x): x is string => typeof x === 'string') : []);
+
+// ── permissions and failures (step 5) ──
+
+/**
+ * A tool's context as an installed plugin gets it: the requests it declared
+ * (its network origins, its provider routes, reached with the user's keys
+ * that it never sees), and writes under assets/ and the paths it declared
+ * only. A plugin that declares nothing reaches nothing.
+ */
+export function permitted(ctx: ToolContext, p: Installed): ToolContext {
+  const { network, providers, files } = p.manifest.permissions, name = p.manifest.name;
+  const origins = network.flatMap((o) => { try { return [new URL(o).origin]; } catch { return []; } });
+  const write = (path: string) => path.startsWith('assets/') || files.some((f) => path === f || path.startsWith(f.endsWith('/') ? f : `${f}/`));
+  return {
+    ...ctx,
+    fetch: async (url, init) => {
+      const u = new URL(url, location.href);
+      if (u.origin === location.origin && u.pathname.startsWith('/api/')) {
+        const route = u.pathname.split('/')[2] ?? '';
+        if (PROVIDER_ROUTES.includes(route) && providers.includes(route)) return reach(u.pathname + u.search, init as RequestInit);
+        throw new Error(`${name} did not declare the provider route "${route}" (meta.permissions.providers)`);
+      }
+      if (origins.includes(u.origin)) return fetch(u.href, { ...(init as RequestInit), credentials: 'omit' });
+      throw new Error(`${name} did not declare ${u.origin} (meta.permissions.network)`);
+    },
+    writeFile: (path, data) => (write(path) ? ctx.writeFile(path, data) : Promise.reject(new Error(`${name} writes under assets/ and the paths it declared only (meta.permissions.files), not ${path}`))),
+  };
+}
+
+/** the installed plugins stopped for this session after failing again and again, by id */
+export const stopped = signal<ReadonlySet<string>>(new Set());
+const strikes = new Map<string, number>();
+/** how many failures in a row stop a plugin for the session */
+export const STRIKES = 3;
+
+/** a call of an installed plugin's tool or check, counted: three throws in a row stop it until the editor opens again (a cancel is not a failure) */
+export async function counted<T>(p: Installed, run: () => Promise<T>, onStop?: (p: Installed) => void): Promise<T> {
+  try {
+    const out = await run();
+    strikes.delete(p.manifest.id);
+    return out;
+  } catch (e) {
+    if ((e as Error).name !== 'AbortError') {
+      const n = (strikes.get(p.manifest.id) ?? 0) + 1;
+      strikes.set(p.manifest.id, n);
+      if (n >= STRIKES && !stopped.peek().has(p.manifest.id)) { stopped.value = new Set([...stopped.peek(), p.manifest.id]); onStop?.(p); }
+    }
+    throw e;
+  }
+}
+
+/** the installed plugins a project takes, for its sandbox: enabled on this device and in the project, and not one the project carries itself (its copy wins) */
+export function installedFor(doc: TrammeDoc): { id: string; url: string; plugin: Installed }[] {
+  const off = offIn(doc), own = new Set(doc.plugins ?? []);
+  return installed.value
+    .filter((p) => p.enabled && !stopped.value.has(p.manifest.id) && !off.includes(p.manifest.id) && !own.has(p.file.replace(/\.(js|mjs)$/, '')))
+    .map((p) => ({ id: `installed:${p.file}`, url: urlOf(p), plugin: p }));
+}
+
+// ── what draws is copied into the project (step 4) ──
+
+/** the node, effect and modifier types an installed plugin brought to the open project's registry, by kind and type (filled as they are attached) */
+export const installedTypes = new Map<string, Installed>();
+
+/** every type a document draws with: its layers', their effects', and the modifiers of any property */
+export function typesOf(doc: TrammeDoc): Set<string> {
+  const out = new Set<string>();
+  const mods = (v: unknown): void => {
+    if (!v || typeof v !== 'object') return;
+    if (Array.isArray(v)) { for (const x of v) mods(x); return; }
+    const o = v as Record<string, unknown>;
+    if (Array.isArray(o.$mod)) for (const m of o.$mod) if (m && typeof (m as { type?: unknown }).type === 'string') out.add(`modifier:${(m as { type: string }).type}`);
+    for (const x of Object.values(o)) mods(x);
+  };
+  for (const c of Object.values(doc.compositions)) for (const l of Object.values(c.layers)) {
+    out.add(`node:${l.type}`);
+    for (const e of l.effects ?? []) out.add(`effect:${e.type}`);
+    mods(l.props);
+    for (const e of l.effects ?? []) mods(e.props);
+  }
+  return out;
+}
+
+/** the asset id a plugin's copy takes in a project: its file's stem */
+export const copyId = (p: Installed) => p.file.replace(/\.(js|mjs)$/, '');
+
+/** the version of each installed plugin copied into a project, by id (the document keeps it: a newer one is offered, never applied alone) */
+export const copiesIn = (doc: TrammeDoc): Record<string, string> => {
+  const c = doc.meta?.installedCopies;
+  return c && typeof c === 'object' && !Array.isArray(c) ? (c as Record<string, string>) : {};
+};
+
+/**
+ * The project's plugins drawn by the sandbox, their modules never loaded on
+ * the page (step 5): under the experimental flag, and always for a project
+ * that carries a copy of an installed plugin (code from outside the project
+ * the user did not write).
+ */
+export const sandboxedDoc = (doc: TrammeDoc): boolean => (doc.plugins ?? []).length > 0 && (prefs.peek().sandboxPreview || Object.keys(copiesIn(doc)).length > 0);
+
+/** the operations that copy a plugin into a project (beside the ones that made it needed), and the files to write first */
+export function copyOps(doc: TrammeDoc, p: Installed): { ops: Op[]; files: [string, Blob][] } {
+  const id = copyId(p), src = `plugins/${p.file}`;
+  const files: [string, Blob][] = [[src, new Blob([p.code], { type: 'text/javascript' })]];
+  // its own files beside it, where its module finds them (new URL('fonts/x.woff2', import.meta.url))
+  for (const [path, data] of p.files) files.push([`plugins/${path}`, new Blob([data as BlobPart])]);
+  const ops: Op[] = [{ op: doc.assets[id] ? 'replace' : 'add', path: `/assets/${id}`, value: { type: 'module', src, name: p.manifest.name } }];
+  if (!(doc.plugins ?? []).includes(id)) ops.push(doc.plugins ? { op: 'add', path: '/plugins/-', value: id } : { op: 'add', path: '/plugins', value: [id] });
+  const copies = { ...copiesIn(doc), [p.manifest.id]: p.manifest.version };
+  ops.push({ op: doc.meta.installedCopies === undefined ? 'add' : 'replace', path: '/meta/installedCopies', value: copies });
+  return { ops, files };
+}
+
+/**
+ * What a change needs copied: the installed plugins whose layers, effects or
+ * modifiers it brings into the project (the add menu, a preset, a recipe,
+ * the assistant's proposal all end in a commit). Null when it needs none.
+ */
+export function copiesFor(doc: TrammeDoc, ops: Op[]): { ops: Op[]; files: [string, Blob][]; names: string[] } | null {
+  if (!installedTypes.size) return null;
+  let next: TrammeDoc;
+  try { next = applyOps(doc, ops).doc; } catch { return null; }
+  const own = new Set(next.plugins ?? []), need = new Map<string, Installed>();
+  for (const k of typesOf(next)) { const p = installedTypes.get(k); if (p && !own.has(copyId(p))) need.set(p.file, p); }
+  if (!need.size) return null;
+  const out = { ops: [...ops], files: [] as [string, Blob][], names: [] as string[] };
+  for (const p of need.values()) {
+    const c = copyOps(applyOps(doc, out.ops).doc, p);
+    out.ops.push(...c.ops); out.files.push(...c.files); out.names.push(p.manifest.name);
+  }
+  return out;
 }
 
 /** every installed plugin in one file, to keep or to bring to another device */

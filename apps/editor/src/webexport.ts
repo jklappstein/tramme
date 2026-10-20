@@ -14,8 +14,9 @@ import { deepCodec, encodeWav, i420p10, mixComposition, Renderer, SETTLE_LIMIT }
 import { AVC_FROM_STREAM } from './avc.ts';
 import type { WebFormat } from './formats.ts';
 import { filterModule, pluginHost } from './plugins/index.ts';
-import { blitSandboxFrame, declarationsModule, ensureSandboxDoc, pluginItemsOf, primeSandboxExports, sandboxDeclaration, sandboxVideoFrames } from './plugins/sandbox-draw.ts';
+import { blitSandboxFrame, declarationsModule, ensureDeclared, ensureSandboxDoc, pluginItemsOf, primeSandboxExports, sandboxDeclaration, sandboxVideoFrames } from './plugins/sandbox-draw.ts';
 import { prefs } from './settings.ts';
+import { sandboxedDoc } from './installed.ts';
 import { t } from './i18n/index.ts';
 
 export interface WebExportOptions {
@@ -73,9 +74,9 @@ export async function exportInBrowser(doc: TrammeDoc, base: string, format: WebF
 
   const canvas = document.createElement('canvas');
   // the flag: the whole picture — plugins, modifiers, effects, simulations — is evaluated and drawn in the sandbox
-  const sandboxed = prefs.peek().sandboxPreview && (doc.plugins ?? []).length > 0;
+  const sandboxed = sandboxedDoc(doc);
   // under the flag the sandbox owns the plugins' modules: its declarations feed the registry, nothing loads on the page
-  if (sandboxed) await pluginHost(base).ensure(pluginItemsOf(doc, base));
+  if (sandboxed) await ensureDeclared(pluginHost(base), pluginItemsOf(doc, base));
   // plugin tools and checks stay where the editor put them (the sandbox); an export runs render-time code only
   const r = await Renderer.open(doc, opts.registry, base, canvas, { compId: opts.compId, pluginModule: sandboxed ? undefined : filterModule, sandboxModules: sandboxed, sandboxDeclarations: sandboxed ? (id) => declarationsModule(sandboxDeclaration(id)!, id) : undefined });
   const sandboxHost = () => pluginHost(base);

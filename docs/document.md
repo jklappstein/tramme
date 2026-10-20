@@ -257,7 +257,21 @@ A node may also simulate: `simulate: { init(props, host), step(state, props, dt,
 
 A plugin should say who it is: `export const meta = { name, version, description, api: 1 }`. `api` is the plugin API it was written for; a tramme with an older API refuses the plugin with a message rather than failing halfway. In TypeScript or with JSDoc, `@tramme/plugin` gives every type and `definePlugin()` for autocompletion.
 
-A plugin can be kept in the library shared by the projects (`library-add` tool, `/library-add`) and used in another project (`library-use`): it is copied into the project's `plugins/`, so the project and its archive stay self-contained.
+A plugin can be installed on the user's device (Settings, Plugins: a `.js` module, or a `.trammeplugin` package, a zip of `plugin.js` and its own files such as fonts, LUTs and pictures), or kept there from a project with `library-add`. It is then offered in every project. Its tools, checks, workflows, kits and presets run in each project's sandbox. Its nodes, effects and modifiers are copied into the project's `plugins/` (with its own files) when a layer first uses one, so the project and its archive stay self-contained. `library-use` copies one by hand. An installed plugin says more about itself in `meta`: a stable `id` (`author/name`), a `version` (semver), a `licence`, an `author`, a `homepage`, and its `permissions`. Without them, an id is made from its name and its version is `0.0.0`.
+
+```js
+export const meta = {
+  id: 'me/weather', name: 'Weather', version: '1.2.0', api: 1, licence: 'MIT',
+  // what it may reach at authoring time; nothing when it declares nothing
+  permissions: {
+    network: ['https://api.weather.example'], // origins its tools may request, with ctx.fetch
+    providers: ['generate'],                    // provider routes (/api/generate/…) called with the user's keys, which it never sees
+    files: ['data/weather'],                    // project paths it may write beyond assets/
+  },
+};
+```
+
+The user is asked before a plugin is installed, and again when an update asks for more. An installed plugin's code never runs on the page: a project that holds a copy of one draws through the sandbox. A plugin whose tools or checks fail three times in a row is stopped until the editor opens again.
 
 A node may declare `handles(props)`: points the viewport lets the user drag, in local space, each editing one property (`{ prop, at, kind: 'point' }` sets a vec2 to the point; `{ prop, at, kind: 'distance', from }` sets a number to the distance from `from`). Vector exports cannot run code: `export: { svg(props), lottie(props) }` gives SVG markup in local space and static Lottie shape items; without them the layer is left out with a warning.
 
@@ -276,7 +290,8 @@ export const tools = [{
   ai: { when: 'a night sky or a festive background', avoid: 'more than 60 stars on a small format' },
   async run({ count }, ctx) {
     // ctx: doc (with the pending proposal), compId, time, selection, registry,
-    // assetUrl(id), readText(path), files(), fileUrl(path), writeFile(path, data), renderStill(t), transcript(assetId)
+    // assetUrl(id), readText(path), files(), fileUrl(path), writeFile(path, data), renderStill(t), transcript(assetId),
+    // fetch(url, init): an installed plugin's declared requests (meta.permissions), a Response
     const ops = [/* JSON Patch operations on ctx.doc */];
     return { text: `${count} stars`, ops, label: 'Star field' };
   },

@@ -214,6 +214,7 @@
   },
   "editor": {
     "softwareGpu": "Aucune carte graphique ne dessine l'aperçu : c'est le processeur qui le fait, tout l'ordinateur peut ralentir. Vérifiez que l'accélération matérielle est active (réglages du navigateur) et que les pilotes graphiques sont à jour.",
+    "installedRefused": "Un plugin installé n'a pas pu être chargé dans le bac à sable de ce projet : {error}. Ses outils sont indisponibles ici ; désactivez-le dans Réglages, Plugins.",
     "pluginSandbox": "Les plugins du projet n'ont pas pu être chargés dans le bac à sable : {error}. Leurs outils et vérifications sont indisponibles ; les calques qu'ils apportent continuent de se dessiner.",
     "newLayerNameType": "nouveau calque « {name} » ({type})",
     "deleteName": "supprimer « {name} »",
@@ -2557,6 +2558,15 @@
     "newerApi": "{name} demande l'API des modules {api} ; ce tramme a la {ours} : mettez tramme à jour",
     "restored": "{n} module(s) restauré(s)",
     "updated": "{name} mis à jour en {version}",
+    "inProject": "ce projet",
+    "onHere": "Plugin installé activé dans ce projet",
+    "offHere": "Plugin installé désactivé dans ce projet",
+    "copied": "{names} copié dans le projet : il s'ouvre pareil partout",
+    "olderHere": "Ce projet utilise {name} {copy} ; {version} est installé",
+    "useHere": "Utiliser {version} ici",
+    "usedHere": "{name} {version} dans ce projet",
+    "stopped": "{name} a échoué {n} fois de suite : il est arrêté jusqu'à la prochaine ouverture de l'éditeur",
+    "stoppedBadge": "arrêté pour cette session",
     "installed": "{name} installé"
   },
   "stabilize": {
