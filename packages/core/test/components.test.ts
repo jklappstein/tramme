@@ -203,3 +203,89 @@ describe('detach', () => {
     expect(detachPlan(d, reg(), 'main', 'plain')).toEqual({ error: 'time' });
   });
 });
+
+describe('distribution', () => {
+  const placed = (d: TrammeDoc, t = 0) => new Evaluator(d, registry(), { data: (id) => (id === 'people' ? [{ name: 'Ada' }, { name: 'Alan' }, { name: 'Grace' }] : undefined) }).layerAt('many', t, 'main').props.$instances as ({ instance: Instance; at: [number, number]; rotation: number })[];
+  const withMany = (distribute: TrammeDoc['compositions'][string]['layers'][string]['distribute']) => {
+    const d = doc();
+    d.compositions.main.layers.many = { type: 'comp', props: { comp: 'card' }, params: { title: 'Same' }, distribute };
+    d.compositions.main.order.push('many');
+    return d;
+  };
+
+  it('places N instances by a layout: a grid, a list, a circle, a path', () => {
+    const grid = placed(withMany({ count: 5, layout: { type: 'grid', columns: 3, spacing: [10, 20] } }));
+    expect(grid.map((p) => p.at)).toEqual([[-10, -10], [0, -10], [10, -10], [-10, 10], [0, 10]]);
+    expect(placed(withMany({ count: 3, layout: { type: 'list', direction: 'vertical', spacing: 5 } })).map((p) => p.at)).toEqual([[0, -5], [0, 0], [0, 5]]);
+    const ring = placed(withMany({ count: 4, layout: { type: 'circle', radius: 100, rotate: true } }));
+    expect(ring[0].at[0]).toBeCloseTo(0, 9);
+    expect(ring[0].at[1]).toBeCloseTo(-100, 9);
+    expect(ring[1].at[0]).toBeCloseTo(100, 9);
+    expect(ring.map((p) => p.rotation)).toEqual([0, 90, 180, 270]);
+    const line = placed(withMany({ count: 3, layout: { type: 'path', path: { v: [[0, 0], [100, 0]] }, rotate: true } }));
+    expect(line.map((p) => p.at)).toEqual([[0, 0], [50, 0], [100, 0]]);
+    expect(line[1].rotation).toBe(0);
+  });
+
+  it('gives each parameter by its rule: an expression of index and count, the palette, a row of data', () => {
+    const d = withMany({ rows: 'people', layout: { type: 'list' }, params: { title: { $expr: 'row.name + " " + (index + 1) + "/" + count' }, color: { $palette: 'order', colors: ['#000000', '#FFFFFF'] } } });
+    d.assets.people = { type: 'json', src: 'people.json' };
+    expect(validate(d, registry())).toEqual([]);
+    const ev = new Evaluator(d, registry(), { data: (id) => (id === 'people' ? [{ name: 'Ada' }, { name: 'Alan' }, { name: 'Grace' }] : undefined) });
+    const list = ev.layerAt('many', 0, 'main').props.$instances as { instance: Instance }[];
+    const read = (k: number) => ev.frame(0, 'card', list[k].instance).layers;
+    expect(list).toHaveLength(3);
+    expect(read(0)[1].props.label).toBe('Ada 1/3');
+    expect(read(2)[1].props.label).toBe('Grace 3/3');
+    expect(read(0)[0].props.fill).toBe('#000000');
+    expect(read(1)[0].props.fill).toBe('#FFFFFF');
+    expect(read(2)[0].props.fill).toBe('#000000');
+  });
+
+  it('the palette at random draws from the colour tokens, the same at every frame', () => {
+    const d = withMany({ count: 20, layout: { type: 'grid' }, params: { color: { $palette: 'random', seed: 3 } } });
+    d.tokens.sea = { type: 'color', value: '#0000FF' };
+    const ev = new Evaluator(d, registry());
+    const fills = (t: number) => (ev.layerAt('many', t, 'main').props.$instances as { instance: Instance }[]).map((x) => ev.frame(t, 'card', x.instance).layers[0].props.fill);
+    expect(new Set(fills(0))).toEqual(new Set(['#FF0000', '#0000FF']));
+    expect(fills(1)).toEqual(fills(0));
+  });
+
+  it('each instance has its rank and count: the stagger and expressions inside the component read them', () => {
+    const d = withMany({ count: 4, layout: { type: 'list' } });
+    d.compositions.card.layers.bg.props!.radius = { $k: [{ t: 0, v: 0 }, { t: 1, v: 10 }], $mod: [{ type: 'stagger', delay: 0.5 }] };
+    d.compositions.card.layers.bg.props!.label = { $expr: '`${index}/${count}`' };
+    const ev = new Evaluator(d, registry());
+    const list = ev.layerAt('many', 0, 'main').props.$instances as { instance: Instance }[];
+    const at = (k: number) => ev.frame(1, 'card', list[k].instance).layers[0].props;
+    expect(list.map((_, k) => at(k).label)).toEqual(['0/4', '1/4', '2/4', '3/4']);
+    expect(list.map((_, k) => at(k).radius)).toEqual([10, 5, 0, 0]);
+  });
+
+  it('points of another layer: its path\'s vertices where they are', () => {
+    const d = withMany({ layout: { type: 'points', layer: 'shape' } });
+    registry();
+    d.compositions.main.layers.shape = { type: 'pathy', transform: { position: [100, 0] }, props: { path: { v: [[0, 0], [10, 10]] } } } as never;
+    d.compositions.main.layers.many.transform = { position: [50, 0] };
+    d.compositions.main.order.push('shape');
+    const pathy: NodeType = { type: 'pathy', title: 'P', category: 'test', props: { path: { type: 'path', default: { v: [] } } }, render: { canvas2d() {} } };
+    const ev = new Evaluator(d, registry().register(pathy));
+    const list = ev.layerAt('many', 0, 'main').props.$instances as { at: [number, number] }[];
+    expect(list.map((x) => x.at)).toEqual([[50, 0], [60, 10]]);
+    expect(validate(d, registry().register(pathy))).toEqual([]);
+  });
+
+  it('validation of a distribution; detach refuses it', () => {
+    const d = withMany({ rows: 'photo', layout: { type: 'points', layer: 'nope' }, params: { ghost: 1, title: 3, color: { $palette: 'order' }, size: { $palette: 'order' } } });
+    const paths = validate(d, registry()).map((i) => i.path);
+    expect(paths).toEqual(expect.arrayContaining([
+      '/compositions/main/layers/many/distribute/rows',
+      '/compositions/main/layers/many/distribute/layout/layer',
+      '/compositions/main/layers/many/distribute/params/ghost',
+      '/compositions/main/layers/many/distribute/params/title',
+      '/compositions/main/layers/many/distribute/params/size',
+    ]));
+    expect(paths).not.toContain('/compositions/main/layers/many/distribute/params/color');
+    expect(detachPlan(d, registry(), 'main', 'many')).toEqual({ error: 'distributed' });
+  });
+});

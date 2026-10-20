@@ -181,3 +181,15 @@ its network policy) and has no GPU: no model was downloaded or run there.
 - **Styles.** A document with `styles` (a look, a keyframed entrance) applied
   to layers with `at`: they animate from `at`. The inspector shows the
   layer's own values, not the style's (step 5 marks them).
+
+## Components, step 2
+
+- **A distribution in the editor.** A comp layer with `distribute` (a grid
+  of 40 cards, the palette in order, a title from `index`): the preview
+  plays it smoothly enough on a laptop (each instance is a composition read
+  per frame; the Evaluator for many instances is Performance step 3), the
+  selection box takes all the instances, an export matches the preview.
+- **Rows of data.** A JSON asset of rows (an array of objects) imported, a
+  distribution with `rows` and `row.name` in a rule: one card per row.
+- **Not yet:** detaching a distribution (refused, `distributed`), editing
+  the layout in the inspector (step 5).

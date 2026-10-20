@@ -76,6 +76,16 @@ A composition that lists `params` is a component: each parameter has a `type` (a
 
 An instance's parameter reads as `first.params.title` (a link, an expression's `prop()`). A composition must not hold itself, through instances or not. Detaching an instance (`detachPlan` in `@tramme/core`) turns it into a group of plain layers drawing the same: the parameters and overrides written in, the keyframes moved to the holding composition's time. It is refused when the copy could not draw the same: a nested time that does not run one to one (a speed other than 1, a loop, a remap), an expression or a modifier reading the time while the copy is moved, an expression reading the component's own size or markers, a camera or finishing effects in the component.
 
+### Distributions
+
+A comp layer's `distribute` makes N instances of its component at once. `layout` places them in the layer's own space, centred on its origin: `grid` (`columns`, `spacing` [x, y]), `list` (`direction`, `spacing`), `circle` (`radius`, `start` and `sweep` in degrees, `rotate`), `path` (a `path` as a `shape.path` writes it, `rotate` along it) or `points` (the vertices of another layer's path, in the same parent). The count is `count`, else one per row of `rows` (a JSON asset holding an array), else one per point. `params` gives each parameter by a rule: a value, an expression (`index`, `count`, `row`, `random(index)`, `noise(index * 0.3)`, `t`…), or `{ "$palette": "order" | "random", "seed"?, "colors"? }` (the colours given, else the document's colour tokens). The comp layer's own `params` and `overrides` apply to every instance first. Inside, each instance has its rank: `stagger`, `noise` and the expressions read the instance's `index` and `count`, and its modifiers' noise is its own.
+
+```json
+"cards": { "type": "comp", "props": { "comp": "card" }, "transform": { "position": [540, 960] },
+  "distribute": { "count": 12, "layout": { "type": "grid", "columns": 3, "spacing": [320, 220] },
+    "params": { "color": { "$palette": "order" }, "title": { "$expr": "'Card ' + (index + 1)" } } } }
+```
+
 ### Styles and animations
 
 `styles` at the document's top level are sets of properties defined once, by their name on a layer (`fill`, `radius`, `transform.opacity`). A layer applies them in order with `styles: [{ "style": "ink" }, { "style": "pop", "at": 2 }]`: each sets its properties over the layer's own, the later over the earlier. Keyframed, a style is an animation: written from 0, moved by `at`. `map` applies a style's property to another one of the layer (`{ "transform.scale": "size" }`).
@@ -113,7 +123,7 @@ Wherever a color is expected (gradient stops included), `"@name"` refers to the 
 
 ### Expressions
 
-A single expression (`value + 10`) or a body with `return`. Available names: `t` (= `time`), `frame`, `fps`, `value`, `comp` (`width`, `height`, `duration`, `fps`), `prop('layer.prop')`, `token('name')`, `marker('id|kind|label')` (`{ t, frame }`), `ease(spec, x)`, `clamp`, `lerp`, `prog(t, a, b)`, `smoothstep`, `linear(t, t0, t1, v0, v1)`, `random(seed)`, `noise(x, y, z)`, `add`, `sub`, `mul`, `Math` (without `Math.random`), `audio(source)`, `events(source)` and `track(layer, name?, at?)` (below), and the modifiers below. An expression must stay a pure function of `t`: no state, no unseeded randomness, no access to the browser.
+A single expression (`value + 10`) or a body with `return`. Available names: `t` (= `time`), `frame`, `fps`, `value`, `comp` (`width`, `height`, `duration`, `fps`), `prop('layer.prop')`, `token('name')`, `marker('id|kind|label')` (`{ t, frame }`), `ease(spec, x)`, `clamp`, `lerp`, `prog(t, a, b)`, `smoothstep`, `linear(t, t0, t1, v0, v1)`, `random(seed)`, `noise(x, y, z)`, `add`, `sub`, `mul`, `Math` (without `Math.random`), `audio(source)`, `events(source)` and `track(layer, name?, at?)` (below), `index` and `count` (the layer's rank among its siblings, bottom first, and their number; inside an instance of a distribution, the instance's), `row` (inside an instance of a distribution over data, its row), and the modifiers below. An expression must stay a pure function of `t`: no state, no unseeded randomness, no access to the browser.
 
 ### Camera (2.5D)
 

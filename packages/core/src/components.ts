@@ -10,13 +10,18 @@
 import { pointer, type Op } from './ops.ts';
 import { asKeyframed, propKind, staticValue } from './props.ts';
 import { CAMERA_SCHEMA, MASK_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type PropDef, type PropType, type Registry } from './registry.ts';
-import type { ComponentParam, Composition, Layer, Prop, TrammeDoc } from './types.ts';
+import { hash } from './math.ts';
+import type { ComponentParam, Composition, Distribution, Layer, Layout, PaletteRule, Prop, TrammeDoc, Vec2 } from './types.ts';
 
 /** a component's parameters as read by one instance: the property each address takes instead of its own */
 export interface Instance {
   /** the same for two instances that read the component the same way (the Evaluator's caches) */
   key: string;
   props: Map<string, Prop>;
+  /** in a distribution: its rank and the number of instances, which the component's modifiers and expressions read as index and count */
+  rank?: [number, number];
+  /** in a distribution over a data asset: its row, read as `row` */
+  row?: unknown;
 }
 
 /** the types a parameter can take: those of the schema's properties */
@@ -116,7 +121,7 @@ export function styleProps(doc: TrammeDoc, layer: Layer): Map<string, Prop> | nu
   return out;
 }
 
-export type DetachError = 'not-instance' | 'timing' | 'time' | 'camera' | 'finish' | 'rect';
+export type DetachError = 'not-instance' | 'distributed' | 'timing' | 'time' | 'camera' | 'finish' | 'rect';
 export interface DetachPlan { ops: Op[]; ids: string[] }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -145,6 +150,8 @@ const readsComp = (x: unknown): boolean =>
 export function detachPlan(doc: TrammeDoc, registry: Registry, compId: string, layerId: string): DetachPlan | { error: DetachError } {
   const host = doc.compositions[compId], L = host?.layers[layerId], inner = L && componentOf(doc, L);
   if (!L || !inner) return { error: 'not-instance' };
+  // a distribution's instances are read from its rules at each instant: not one copy
+  if (L.distribute) return { error: 'distributed' };
   const innerId = String(staticValue(L.props?.comp));
   const P = L.props || {};
   const timed = (k: string) => P[k] !== undefined && propKind(P[k]) !== 'static';
@@ -246,4 +253,94 @@ export function detachPlan(doc: TrammeDoc, registry: Registry, compId: string, l
     { op: 'replace', path: at(layerId), value: group },
   ];
   return { ops, ids: [...Object.keys(extra), ...Object.keys(layers)] };
+}
+
+// ── distribution (step 2) ───────────────────────────────────
+
+/** where one instance of a distribution goes: its offset in the comp layer's space, its turn in degrees */
+export interface Placement { at: Vec2; rotation: number }
+
+/** how many instances a distribution makes */
+export function distributionCount(d: Distribution, rows: unknown[] | null, points: Vec2[] | null): number {
+  const n = d.count ?? rows?.length ?? (d.layout.type === 'points' ? points?.length : undefined) ?? 1;
+  return Math.max(0, Math.min(MAX_INSTANCES, Math.floor(n)));
+}
+
+/** more is a mistake, not a film */
+export const MAX_INSTANCES = 10000;
+
+/** the placements of n instances by a layout; `points` gives a points layout its vertices, already in the layer's space */
+export function layoutPlacements(layout: Layout, n: number, points: Vec2[] | null = null): Placement[] {
+  const out: Placement[] = [];
+  switch (layout.type) {
+    case 'grid': {
+      const cols = Math.max(1, layout.columns ?? Math.ceil(Math.sqrt(n))), rows = Math.ceil(n / cols), [sx, sy] = layout.spacing ?? [100, 100];
+      for (let i = 0; i < n; i++) out.push({ at: [((i % cols) - (cols - 1) / 2) * sx, (Math.floor(i / cols) - (rows - 1) / 2) * sy], rotation: 0 });
+      break;
+    }
+    case 'list': {
+      const s = layout.spacing ?? 100, v = layout.direction === 'vertical';
+      for (let i = 0; i < n; i++) { const k = (i - (n - 1) / 2) * s; out.push({ at: v ? [0, k] : [k, 0], rotation: 0 }); }
+      break;
+    }
+    case 'circle': {
+      const r = layout.radius ?? 300, start = layout.start ?? -90, sweep = layout.sweep ?? 360;
+      // a whole turn: n gaps (the last does not land on the first); an arc: from end to end
+      const step = n > 1 ? sweep / (Math.abs(Math.abs(sweep) - 360) < 1e-9 ? n : n - 1) : 0;
+      for (let i = 0; i < n; i++) {
+        const a = start + i * step, rad = (a * Math.PI) / 180;
+        out.push({ at: [r * Math.cos(rad), r * Math.sin(rad)], rotation: layout.rotate ? a + 90 : 0 });
+      }
+      break;
+    }
+    case 'path': {
+      const s = pathSampler(layout.path);
+      const gaps = layout.path.closed ? n : n - 1;
+      for (let i = 0; i < n; i++) {
+        const { at, angle } = s(gaps > 0 ? i / gaps : 0);
+        out.push({ at, rotation: layout.rotate ? angle : 0 });
+      }
+      break;
+    }
+    case 'points':
+      for (let i = 0; i < n; i++) out.push({ at: points?.[i] ?? [0, 0], rotation: 0 });
+      break;
+  }
+  return out;
+}
+
+/** a point along a path at a fraction of its length, and its direction there in degrees */
+export function pathSampler(p: { v: Vec2[]; i?: Vec2[]; o?: Vec2[]; closed?: boolean }): (u: number) => { at: Vec2; angle: number } {
+  const pts: Vec2[] = [], STEPS = 32, n = p.v.length;
+  const segs = n < 2 ? 0 : p.closed ? n : n - 1;
+  if (n) pts.push(p.v[0]);
+  for (let k = 0; k < segs; k++) {
+    const a = p.v[k], b = p.v[(k + 1) % n], o = p.o?.[k] ?? [0, 0], i = p.i?.[(k + 1) % n] ?? [0, 0];
+    const c1: Vec2 = [a[0] + o[0], a[1] + o[1]], c2: Vec2 = [b[0] + i[0], b[1] + i[1]];
+    for (let s = 1; s <= STEPS; s++) {
+      const t = s / STEPS, m = 1 - t;
+      pts.push([m * m * m * a[0] + 3 * m * m * t * c1[0] + 3 * m * t * t * c2[0] + t * t * t * b[0], m * m * m * a[1] + 3 * m * m * t * c1[1] + 3 * m * t * t * c2[1] + t * t * t * b[1]]);
+    }
+  }
+  const len = [0];
+  for (let k = 1; k < pts.length; k++) len.push(len[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+  const total = len[len.length - 1];
+  return (u) => {
+    if (pts.length < 2 || total <= 0) return { at: pts[0] ?? [0, 0], angle: 0 };
+    const d = Math.min(1, Math.max(0, u)) * total;
+    let k = 1;
+    while (k < len.length - 1 && len[k] < d) k++;
+    const f = len[k] > len[k - 1] ? (d - len[k - 1]) / (len[k] - len[k - 1]) : 0, a = pts[k - 1], b = pts[k];
+    return { at: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], angle: (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI };
+  };
+}
+
+export const isPaletteRule = (r: unknown): r is PaletteRule => isObj(r) && (r.$palette === 'order' || r.$palette === 'random');
+
+/** the colour a palette rule gives instance i: its colours, else the document's colour tokens (as references), in turn or at random */
+export function paletteColor(doc: TrammeDoc, r: PaletteRule, i: number): string | null {
+  const colors = r.colors?.length ? r.colors : Object.entries(doc.tokens).filter(([, t]) => t.type === 'color').map(([name]) => `@${name}`);
+  if (!colors.length) return null;
+  const k = r.$palette === 'order' ? i % colors.length : Math.floor(hash(i * 7919 + (r.seed ?? 0) * 104729 + 1) * colors.length) % colors.length;
+  return colors[k];
 }

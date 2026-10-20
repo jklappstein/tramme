@@ -5,14 +5,15 @@
 // cycles are reported and the editor can show what drives what. Static
 // properties are cached across frames.
 
-import { componentOf, instanceProps, paramDef, styleProps, type Instance } from './components.ts';
+import { componentOf, distributionCount, instanceProps, isPaletteRule, layoutPlacements, paletteColor, paramDef, styleProps, type Instance, type Placement } from './components.ts';
+import { applyMat, invertMat, layerMatrix } from './math.ts';
 import { audioReader, type AudioReader } from './analysis.ts';
 import { eventsReader, type EventsReader } from './events.ts';
 import { integrate, mediaClockOf, mediaMoments, mediaTime, trackId, trackReader, type MediaClock, type TrackReader } from './track.ts';
 import { compileExpr, type ExprScope } from './expr.ts';
 import { modifierParams, seedOf, type ModifierContext } from './modifiers.ts';
 import { asExpr, asKeyframed, asLink, easeFn, modsOf, propKind, resolveTokens, sampleKeyframes, staticValue, tokenValue } from './props.ts';
-import { CAMERA_SCHEMA, MASK_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type NodeType, type PropDef, type Registry } from './registry.ts';
+import { CAMERA_SCHEMA, MASK_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type NodeType, type PathValue, type PropDef, type Registry } from './registry.ts';
 import type { Composition, TrammeDoc, Layer, Marker, Prop, Vec2 } from './types.ts';
 
 export interface EvaluatedTransform {
@@ -247,10 +248,11 @@ export class Evaluator {
     }
     // an instance of a component: how it reads it, for the node to draw it so
     const inner = componentOf(this.doc, layer);
-    if (inner && (inner.params || layer.overrides)) {
+    if (inner && (inner.params || layer.overrides || layer.distribute)) {
       const values: Record<string, unknown> = {};
       for (const name of Object.keys(inner.params || {})) if (layer.params?.[name] !== undefined) values[name] = this.read(ctx, `${id}.params.${name}`);
-      props.$instance = this.instance(String(props.comp), values, layer.overrides);
+      if (layer.distribute) props.$instances = this.distribute(ctx, id, String(props.comp), values);
+      else props.$instance = this.instance(String(props.comp), values, layer.overrides);
     }
     return {
       id, layer, node,
@@ -264,6 +266,48 @@ export class Evaluator {
       // a clip layer is used even when hidden; it follows its own in/out
       clip: layer.clip && clipLayer && layerActive(clipLayer, ctx.comp, ctx.t) ? this.layer(ctx, layer.clip) : null,
     };
+  }
+
+  /**
+   * The instances of a distribution: each placed by the layout, its
+   * parameters the comp layer's values with the rules over them, its rank
+   * and its row (index, count and row for the component's expressions and
+   * modifiers).
+   */
+  private distribute(ctx: FrameCtx, id: string, compId: string, values: Record<string, unknown>): ({ instance: Instance } & Placement)[] {
+    const layer = ctx.comp.layers[id], d = layer.distribute!, inner = this.comp(compId);
+    const data = d.rows ? this.data?.(d.rows) : undefined;
+    const rows = d.rows ? (Array.isArray(data) ? data : []) : null;
+    const points = d.layout.type === 'points' ? this.pointsOf(ctx, id, d.layout.layer) : null;
+    const n = distributionCount(d, rows, points);
+    return layoutPlacements(d.layout, n, points).map((place, i) => {
+      const row = rows?.[i], vals = { ...values };
+      for (const [name, rule] of Object.entries(d.params || {})) {
+        const p = inner.params?.[name];
+        if (p) vals[name] = this.ruleValue(ctx, `${id}.distribute.params.${name}`, rule, paramDef(p), vals[name] ?? p.default ?? null, i, n, row);
+      }
+      const inst = this.instance(compId, vals, layer.overrides);
+      return { instance: { ...inst, key: `${inst.key}#${i}`, rank: [i, n], ...(row !== undefined ? { row } : {}) }, ...place };
+    });
+  }
+
+  /** a distribution's rule for instance i of n: the palette, an expression, or a value */
+  private ruleValue(ctx: FrameCtx, address: string, rule: unknown, def: PropDef, base: unknown, index: number, count: number, row: unknown): unknown {
+    if (isPaletteRule(rule)) return resolveTokens(def.type, paletteColor(this.doc, rule, index) ?? base, this.doc.tokens);
+    if (propKind(rule) === 'expression') return this.runExpr(ctx, address, asExpr(rule).$expr, base, def, { index, count, row });
+    return resolveTokens(def.type, staticValue(rule), this.doc.tokens);
+  }
+
+  /** the vertices of a layer's path (its first path property), in the space of layer `into` (both in the same parent) */
+  private pointsOf(ctx: FrameCtx, into: string, source: string): Vec2[] {
+    const src = ctx.comp.layers[source];
+    if (!src || !this.registry.hasNode(src.type)) return [];
+    const name = Object.entries(this.registry.node(src.type).props).find(([, d]) => d.type === 'path')?.[0];
+    const pv = name ? this.read(ctx, `${source}.${name}`) as PathValue | null : null;
+    if (!pv?.v) return [];
+    const from = layerMatrix(this.evalSchema(ctx, `${source}.transform`, TRANSFORM_SCHEMA) as unknown as EvaluatedTransform);
+    const to = invertMat(layerMatrix(this.evalSchema(ctx, `${into}.transform`, TRANSFORM_SCHEMA) as unknown as EvaluatedTransform));
+    return to ? pv.v.map((v) => applyMat(to, applyMat(from, v))) : [];
   }
 
   /**
@@ -387,13 +431,15 @@ export class Evaluator {
     const mods = modsOf(prop)!;
     const kp = propKind(prop) === 'keyframes' ? asKeyframed(prop) : null;
     const selfId = address.split('.')[0];
-    const [index, count] = this.rank(ctx.comp, selfId);
+    // an instance of a distribution: its rank among the instances, and noise of its own
+    const [index, count] = ctx.inst?.rank ?? this.rank(ctx.comp, selfId);
+    const seed = seedOf(address) + (ctx.inst?.rank ? ctx.inst.rank[0] * 7919 : 0);
     for (let k = 0; k < upto; k++) {
       const spec = mods[k];
       if (!this.registry.hasModifier(spec.type)) throw new EvalError(address, `unknown modifier "${spec.type}"`);
       const m = this.registry.modifier(spec.type);
       const mc: ModifierContext = {
-        t: ctx.t, fps: ctx.comp.fps, index, count, seed: seedOf(address),
+        t: ctx.t, fps: ctx.comp.fps, index, count, seed,
         audio: (source: string) => this.audioAt(ctx, source),
         position: (id: string, t2?: number) => this.layerPosition(ctx, address, id || selfId, t2 ?? ctx.t),
         keys: kp ? kp.$k : null,
@@ -477,10 +523,12 @@ export class Evaluator {
     s.add(to);
   }
 
-  private runExpr(ctx: FrameCtx, address: string, src: string, value: unknown, def: PropDef): unknown {
+  private runExpr(ctx: FrameCtx, address: string, src: string, value: unknown, def: PropDef, at?: { index: number; count: number; row: unknown }): unknown {
     const { comp } = ctx;
     const tokens = this.doc.tokens;
+    const [index, count] = at ? [at.index, at.count] : ctx.inst?.rank ?? (address[0] === '$' ? [0, 1] : this.rank(comp, address.split('.')[0]));
     const scope: ExprScope = {
+      index, count, row: at ? at.row : ctx.inst?.row,
       t: ctx.t, frame: ctx.frame, fps: comp.fps, value,
       comp: { width: comp.width, height: comp.height, duration: comp.duration, fps: comp.fps },
       prop: (a: string) => { this.depend(address, a); return this.read(ctx, a); },

@@ -5,14 +5,14 @@
 // layers involved. The assistant runs them before summing up its work, the
 // user from the / menu. Plugins add their own (`checks` export).
 
-import type { Instance } from './components.ts';
+import type { Instance, Placement } from './components.ts';
 import { Evaluator, nestedTime, type EvaluatedLayer, type NestedTiming } from './evaluate.ts';
 import { asKeyframed, modsOf, propKind } from './props.ts';
 import { animatedSlots, motionFigures, motionStretches, pathDeviation, sampleAddress, spanOf } from './motion.ts';
 import { layerMatrix, matMul, type Mat2D } from './math.ts';
 import { mediaTime, pictureRect } from './track.ts';
 import type { Host, NodeType, Rect, Registry } from './registry.ts';
-import type { Composition, Layer, TrammeDoc } from './types.ts';
+import type { Composition, Layer, TrammeDoc, Vec2 } from './types.ts';
 
 export interface QualityIssue {
   /** the check that found it */
@@ -117,7 +117,15 @@ function place(ev: Evaluator, comp: Composition, t: number, layers: EvaluatedLay
     const inner = L.node.type === 'comp' && typeof L.props.comp === 'string' && depth < 8 ? doc.compositions[L.props.comp] : undefined;
     if (inner) {
       const lt = nestedTime(L.props as unknown as NestedTiming, t, L.layer.in ?? 0, inner.duration);
-      if (lt >= 0 && lt < inner.duration) place(ev, inner, lt, ev.frame(lt, L.props.comp as string, L.props.$instance as Instance | undefined).layers, matMul(m, [1, 0, 0, 1, -inner.width / 2, -inner.height / 2]), opacity, out, `${prefix}${L.id}/`, depth + 1);
+      if (lt >= 0 && lt < inner.duration) {
+        // one frame, or each instance of a distribution at its place (named after its rank: `cards#3/title`)
+        const many = L.props.$instances as ({ instance: Instance } & Placement)[] | undefined;
+        for (const [k, one] of (many ?? [{ instance: L.props.$instance as Instance | undefined, at: [0, 0] as Vec2, rotation: 0 }]).entries()) {
+          const a = (one.rotation * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
+          const at = matMul(m, [c, s, -s, c, one.at[0], one.at[1]]);
+          place(ev, inner, lt, ev.frame(lt, L.props.comp as string, one.instance).layers, matMul(at, [1, 0, 0, 1, -inner.width / 2, -inner.height / 2]), opacity, out, `${prefix}${L.id}${many ? `#${k}` : ''}/`, depth + 1);
+        }
+      }
     }
   }
 }

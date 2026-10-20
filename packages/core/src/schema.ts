@@ -67,6 +67,22 @@ const param = z.strictObject({
   description: z.string().optional(),
 });
 
+const vec2 = z.tuple([finite, finite]);
+const layout = z.discriminatedUnion('type', [
+  z.strictObject({ type: z.literal('grid'), columns: z.number().int().positive().optional(), spacing: vec2.optional() }),
+  z.strictObject({ type: z.literal('list'), direction: z.enum(['horizontal', 'vertical']).optional(), spacing: finite.optional() }),
+  z.strictObject({ type: z.literal('circle'), radius: finite.optional(), start: finite.optional(), sweep: finite.optional(), rotate: z.boolean().optional() }),
+  z.strictObject({ type: z.literal('path'), path: z.strictObject({ v: z.array(vec2), i: z.array(vec2).optional(), o: z.array(vec2).optional(), closed: z.boolean().optional() }), rotate: z.boolean().optional() }),
+  z.strictObject({ type: z.literal('points'), layer: id }),
+]);
+
+const distribution = z.strictObject({
+  count: z.number().int().nonnegative().optional(),
+  rows: id.optional(),
+  layout,
+  params: z.record(z.string(), z.unknown()).optional(),
+});
+
 const layer = z.strictObject({
   type: z.string().min(1),
   name: z.string().optional(),
@@ -84,6 +100,7 @@ const layer = z.strictObject({
   params: z.record(z.string(), prop).optional(),
   overrides: z.record(z.string(), prop).optional(),
   styles: z.array(styleUse).optional(),
+  distribute: distribution.optional(),
 });
 
 const marker = z.strictObject({

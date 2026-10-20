@@ -41,6 +41,9 @@ export interface ModifierSpec { type: string; [param: string]: unknown }
  *   link        { $link: 'layerId.prop' | 'layerId.transform.position' | '@token' }
  * Every non-raw form may carry $mod, a stack of modifiers applied in order.
  */
+/** a distribution's rule taking the colours in turn (`order`) or at random: `colors`, else the document's colour tokens */
+export interface PaletteRule { $palette: 'order' | 'random'; seed?: number; colors?: string[] }
+
 export interface StaticProp<T = unknown> { $v: T; $mod?: ModifierSpec[] }
 export interface KeyframedProp<T = unknown> { $k: Keyframe<T>[]; $expr?: string; $mod?: ModifierSpec[] }
 export interface ExprProp { $expr: string; $mod?: ModifierSpec[] }
@@ -139,6 +142,35 @@ export interface Layer {
   overrides?: Record<string, Prop>;
   /** styles and animations of the document applied to this layer, in order: each sets its properties over the layer's own, the later over the earlier */
   styles?: StyleUse[];
+  /** comp layers: N instances at once, placed by a layout, each parameter given by a rule */
+  distribute?: Distribution;
+}
+
+/** where the instances of a distribution go, in the comp layer's own space (centred on its origin) */
+export type Layout =
+  /** rows of `columns` (default: as square as the count allows), `spacing` [x, y] apart */
+  | { type: 'grid'; columns?: number; spacing?: Vec2 }
+  /** a line, `spacing` apart */
+  | { type: 'list'; direction?: 'horizontal' | 'vertical'; spacing?: number }
+  /** around a circle from `start` degrees (0: right, -90: top) over `sweep` degrees; `rotate` turns each one with its angle */
+  | { type: 'circle'; radius?: number; start?: number; sweep?: number; rotate?: boolean }
+  /** evenly along a path (vertices and tangents as a shape.path writes them); `rotate` turns each one along it */
+  | { type: 'path'; path: { v: Vec2[]; i?: Vec2[]; o?: Vec2[]; closed?: boolean }; rotate?: boolean }
+  /** on the vertices of another layer's path, in the same parent: one instance per vertex */
+  | { type: 'points'; layer: string };
+
+/**
+ * N instances of a component at once. The count is `count`, else one per
+ * row of `rows` (a JSON asset holding an array), else one per point of a
+ * `points` layout. Each parameter of `params` is given by a rule: a value
+ * (the same for all), an expression reading `index`, `count`, `row` (and
+ * `random(seed)`, `noise(x)`, `t`...), or the palette in order or at random.
+ */
+export interface Distribution {
+  count?: number;
+  rows?: string;
+  layout: Layout;
+  params?: Record<string, unknown>;
 }
 
 /**

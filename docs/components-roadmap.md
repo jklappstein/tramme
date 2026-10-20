@@ -2,7 +2,7 @@
 
 How anything in a document is defined once and used many times with parameters: a layer of any type, a group, a whole composition, an animation alone or a style. Today the assistant writes every element in full through JSON Patch — twenty cards are twenty complete subtrees, a hundred dots a hundred layers — so the cost of a film follows the number of things on screen. After this it follows the number of different ideas in the film.
 
-Status: step 1 done (parameters, instances and overrides read by the Evaluator, detach, styles and animations). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (parameters, instances and overrides read by the Evaluator, detach, styles and animations), step 2 done (distributions: layouts, rules, a rank per instance; a distribution is not detached yet). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -30,9 +30,9 @@ What exists goes partway. `stagger` and `noise` vary a value by the layer's rank
 
 ### Step 2. Distribution
 
-- [ ] Layouts: grid, circle, along a path, list, the points of another layer, the rows of a data asset.
-- [ ] Rules per parameter: a constant, an expression (`index`, `count`, `row`, `random(seed)`), noise, the palette in order or at random.
-- [ ] A sibling rank and count for every instance, so the existing modifiers (`stagger`, `noise`, `near`) keep working on distributed instances.
+- [x] Layouts: grid, circle, along a path, list, the points of another layer, the rows of a data asset.
+- [x] Rules per parameter: a constant, an expression (`index`, `count`, `row`, `random(seed)`), noise, the palette in order or at random.
+- [x] A sibling rank and count for every instance, so the existing modifiers (`stagger`, `noise`, `near`) keep working on distributed instances.
 
 ### Step 3. The time field
 

@@ -186,10 +186,32 @@ class Checker {
     }
   }
 
+  /** a distribution: its data, the layer its points come from, a rule per parameter of the component */
+  distribution(cid: string, lid: string, lp: string, innerId: string) {
+    const comp = this.doc.compositions[cid], d = comp.layers[lid].distribute!, inner = this.doc.compositions[innerId];
+    if (d.rows !== undefined && this.doc.assets[d.rows]?.type !== 'json') this.err(`${lp}/distribute/rows`, `"${d.rows}" is not a JSON asset`);
+    if (d.layout.type === 'points') {
+      const src = comp.layers[d.layout.layer], parent = (id: string) => Object.entries(comp.layers).find(([, l]) => l.children?.includes(id))?.[0];
+      if (!src) this.err(`${lp}/distribute/layout/layer`, `unknown layer "${d.layout.layer}"`);
+      else if (!this.reg.hasNode(src.type) || !Object.values(this.reg.node(src.type).props).some((p) => p.type === 'path')) this.err(`${lp}/distribute/layout/layer`, `${src.type} has no path to take points from`);
+      else if (parent(d.layout.layer) !== parent(lid)) this.err(`${lp}/distribute/layout/layer`, `"${d.layout.layer}" must have the same parent`);
+    }
+    for (const [name, rule] of Object.entries(d.params || {})) {
+      const p = inner.params?.[name], rp = `${lp}/distribute/params/${name}`;
+      if (!p) { this.err(rp, `"${innerId}" has no parameter "${name}"`); continue; }
+      if (isObj(rule) && '$palette' in rule) {
+        if (rule.$palette !== 'order' && rule.$palette !== 'random') this.err(rp + '/$palette', "'order' or 'random' expected");
+        if (p.type !== 'color' && p.type !== 'paint') this.err(rp, `the palette gives colours, "${name}" is ${p.type}`);
+        (Array.isArray(rule.colors) ? rule.colors : []).forEach((c: unknown, i: number) => { const bad = this.colorIssue(c); if (bad) this.err(`${rp}/colors/${i}`, bad); });
+      } else if (isObj(rule) && '$expr' in rule) this.expr(rp + '/$expr', rule.$expr);
+      else if (PARAM_TYPES.includes(p.type as never)) { const bad = this.valueIssue(paramDef(p), staticValue(rule)); if (bad) this.err(rp, bad); }
+    }
+  }
+
   /** a comp layer's parameter values (in the composition holding it) and overrides (in the component) */
   instance(cid: string, lid: string, lp: string) {
     const layer = this.doc.compositions[cid].layers[lid];
-    if (!layer.params && !layer.overrides) return;
+    if (!layer.params && !layer.overrides && !layer.distribute) return;
     const inner = componentOf(this.doc, layer);
     if (!inner) return this.err(lp + (layer.type === 'comp' ? '/props/comp' : '/type'), 'parameters and overrides belong to a comp layer holding a composition');
     const innerId = String(staticValue(layer.props?.comp));
@@ -198,6 +220,7 @@ class Checker {
       if (!p) { this.err(`${lp}/params/${name}`, `"${innerId}" has no parameter "${name}"`); continue; }
       if (PARAM_TYPES.includes(p.type as never)) this.prop(cid, `${lp}/params/${name}`, paramDef(p), v);
     }
+    if (layer.distribute) this.distribution(cid, lid, lp, innerId);
     for (const [address, v] of Object.entries(layer.overrides || {})) {
       const def = addressDef(this.doc, this.reg, inner, address);
       if (!def) { this.err(lp + pointer('overrides', address), `nothing at "${address}" in "${innerId}"`); continue; }

@@ -194,6 +194,10 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     fs.writeFileSync(path.join(dir, 'key-matte.tramme.json'), JSON.stringify(keyed('matte')));
     fs.writeFileSync(path.join(dir, 'badges.tramme.json'), JSON.stringify(badges()));
     fs.writeFileSync(path.join(dir, 'badges-detached.tramme.json'), JSON.stringify(detachedBadges()));
+    const row = badges();
+    row.compositions.main.layers = { row: { type: 'comp', transform: { position: [160, 90] }, props: { comp: 'badge' }, distribute: { count: 3, layout: { type: 'list', spacing: 100 }, params: { color: { $palette: 'order', colors: ['#FF0000', '#00FF00', '#0000FF'] }, spin: { $expr: 'index * 45' } } } } };
+    row.compositions.main.order = ['row'];
+    fs.writeFileSync(path.join(dir, 'badges-row.tramme.json'), JSON.stringify(row));
     server = new Server(readConfig(path.join(dir, 'crossfade.tramme.json')));
     const port = await server.start();
     const { browser, page } = await launch();
@@ -326,4 +330,13 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
       expect(worst, `at ${t}`).toBeLessThanOrEqual(2);
     }
   }, 120_000);
+
+  it('draws a distribution: each instance at its place, its colour from the palette', async () => {
+    const f = await still('badges-row', 0.5);
+    expect(near(f(60, 90), RED)).toBe(true);
+    expect(near(f(160, 90), [0, 255, 0])).toBe(true);
+    expect(near(f(260, 90), BLUE)).toBe(true);
+    // between two badges: the black of the scene
+    expect(near(f(110, 20), [0, 0, 0])).toBe(true);
+  }, 60_000);
 });
