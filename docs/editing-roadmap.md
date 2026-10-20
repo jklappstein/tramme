@@ -76,7 +76,8 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 
 - [x] Masks on any layer: a list of paths, each with its mode (add, subtract, intersect), feather, expansion, opacity and invert, the path animatable like a `shape.path`.
   `masks` on the layer (an addition to the format, `MASK_SCHEMA` in `packages/core/src/registry.ts`), evaluated like its effects (`layer.masks.<id>.<prop>`), drawn before its effects (`applyMasks`, `packages/render/src/canvas2d.ts`); a Masks section in the inspector, a new mask a rectangle over the layer. Rendered and read back in Chrome.
-- [ ] Drawn and edited in the viewport with the path tools already there (vertices with their tangents, Alt+click to add one, Delete to remove it).
+- [x] Drawn and edited in the viewport with the path tools already there (vertices with their tangents, Alt+click to add one, Delete to remove it).
+  The selected layer's masks show with its own paths (`masks.<id>.path` in `apps/editor/src/ui/Viewport.tsx`); the selected vertex remembers its path, so Delete and the tangents act on the right one.
 - [ ] A mask path can follow a track (`track()`), so a mask stays on something filmed.
 
 ### Step 6. Colour

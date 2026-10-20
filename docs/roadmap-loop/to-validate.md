@@ -123,3 +123,9 @@ its network policy) and has no GPU: no model was downloaded or run there.
 - **Step 5 — masks.** Inspector → Masks → + on a video layer: a rectangle
   over it; change mode, feather, expansion, invert, add a second one in
   subtract, and see the picture follow; an export shows the same.
+- **Step 5 — masks in the viewport.** Select a masked layer: its masks'
+  vertices show; drag one, Alt+click the outline to add one, Delete removes
+  the selected one; with two masks, Delete takes from the one clicked.
+- **History.** Commit `f466b6a` alone does not typecheck (a label declared
+  twice); `ef9f34f`, right after it, fixes it. Every other commit passed the
+  checks before it was pushed.

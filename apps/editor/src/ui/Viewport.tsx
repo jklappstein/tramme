@@ -6,7 +6,7 @@
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Evaluator, layerActive, propKind, anchorShift, movePathVertex, setPathTangent, insertPathVertex, removePathVertex, nearestOnPath, pathD, localFrame, neighbourDrawings, type Composition, type TrammeDoc, type EvaluatedLayer, type Handle, type PathValue, type Rect, type Vec2 } from '@tramme/core';
+import { Evaluator, getAt, layerActive, pointer, propKind, anchorShift, movePathVertex, setPathTangent, insertPathVertex, removePathVertex, nearestOnPath, pathD, localFrame, neighbourDrawings, type Composition, type TrammeDoc, type EvaluatedLayer, type Handle, type PathValue, type Prop, type Rect, type Vec2 } from '@tramme/core';
 import { drawingRect } from '@tramme/nodes';
 import { localMatrix } from '@tramme/render';
 import { comp, commit, draft, cancelDraft, S, select, viewDoc, previewDoc, toast, uiTime } from '../state.ts';
@@ -175,16 +175,28 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
 
   const selected = S.selection.value.filter((id) => c.layers[id]);
   const geo = !bare && selected.length === 1 ? geometry(ev, c, compId, selected[0], now) : null;
-  const [vertex, setVertex] = useState<number | null>(null);
+  const [vertex, setVertexAt] = useState<number | null>(null);
+  /** the path the selected vertex belongs to: a node's path property, or a mask's ('masks.<id>.path') */
+  const [vertexPath, setVertexPath] = useState<string | null>(null);
+  const setVertex = (i: number | null, prop: string | null = null) => { setVertexAt(i); setVertexPath(i === null ? null : prop); };
   useEffect(() => { setVertex(null); }, [selected[0]]);
 
+  /** where a property lives in the document: a mask's ('masks.<id>.<prop>') by the mask's place in the layer's list */
+  const pathOf = (id: string, name: string) => {
+    const mask = /^masks\.([^.]+)\.(.+)$/.exec(name);
+    if (!mask) return propPath(compId, id, name);
+    const i = (S.doc.peek().compositions[compId]?.layers[id]?.masks ?? []).findIndex((x) => x.id === mask[1]);
+    return pointer('compositions', compId, 'layers', id, 'masks', i, 'props', mask[2]);
+  };
+  /** a property's name for the undo list */
+  const labelOf = (g: Geo, name: string) => (name.startsWith('masks.') ? t('inspector.masks') : t(g.layer.node.props[name]?.label ?? name));
   const canEdit = (id: string, name: string) => {
-    const raw = rawProp(S.doc.peek(), compId, id, name);
+    const raw = getAt(S.doc.peek(), pathOf(id, name)) as Prop | undefined;
     const k = raw === undefined ? 'static' : propKind(raw);
     if (k === 'expression' || k === 'link') { toast(k === 'link' ? t('viewport.nameIsDrivenBy', { name: name.replace('transform.', '') }) : t('viewport.nameIsDrivenByAn', { name: name.replace('transform.', '') })); return false; }
     return true;
   };
-  const opsFor = (id: string, name: string, v: unknown) => editAtOps(S.doc.peek(), propPath(compId, id, name), v, S.time.peek(), c.fps);
+  const opsFor = (id: string, name: string, v: unknown) => editAtOps(S.doc.peek(), pathOf(id, name), v, S.time.peek(), c.fps);
 
   // ── drags ──────────────────────────────────────────────────
   const dragMove = (e: PointerEvent, id: string, g: Geo) => {
@@ -255,13 +267,17 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
   };
 
   // ── a path property's vertices and tangents, and the anchor ──
-  /** the path properties of the selected layer's node, with their value at the current time */
+  /** the path properties of the selected layer's node, then its masks' paths, with their value at the current time */
   const pathsOf = (g: Geo): [string, PathValue][] => {
     const out: [string, PathValue][] = [];
     for (const [name, def] of Object.entries(g.layer.node.props)) {
       if (def.type !== 'path') continue;
       const pv = g.layer.props[name] as PathValue | undefined;
       if (pv && Array.isArray(pv.v) && pv.v.length) out.push([name, pv]);
+    }
+    for (const mk of g.layer.masks ?? []) {
+      const pv = mk.props.path as PathValue | undefined;
+      if (pv && Array.isArray(pv.v) && pv.v.length) out.push([`masks.${mk.id}.path`, pv]);
     }
     return out;
   };
@@ -270,7 +286,7 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
     const id = selected[0];
     if (!canEdit(id, prop)) return;
     e.stopPropagation();
-    setVertex(i);
+    setVertex(i, prop);
     const inv = g.matrix.inverse();
     const a = inv.transformPoint(new DOMPoint(...toComp(e)));
     let last: PathValue | null = null;
@@ -278,14 +294,14 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
       const q = inv.transformPoint(new DOMPoint(...toComp(ev2)));
       last = movePathVertex(pv, i, [q.x - a.x, q.y - a.y]);
       draft(opsFor(id, prop, last));
-    }, () => { if (last) commit(t('viewport.editName', { name: t(g.layer.node.props[prop]?.label ?? prop) }), opsFor(id, prop, last)); else cancelDraft(); });
+    }, () => { if (last) commit(t('viewport.editName', { name: labelOf(g, prop) }), opsFor(id, prop, last)); else cancelDraft(); });
   };
 
   const dragTangent = (e: PointerEvent, g: Geo, prop: string, pv: PathValue, i: number, which: 'i' | 'o') => {
     const id = selected[0];
     if (!canEdit(id, prop)) return;
     e.stopPropagation();
-    setVertex(i);
+    setVertex(i, prop);
     const inv = g.matrix.inverse();
     const a = inv.transformPoint(new DOMPoint(...toComp(e)));
     const t0 = (which === 'i' ? pv.i?.[i] : pv.o?.[i]) ?? [0, 0];
@@ -295,7 +311,7 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
       // Shift keeps the two tangents mirrored
       last = setPathTangent(pv, i, which, [t0[0] + q.x - a.x, t0[1] + q.y - a.y], ev2.shiftKey);
       draft(opsFor(id, prop, last));
-    }, () => { if (last) commit(t('viewport.editName', { name: t(g.layer.node.props[prop]?.label ?? prop) }), opsFor(id, prop, last)); else cancelDraft(); });
+    }, () => { if (last) commit(t('viewport.editName', { name: labelOf(g, prop) }), opsFor(id, prop, last)); else cancelDraft(); });
   };
 
   /** the anchor cross: without Alt the layer stays put on screen (position compensates); Alt moves the anchor alone */
@@ -329,7 +345,7 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
     const hit = nearestOnPath(pv, [q.x, q.y]);
     if (!hit) return;
     commit(t('viewport.addAVertex'), opsFor(selected[0], prop, insertPathVertex(pv, hit.seg, hit.u)));
-    setVertex(hit.seg + 1);
+    setVertex(hit.seg + 1, prop);
   };
 
   // Delete takes the selected path vertex out, before the layers' own shortcut sees the key
@@ -338,7 +354,7 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
       const el = e.target as HTMLElement;
       if (vertex === null || !geo || e.key !== 'Delete' && e.key !== 'Backspace') return;
       if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
-      const [prop, pv] = pathsOf(geo)[0] ?? [];
+      const [prop, pv] = pathsOf(geo).find(([name]) => name === vertexPath) ?? pathsOf(geo)[0] ?? [];
       if (!prop || !pv) return;
       e.stopPropagation();
       commit(t('viewport.removeAVertex'), opsFor(selected[0], prop, removePathVertex(pv, vertex)));
@@ -520,10 +536,10 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
                   onPointerDown={(e) => { if (e.altKey) addVertex(e as unknown as PointerEvent, geo, prop, pv); }} />
                 {pv.v.map((pt, i) => {
                   const p = apply(geo.matrix, pt);
-                  return <rect key={`v${i}`} class={`gizmo-handle path-handle${vertex === i ? ' on' : ''}`} x={p[0] - handleR} y={p[1] - handleR} width={handleR * 2} height={handleR * 2} transform={`rotate(45 ${p[0]} ${p[1]})`} style={{ cursor: 'move' }}
+                  return <rect key={`v${i}`} class={`gizmo-handle path-handle${vertex === i && vertexPath === prop ? ' on' : ''}${prop.startsWith('masks.') ? ' mask-handle' : ''}`} x={p[0] - handleR} y={p[1] - handleR} width={handleR * 2} height={handleR * 2} transform={`rotate(45 ${p[0]} ${p[1]})`} style={{ cursor: 'move' }}
                     onPointerDown={(e) => dragVertex(e as unknown as PointerEvent, geo, prop, pv, i)}><title>{`${prop} · ${i + 1}`}</title></rect>;
                 })}
-                {vertex !== null && pv.v[vertex] && (['i', 'o'] as const).map((which) => {
+                {vertex !== null && vertexPath === prop && pv.v[vertex] && (['i', 'o'] as const).map((which) => {
                   const t = (which === 'i' ? pv.i?.[vertex] : pv.o?.[vertex]) ?? [0, 0];
                   const from = apply(geo.matrix, pv.v[vertex]);
                   const to = apply(geo.matrix, [pv.v[vertex][0] + t[0], pv.v[vertex][1] + t[1]]);
