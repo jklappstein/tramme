@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 under way (transitions: the effect, its kinds and notes); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -58,7 +58,8 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
   `fx.transition` on the incoming layer: `from` (the outgoing layer), `kind`, `duration` from the layer's in point. Its progress comes from a new uniform every GL effect now gets, `uLayerTime` (the time since its layer's in point). Rendered in Chrome and read back pixel by pixel (`packages/cli/test/transitions.test.ts`, skipped without Chrome).
 - [x] The set: crossfade, dip to colour, push and slide (with motion blur along the move), zoom, whip pan, luma wipe (from a grey picture), glitch, and the existing shape wipes of the `transition` recipe kept as they are.
   One program for all eight kinds; push, slide and whip average twelve looks along their move (`blur`), the whip eased harder. To check on a device: the glitch on real footage (flat colours do not show its rows).
-- [ ] The timeline: drop a transition on a cut, drag its length; the two layers are made to overlap by the needed handles, or the transition says the file has no handle left.
+- [x] The timeline: drop a transition on a cut, drag its length; the two layers are made to overlap by the needed handles, or the transition says the file has no handle left.
+  `apps/editor/src/transitions.ts`: the shot ending at the cut is found, the window centred on the cut and moved to what the files hold (the incoming before its start, the outgoing after its end, a video's length when the preview has it), in whole frames, the incoming shot stacked above. In the timeline, the clip's menu puts one (Transition from the shot before…, then its kind), and a striped band over the start of the incoming clip drags its length, the overlap redone around the same cut as it goes. Left out: dragging a transition from a palette onto a cut; the menu does it.
 - [x] The sound crossfades with the picture by default (the gains of the two clips, `gainMoves`).
   `sound` on the transition (on by default): over its window the incoming clip rises and the outgoing one falls, equal power, the outgoing silent after it (`cross` on the clip, `gainAt`, `packages/core/src/audio.ts`); the preview and the exports share it.
 - [x] The assistant's notes: one kind of transition per film, cuts by default, a transition where the story changes place or time.

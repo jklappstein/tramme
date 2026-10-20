@@ -106,3 +106,9 @@ its network policy) and has no GPU: no model was downloaded or run there.
   joined by a crossfade: the level holds through the window (no dip, no
   bump), the outgoing sound is gone after it; with Sound crossfade off, both
   play as they are.
+- **Step 3 — a transition from the timeline.** Two video clips cut end to
+  end: the second clip's menu → Transition from the shot before… → Push: the
+  clips overlap around the cut, the band shows; drag its edge, the overlap
+  follows. A clip that starts at the very beginning of its file, against a
+  first one at the very end of its own: the toast says how much is missing.
+  (Checked in the container on two shapes, without video files.)

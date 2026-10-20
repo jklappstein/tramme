@@ -269,6 +269,9 @@
 .clip canvas.film { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .8; pointer-events: none; }
 /* the fades: a handle strip at each top corner, its width the fade's length; a diagonal marks a set fade */
 .fade-h { position: absolute; top: 0; height: 7px; cursor: ew-resize; z-index: 2; }
+/* a transition over the start of the incoming clip, its right edge dragged for its length */
+.tr-band { position: absolute; left: 0; bottom: 0; height: 9px; background: repeating-linear-gradient(135deg, var(--c) 0 4px, transparent 4px 8px); opacity: .8; border-radius: 0 0 0 var(--r-xs); pointer-events: none; z-index: 2; }
+.tr-band .tr-edge { position: absolute; right: -4px; top: -2px; bottom: -2px; width: 8px; cursor: ew-resize; pointer-events: auto; border-radius: 2px; background: var(--c); }
 .fade-h.l { left: 0; border-radius: var(--r-xs) 0 0 0; }
 .fade-h.r { right: 0; border-radius: 0 var(--r-xs) 0 0; }
 .fade-h.set { background: linear-gradient(to right, var(--c, var(--t-audio)), transparent); opacity: .5; }
