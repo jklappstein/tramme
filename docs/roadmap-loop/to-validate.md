@@ -323,3 +323,24 @@ its network policy) and has no GPU: no model was downloaded or run there.
   the desktop app offline cannot run it until it was fetched once (check
   the service worker keeps it), or the wasm files could be served from the
   app itself.
+
+## Editing, step 13
+
+- **Interpolation on real footage.** A 25/30 fps clip with a speed ramp to
+  0.4×: `/interpolate` (factor 4): the progress says the time left after
+  the first chunk; cancel it halfway, run it again: it resumes (the tool's
+  text says how many chunks were done before). Then play the ramp: smooth
+  where it stuttered. Look for smears on fast or chaotic motion (the
+  engine is block matching, not RIFE). Tested here on a moving square only.
+- **Upscaling**: a 720p clip in a 4K composition, `/upscale`: the layer
+  now shows the ×2 asset, sharper than the stretched original; a still
+  image too. A 1080p video takes a while (about a second a frame in
+  JavaScript): check the estimate is honest.
+- **Not done:** Real-ESRGAN and RIFE (ONNX models, better on texture and
+  hard motion): their exports could not be fetched or checked here; the
+  engines are model-free for now. **Blocked:** the voice/music split
+  (Demucs in ONNX), same reason; it needs an ONNX export whose inputs are
+  known, then the same long-job runner.
+- The jobs' chunks stay in the project under `assets/jobs/` after the job:
+  delete the folder by hand when the result is kept (there is no file
+  delete for tools yet).

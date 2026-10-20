@@ -1426,6 +1426,17 @@
     "label": "Smooth the skin",
     "done": "The skin is smoothed ({frames} frames)."
   },
+  "longjob": {
+    "seconds": "{n} s",
+    "minutes": "{n} min",
+    "left": "about {time} left",
+    "joining": "Joining the parts",
+    "enlarging": "Enlarging",
+    "enlarged": "Enlarged twice",
+    "interpolating": "Making up the frames",
+    "interpolated": "Slow motion smoothed",
+    "smooth": "smooth"
+  },
   "stabilize": {
     "reading": "reading the shake"
   },

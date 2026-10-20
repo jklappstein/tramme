@@ -28,6 +28,7 @@ const asset = z.strictObject({
   madeBy: z.array(z.string()).optional(),
   proxy: z.string().optional(),
   clean: z.string().optional(),
+  interpolated: z.string().optional(),
 });
 
 const transform = z.strictObject({

@@ -26,6 +26,7 @@ import { REMOVEBG_TOOLS } from '../src/removebg.ts';
 import { CUTS_TOOLS } from '../src/cuts.ts';
 import { FILLERS_TOOLS } from '../src/fillers.ts';
 import { SKIN_TOOLS } from '../src/faces.ts';
+import { LONG_TOOLS } from '../src/longtools.ts';
 import { TRACKING_TOOLS } from '../src/tracking.ts';
 import { STABILIZE_TOOLS } from '../src/stabilize.ts';
 import { PROXY_TOOLS } from '../src/proxy.ts';
@@ -78,7 +79,7 @@ export function registryKeys(): Set<string> {
   schema(SOUND_MIX_SCHEMA);
   schema(MASK_SCHEMA);
   // the editor's tools and workflows, shown in the chat's / menu
-  const tools = [...EDITOR_TOOLS, ...FILM_TOOLS, ...RECIPE_TOOLS, ...FIGURE_TOOLS, ...EVENT_TOOLS, ...PERCEPTION_TOOLS, ...TRACKING_TOOLS, ...STABILIZE_TOOLS, ...PROXY_TOOLS, ...COMPONENT_TOOLS, ...DENOISE_TOOLS, ...SKIN_TOOLS, ...CUTOUT_TOOLS, ...DEPTH_TOOLS, ...MODEL_TOOLS, ...REMOVEBG_TOOLS, ...LIPSYNC_TOOLS, ...CUTS_TOOLS, ...FILLERS_TOOLS, ...REVIEW_TOOLS, ...SOUND_TOOLS, ...MIXING_TOOLS, ...SOURCE_TOOLS, ...LIBRARY_TOOLS];
+  const tools = [...EDITOR_TOOLS, ...FILM_TOOLS, ...RECIPE_TOOLS, ...FIGURE_TOOLS, ...EVENT_TOOLS, ...PERCEPTION_TOOLS, ...TRACKING_TOOLS, ...STABILIZE_TOOLS, ...PROXY_TOOLS, ...COMPONENT_TOOLS, ...DENOISE_TOOLS, ...SKIN_TOOLS, ...LONG_TOOLS, ...CUTOUT_TOOLS, ...DEPTH_TOOLS, ...MODEL_TOOLS, ...REMOVEBG_TOOLS, ...LIPSYNC_TOOLS, ...CUTS_TOOLS, ...FILLERS_TOOLS, ...REVIEW_TOOLS, ...SOUND_TOOLS, ...MIXING_TOOLS, ...SOURCE_TOOLS, ...LIBRARY_TOOLS];
   for (const x of [...tools, ...EDITOR_PROMPTS, ...BUILTIN_CHECKS, ...BUILTIN_KITS, ...FILM_KITS, ...EDITOR_PRESETS]) { add(x.title); add(x.description); }
   for (const c of BUILTIN_CHECKS) for (const text of c.texts ?? []) add(text);
   for (const text of Object.values(SOUND_TEXTS)) add(text);

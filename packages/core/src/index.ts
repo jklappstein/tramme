@@ -33,3 +33,4 @@ export * from './components.ts';
 export * from './denoise.ts';
 export * from './hesitations.ts';
 export * from './faces.ts';
+export * from './interpolate.ts';

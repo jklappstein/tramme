@@ -52,6 +52,11 @@ class Checker {
       else if (doc.assets[a.proxy]?.type !== 'video' || a.proxy === id) this.err(pointer('assets', id, 'proxy'), `the proxy "${a.proxy}" must be another video asset`);
     }
     for (const [id, a] of Object.entries(doc.assets)) {
+      if (a.interpolated === undefined) continue;
+      if (a.type !== 'video') this.err(pointer('assets', id, 'interpolated'), 'only a video has an interpolated copy');
+      else if (doc.assets[a.interpolated]?.type !== 'video' || a.interpolated === id) this.err(pointer('assets', id, 'interpolated'), `the interpolated copy "${a.interpolated}" must be another video asset`);
+    }
+    for (const [id, a] of Object.entries(doc.assets)) {
       if (a.clean === undefined) continue;
       if (a.type !== 'audio' && a.type !== 'video') this.err(pointer('assets', id, 'clean'), 'only a sound or a video has a cleaned voice');
       else if (doc.assets[a.clean]?.type !== 'audio' || a.clean === id) this.err(pointer('assets', id, 'clean'), `the cleaned voice "${a.clean}" must be another sound asset`);

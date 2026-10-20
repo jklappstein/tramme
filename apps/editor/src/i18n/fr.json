@@ -2253,7 +2253,14 @@
     "how different a neighbour's colour may be and still be averaged in: low keeps more edges": "à quel point la couleur d'un voisin peut différer et compter encore dans la moyenne : bas garde plus de contours",
     "Smooth the skin": "Lisser la peau",
     "finds the faces of a video and softens their skin (eyes, brows and mouth left sharp): a mask video of the skin saved beside it, and fx.smooth on the layer through that mask": "trouve les visages d'une vidéo et adoucit leur peau (yeux, sourcils et bouche laissés nets) : une vidéo masque de la peau enregistrée à côté, et fx.smooth sur le calque à travers ce masque",
-    "light by default: a face stays a face": "légère par défaut : un visage reste un visage"
+    "light by default: a face stays a face": "légère par défaut : un visage reste un visage",
+    "Enlarge a picture or a video": "Agrandir une image ou une vidéo",
+    "makes a picture or a video twice its size (a small source in a large composition), saved as a new asset the layers showing it then use; the original is kept. A video is a long job: it says how long, and resumes where it stopped": "rend une image ou une vidéo deux fois plus grande (une petite source dans une grande composition), enregistrée comme une nouvelle ressource que les calques qui la montrent utilisent ensuite ; l'originale est gardée. Une vidéo est une longue tâche : elle dit combien de temps, et reprend là où elle s'est arrêtée",
+    "Smooth slow motion": "Ralenti fluide",
+    "makes up the frames between a video's frames (2 or 4 times as many), saved as a copy linked to it: a layer of that video slowed under 1× (a speed curve, a ramp) plays the copy and slows smoothly instead of repeating frames. A long job: it says how long, and resumes where it stopped": "crée les images entre les images d'une vidéo (2 ou 4 fois plus), enregistrées dans une copie liée : un calque de cette vidéo ralenti sous 1× (une courbe de vitesse, une rampe) joue la copie et ralentit sans saccade au lieu de répéter des images. Une longue tâche : elle dit combien de temps, et reprend là où elle s'est arrêtée",
+    "Picture or video": "Image ou vidéo",
+    "the selected layer's by default": "celle du calque sélectionné par défaut",
+    "times as many frames: 2 for a slow motion down to 0.5×, 4 down to 0.25×": "fois plus d'images : 2 pour un ralenti jusqu'à 0,5×, 4 jusqu'à 0,25×"
   },
   "personal": {
     "cannotStart": "tramme ne peut pas démarrer ici",
@@ -2489,6 +2496,17 @@
     "maskName": "Peau · {name}",
     "label": "Lisser la peau",
     "done": "La peau est lissée ({frames} images)."
+  },
+  "longjob": {
+    "seconds": "{n} s",
+    "minutes": "{n} min",
+    "left": "encore {time} environ",
+    "joining": "Assemblage des parties",
+    "enlarging": "Agrandissement",
+    "enlarged": "Agrandi deux fois",
+    "interpolating": "Création des images",
+    "interpolated": "Ralenti adouci",
+    "smooth": "fluide"
   },
   "stabilize": {
     "reading": "lecture du tremblement"

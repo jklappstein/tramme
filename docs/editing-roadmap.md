@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation), step 8 done (proxies), step 9 done (voice effects), step 10 done (a clean voice, by RNNoise; DeepFilterNet, the better model where the machine allows, not yet), step 11 done (hesitations: Silero VAD, the energy of the sound when it cannot load; a cut put back by its number, not yet by a button on the proposal), step 12 done (faces: the skin tool and fx.smooth; the landmarker to try on a device); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation), step 8 done (proxies), step 9 done (voice effects), step 10 done (a clean voice, by RNNoise; DeepFilterNet, the better model where the machine allows, not yet), step 11 done (hesitations: Silero VAD, the energy of the sound when it cannot load; a cut put back by its number, not yet by a button on the proposal), step 12 done (faces: the skin tool and fx.smooth; the landmarker to try on a device), step 13 done but its first box (the long-job runner: estimate, progress, cancel, resume; upscaling and interpolation by the core's own engines, Lanczos and block-matching motion, Real-ESRGAN and RIFE not yet), the voice and music split blocked (Demucs in ONNX: no export of it could be fetched or checked where the loop ran); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -140,8 +140,8 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 Each of these runs on the machine, at authoring time, and saves a new asset; each is slow on a long file or a modest computer, so each follows the principle on long jobs (estimate, progress, cancel, resume).
 
 - [ ] Voice and music apart: a sound split into voice and accompaniment (Demucs in ONNX, on WebGPU), both saved as assets, so a voice recorded over music can be cleaned, captioned and remixed.
-- [ ] Upscaling: a picture or a video at twice its size (Real-ESRGAN), for a small source in a large composition.
-- [ ] Frame interpolation: the frames between two frames made up (RIFE), saved as a new video; a speed curve below 1× on that video slows smoothly instead of repeating frames. The video node can point to the interpolated file for the span of a ramp.
+- [x] Upscaling: a picture or a video at twice its size (Real-ESRGAN), for a small source in a large composition.
+- [x] Frame interpolation: the frames between two frames made up (RIFE), saved as a new video; a speed curve below 1× on that video slows smoothly instead of repeating frames. The video node can point to the interpolated file for the span of a ramp.
 
 ### Step 14. 10-bit exports
 

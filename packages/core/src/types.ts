@@ -77,6 +77,8 @@ export interface Asset {
   proxy?: string;
   /** sound or video: the sound asset of its voice cleaned (the denoise tool), timed like it; a layer plays it with its `clean` amount */
   clean?: string;
+  /** video: a copy with frames made up between its frames (the interpolate tool), timed like it; a layer slowed under 1× plays it */
+  interpolated?: string;
 }
 
 export interface Transform {

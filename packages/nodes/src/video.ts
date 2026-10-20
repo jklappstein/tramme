@@ -44,7 +44,10 @@ export const video: NodeType<VideoProps> = {
       if (!p.video) return;
       const [w, h] = p.size;
       if (w <= 0 || h <= 0) return;
-      const src = host.asset<VideoAsset>(p.video);
+      // slowed down, the file's interpolated copy (more frames, the same time) plays instead of repeating frames
+      const speed = typeof p.rate === 'number' ? Math.abs(p.rate) : 1;
+      const smooth = speed < 0.999 ? host.assetInfo(p.video).interpolated : undefined;
+      const src = host.asset<VideoAsset>(smooth ?? p.video);
       const t = mediaTime(p, host.t, host.layerIn ?? 0);
       const { image, exact } = src.frameAt(t);
       if (!exact) host.defer?.(src.request(t));
