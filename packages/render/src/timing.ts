@@ -43,3 +43,8 @@ export function formatParts(parts: FrameParts, n = 1): string {
 export function bottleneck(parts: FrameParts): keyof FrameParts {
   return PARTS.reduce((a, b) => (parts[b] > parts[a] ? b : a));
 }
+
+/** what a part stands for, in the words of the roadmap: what holds an export back */
+export const CAUSE: Record<keyof FrameParts, string> = {
+  evaluate: 'the JavaScript', draw: 'the JavaScript', video: 'video decoding', readback: 'the GPU', send: 'the transfer',
+};

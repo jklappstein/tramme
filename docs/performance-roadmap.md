@@ -2,7 +2,7 @@
 
 How tramme renders faster without leaving its stack: measure where a frame's time goes, export in parallel, prepare the Evaluator for documents with hundreds of instances, and move to WebGL or to Rust compiled to WebAssembly only what a measure points at.
 
-Status: step 1 under way (the breakdown per frame). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (the breakdown per frame, the load cases and `tramme load`); the figures on a machine with a real GPU are still to take. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Where things stand
 
@@ -26,8 +26,10 @@ Status: step 1 under way (the breakdown per frame). Tick the boxes as steps land
 
 - [x] `capture` times each frame's parts apart: evaluation, drawing, GPU readback, waiting for the send. The breakdown is reported next to the existing `ms/image`.
   The parts are `evaluate`, `draw`, `video` (waiting for decoded frames, which the box did not name but the step's "Done when" asks for), `readback` and `send` (`packages/render/src/timing.ts`). The GPU works asynchronously: its share of a frame is paid at `readPixels` and lands in `readback`, not in `draw`. A frame drawn by the plugin sandbox counts no evaluation or drawing on the page.
-- [ ] Load cases in `bench/`: many layers, blurs and effects, a 4K source video, a simulation (particles, cloth), and later a distribution of hundreds of instances.
-- [ ] A command that runs them and prints the breakdown, so a change is compared before and after.
+- [x] Load cases in `bench/`: many layers, blurs and effects, a 4K source video, a simulation (particles, cloth), and later a distribution of hundreds of instances.
+  In `bench/load/cases.ts`: `layers`, `effects`, `video4k` (its 4K file made by ffmpeg on the first run, not kept in the repository) and `simulation` (particles, cloth, a rope and a flock). Left out: the distribution of hundreds of instances, which waits for the distributions of the components roadmap; it is added with them, before step 3.
+- [x] A command that runs them and prints the breakdown, so a change is compared before and after.
+  `tramme load [case…] [--frames n] [--json file] [--before file]`: a line per case with the parts per frame and what holds it back; `--json` keeps the figures, `--before` prints each one with its change. To check on a device: the figures here come from a container without a GPU (Chrome's software GL), where the readback weighs on every case; the reference figures are to be taken on a machine with a real GPU.
 
 Done when: for each load case we can say whether the bottleneck is the JavaScript, the GPU, video decoding or the transfer.
 

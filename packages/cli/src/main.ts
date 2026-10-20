@@ -9,6 +9,7 @@
 //   tramme unpack   <project.tramme> [--out folder]                    a .tramme archive as a project folder (checked)
 //   tramme nodes    [<doc>]                                            the node and effect vocabulary (plugins included)
 //   tramme bench    <editor url> [--layer id] [--t s]                  how the editor holds up: playback, drag, hover
+//   tramme load     [case...] [--frames n] [--out folder] [--json file] [--before file]   the load cases of bench/load: where a frame's time goes
 //   tramme check-export <doc> --format lottie|svg --t 0.5,1.5 [--out dir]   an export played back (lottie-web, Chrome) vs tramme
 //   tramme compare  <ref> <test> [--diff dir] [--threshold 16]     files, or folders paired by time
 //   tramme schema   [--out schema/tramme-1.schema.json]
@@ -45,7 +46,7 @@ const asDoc = (p?: string) => {
   // a folder of a former name (document.trame.json, document.emotion.json) is read as well
   return [DOCUMENT, ...LEGACIES.map((l) => l.document)].map((d) => path.join(p, d)).find((f) => fs.existsSync(f)) ?? p;
 };
-if (!['compare', 'import', 'pack', 'unpack', 'bench', 'agent', 'film'].includes(cmd)) pos[0] = asDoc(pos[0])!;
+if (!['compare', 'import', 'pack', 'unpack', 'bench', 'load', 'agent', 'film'].includes(cmd)) pos[0] = asDoc(pos[0])!;
 const num = (k: string) => (flags[k] === undefined ? undefined : Number(flags[k]));
 const str = (k: string) => (typeof flags[k] === 'string' ? (flags[k] as string) : undefined);
 
@@ -274,6 +275,7 @@ const COMMANDS: Record<string, () => Promise<void> | void> = {
   unpack: () => cmdUnpack(pos[0]),
   nodes: () => cmdNodes(pos[0]),
   bench: async () => { const { bench } = await import('./bench.ts'); await bench(pos[0], { layer: str('layer'), t: num('t'), width: num('width'), height: num('height'), dpr: num('dpr') }); },
+  load: async () => { const { runLoad } = await import('./load.ts'); await runLoad(pos, { frames: num('frames'), out: str('out'), json: str('json'), before: str('before') }); },
   'check-export': async () => {
     const format = str('format') ?? 'lottie';
     if (format !== 'lottie' && format !== 'svg') throw new Error('check-export: --format lottie or svg');
@@ -285,7 +287,7 @@ const COMMANDS: Record<string, () => Promise<void> | void> = {
 
 const run = COMMANDS[cmd];
 if (!run) {
-  console.log('usage: tramme <validate|still|render|export|import|film|pack|unpack|nodes|compare|schema|bench|agent> ... (see the header of packages/cli/src/main.ts)');
+  console.log('usage: tramme <validate|still|render|export|import|film|pack|unpack|nodes|compare|schema|bench|load|agent> ... (see the header of packages/cli/src/main.ts)');
   process.exit(cmd ? 1 : 0);
 }
 try {
