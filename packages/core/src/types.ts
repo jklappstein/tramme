@@ -171,6 +171,27 @@ export interface Distribution {
   rows?: string;
   layout: Layout;
   params?: Record<string, unknown>;
+  /** each instance plays the component later by a time field over the instances: a wave, a ripple, a liquid time */
+  time?: DistributionTime;
+}
+
+/**
+ * A time field over a distribution's instances (as the timeField modifier
+ * reads it): `rank`, `angle`, `distance` (from `center`, in the comp layer's
+ * space, its origin by default) or `noise`. `amount` and `seed` may be
+ * keyframed: they slide. An instance's time before the component's start or
+ * past its end holds the first or the last pose, or goes round with `loop`.
+ */
+export interface DistributionTime {
+  mode: 'rank' | 'angle' | 'distance' | 'noise';
+  amount: Prop<number>;
+  from?: 'first' | 'last';
+  angle?: number;
+  center?: Vec2;
+  scale?: number;
+  speed?: number;
+  seed?: Prop<number>;
+  loop?: boolean;
 }
 
 /**

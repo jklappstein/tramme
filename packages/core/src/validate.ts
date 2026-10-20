@@ -196,6 +196,10 @@ class Checker {
       else if (!this.reg.hasNode(src.type) || !Object.values(this.reg.node(src.type).props).some((p) => p.type === 'path')) this.err(`${lp}/distribute/layout/layer`, `${src.type} has no path to take points from`);
       else if (parent(d.layout.layer) !== parent(lid)) this.err(`${lp}/distribute/layout/layer`, `"${d.layout.layer}" must have the same parent`);
     }
+    if (d.time) {
+      this.prop(cid, `${lp}/distribute/time/amount`, { type: 'number', default: 0 }, d.time.amount);
+      if (d.time.seed !== undefined) this.prop(cid, `${lp}/distribute/time/seed`, { type: 'number', default: 0 }, d.time.seed);
+    }
     for (const [name, rule] of Object.entries(d.params || {})) {
       const p = inner.params?.[name], rp = `${lp}/distribute/params/${name}`;
       if (!p) { this.err(rp, `"${innerId}" has no parameter "${name}"`); continue; }
@@ -309,6 +313,8 @@ class Checker {
         if (k === 'type') continue;
         const d = schema[k];
         if (!d) { this.err(`${p}/${k}`, `unknown parameter "${k}"`); continue; }
+        // a number or a vector may be keyframed: it slides (an amount, a seed)
+        if (propKind(val) === 'keyframes' && (d.type === 'number' || d.type === 'vec2')) { this.prop('', `${p}/${k}`, { ...d, animatable: true }, { $k: (val as { $k: unknown }).$k }); continue; }
         const bad = this.valueIssue(d, val);
         if (bad) this.err(`${p}/${k}`, bad);
       }

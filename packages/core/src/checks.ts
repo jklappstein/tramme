@@ -5,7 +5,7 @@
 // layers involved. The assistant runs them before summing up its work, the
 // user from the / menu. Plugins add their own (`checks` export).
 
-import type { Instance, Placement } from './components.ts';
+import { instanceTime, type Instance, type Placement } from './components.ts';
 import { Evaluator, nestedTime, type EvaluatedLayer, type NestedTiming } from './evaluate.ts';
 import { asKeyframed, modsOf, propKind } from './props.ts';
 import { animatedSlots, motionFigures, motionStretches, pathDeviation, sampleAddress, spanOf } from './motion.ts';
@@ -123,7 +123,8 @@ function place(ev: Evaluator, comp: Composition, t: number, layers: EvaluatedLay
         for (const [k, one] of (many ?? [{ instance: L.props.$instance as Instance | undefined, at: [0, 0] as Vec2, rotation: 0 }]).entries()) {
           const a = (one.rotation * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
           const at = matMul(m, [c, s, -s, c, one.at[0], one.at[1]]);
-          place(ev, inner, lt, ev.frame(lt, L.props.comp as string, one.instance).layers, matMul(at, [1, 0, 0, 1, -inner.width / 2, -inner.height / 2]), opacity, out, `${prefix}${L.id}${many ? `#${k}` : ''}/`, depth + 1);
+          const lti = instanceTime(lt, one, inner.duration);
+          place(ev, inner, lti, ev.frame(lti, L.props.comp as string, one.instance).layers, matMul(at, [1, 0, 0, 1, -inner.width / 2, -inner.height / 2]), opacity, out, `${prefix}${L.id}${many ? `#${k}` : ''}/`, depth + 1);
         }
       }
     }

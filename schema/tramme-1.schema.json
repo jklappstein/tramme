@@ -650,6 +650,60 @@
                         "type": "string"
                       },
                       "additionalProperties": {}
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "rank",
+                            "angle",
+                            "distance",
+                            "noise"
+                          ]
+                        },
+                        "amount": {},
+                        "from": {
+                          "type": "string",
+                          "enum": [
+                            "first",
+                            "last"
+                          ]
+                        },
+                        "angle": {
+                          "type": "number"
+                        },
+                        "center": {
+                          "type": "array",
+                          "prefixItems": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ],
+                          "items": false,
+                          "minItems": 2,
+                          "maxItems": 2
+                        },
+                        "scale": {
+                          "type": "number"
+                        },
+                        "speed": {
+                          "type": "number"
+                        },
+                        "seed": {},
+                        "loop": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "amount"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [

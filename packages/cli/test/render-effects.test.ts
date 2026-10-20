@@ -198,6 +198,9 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     row.compositions.main.layers = { row: { type: 'comp', transform: { position: [160, 90] }, props: { comp: 'badge' }, distribute: { count: 3, layout: { type: 'list', spacing: 100 }, params: { color: { $palette: 'order', colors: ['#FF0000', '#00FF00', '#0000FF'] }, spin: { $expr: 'index * 45' } } } } };
     row.compositions.main.order = ['row'];
     fs.writeFileSync(path.join(dir, 'badges-row.tramme.json'), JSON.stringify(row));
+    // apart, so no frame covers another
+    row.compositions.main.layers.row.distribute = { ...row.compositions.main.layers.row.distribute!, layout: { type: 'list', spacing: 130 }, time: { mode: 'rank', amount: 1 } };
+    fs.writeFileSync(path.join(dir, 'badges-wave.tramme.json'), JSON.stringify(row));
     server = new Server(readConfig(path.join(dir, 'crossfade.tramme.json')));
     const port = await server.start();
     const { browser, page } = await launch();
@@ -338,5 +341,14 @@ describe.skipIf(!CHROME)('effects, rendered', () => {
     expect(near(f(260, 90), BLUE)).toBe(true);
     // between two badges: the black of the scene
     expect(near(f(110, 20), [0, 0, 0])).toBe(true);
+  }, 60_000);
+
+  it('plays a distribution through its time field: each instance later than the one before', async () => {
+    // at 0.7 s the first badge's tail (from 0.5 s) is out, the second badge still holds its first pose
+    const f = await still('badges-wave', 0.7);
+    expect(near(f(85, 125), [240, 208, 32])).toBe(true);
+    expect(near(f(215, 125), [32, 48, 64])).toBe(true);
+    const g = await still('badges-wave', 1.7);
+    expect(near(g(215, 125), [240, 208, 32])).toBe(true);
   }, 60_000);
 });

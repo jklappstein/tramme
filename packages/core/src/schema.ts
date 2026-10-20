@@ -81,6 +81,17 @@ const distribution = z.strictObject({
   rows: id.optional(),
   layout,
   params: z.record(z.string(), z.unknown()).optional(),
+  time: z.strictObject({
+    mode: z.enum(['rank', 'angle', 'distance', 'noise']),
+    amount: prop,
+    from: z.enum(['first', 'last']).optional(),
+    angle: finite.optional(),
+    center: vec2.optional(),
+    scale: finite.optional(),
+    speed: finite.optional(),
+    seed: prop.optional(),
+    loop: z.boolean().optional(),
+  }).optional(),
 });
 
 const layer = z.strictObject({

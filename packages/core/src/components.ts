@@ -11,6 +11,7 @@ import { pointer, type Op } from './ops.ts';
 import { asKeyframed, propKind, staticValue } from './props.ts';
 import { CAMERA_SCHEMA, MASK_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type PropDef, type PropType, type Registry } from './registry.ts';
 import { hash } from './math.ts';
+import { boundTime } from './modifiers.ts';
 import type { ComponentParam, Composition, Distribution, Layer, Layout, PaletteRule, Prop, TrammeDoc, Vec2 } from './types.ts';
 
 /** a component's parameters as read by one instance: the property each address takes instead of its own */
@@ -257,8 +258,19 @@ export function detachPlan(doc: TrammeDoc, registry: Registry, compId: string, l
 
 // ── distribution (step 2) ───────────────────────────────────
 
-/** where one instance of a distribution goes: its offset in the comp layer's space, its turn in degrees */
-export interface Placement { at: Vec2; rotation: number }
+/** where one instance of a distribution goes: its offset in the comp layer's space, its turn in degrees; with a time field, how late it runs and whether it loops */
+export interface Placement { at: Vec2; rotation: number; delay?: number; loop?: boolean }
+
+/**
+ * An instance's own time under a time field: later by its delay, holding the
+ * component's first or last pose (or going round, looped) while the layer's
+ * own time is inside the component
+ */
+export function instanceTime(lt: number, one: Placement, duration: number): number {
+  if (!one.delay) return lt;
+  if (one.loop) return boundTime(lt - one.delay, 0, duration, true);
+  return lt >= 0 && lt < duration ? Math.min(duration - 1e-3, Math.max(0, lt - one.delay)) : lt;
+}
 
 /** how many instances a distribution makes */
 export function distributionCount(d: Distribution, rows: unknown[] | null, points: Vec2[] | null): number {

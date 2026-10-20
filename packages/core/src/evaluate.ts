@@ -11,10 +11,10 @@ import { audioReader, type AudioReader } from './analysis.ts';
 import { eventsReader, type EventsReader } from './events.ts';
 import { integrate, mediaClockOf, mediaMoments, mediaTime, trackId, trackReader, type MediaClock, type TrackReader } from './track.ts';
 import { compileExpr, type ExprScope } from './expr.ts';
-import { modifierParams, seedOf, type ModifierContext } from './modifiers.ts';
+import { modifierParams, seedOf, timeDelay, type ModifierContext, type ModifierType, type TimeField } from './modifiers.ts';
 import { asExpr, asKeyframed, asLink, easeFn, modsOf, propKind, resolveTokens, sampleKeyframes, staticValue, tokenValue } from './props.ts';
 import { CAMERA_SCHEMA, MASK_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type NodeType, type PathValue, type PropDef, type Registry } from './registry.ts';
-import type { Composition, TrammeDoc, Layer, Marker, Prop, Vec2 } from './types.ts';
+import type { Composition, TrammeDoc, Layer, Marker, ModifierSpec, Prop, Vec2 } from './types.ts';
 
 export interface EvaluatedTransform {
   anchor: Vec2;
@@ -280,7 +280,15 @@ export class Evaluator {
     const rows = d.rows ? (Array.isArray(data) ? data : []) : null;
     const points = d.layout.type === 'points' ? this.pointsOf(ctx, id, d.layout.layer) : null;
     const n = distributionCount(d, rows, points);
-    return layoutPlacements(d.layout, n, points).map((place, i) => {
+    const places = layoutPlacements(d.layout, n, points);
+    if (d.time) {
+      // the field over the instances: its amount and seed read at this instant (keyframed, they slide)
+      const num = (p: Prop<number> | undefined, name: string) => (p === undefined ? 0 : Number(this.computeRaw(ctx, `${id}.distribute.time.${name}`, p, { type: 'number', default: 0 })) || 0);
+      const f = { ...d.time, amount: num(d.time.amount, 'amount'), seed: num(d.time.seed, 'seed') } as TimeField;
+      const extent = places.map((p) => p.at);
+      for (const [i, p] of places.entries()) { p.delay = timeDelay(f, p.at, i, n, extent, ctx.t, d.time.center ?? [0, 0]); if (d.time.loop) p.loop = true; }
+    }
+    return places.map((place, i) => {
       const row = rows?.[i], vals = { ...values };
       for (const [name, rule] of Object.entries(d.params || {})) {
         const p = inner.params?.[name];
@@ -439,16 +447,26 @@ export class Evaluator {
       if (!this.registry.hasModifier(spec.type)) throw new EvalError(address, `unknown modifier "${spec.type}"`);
       const m = this.registry.modifier(spec.type);
       const mc: ModifierContext = {
-        t: ctx.t, fps: ctx.comp.fps, index, count, seed,
+        t: ctx.t, fps: ctx.comp.fps, index, count, seed, size: [ctx.comp.width, ctx.comp.height],
         audio: (source: string) => this.audioAt(ctx, source),
         position: (id: string, t2?: number) => this.layerPosition(ctx, address, id || selfId, t2 ?? ctx.t),
         keys: kp ? kp.$k : null,
         keyValues: kp ? kp.$k.map((key) => resolveTokens(def.type, key.v, this.doc.tokens)) : null,
         base: (t2: number) => this.valueAt(ctx, address, prop, def, t2, k),
       };
-      v = m.apply(v, modifierParams(m, spec), mc);
+      v = m.apply(v, this.modParams(m, spec, ctx.t), mc);
     }
     return v;
+  }
+
+  /** a modifier's parameters at time t: its defaults filled in, a keyframed one (an amount, a seed) sampled, so it slides rather than jumps */
+  private modParams(m: ModifierType, spec: ModifierSpec, t: number): Record<string, unknown> {
+    const p = modifierParams(m, spec);
+    for (const [k, v] of Object.entries(p)) {
+      const def = m.params[k];
+      if (def && propKind(v) === 'keyframes') p[k] = sampleKeyframes(def.type, asKeyframed(v).$k, t, this.doc.tokens);
+    }
+    return p;
   }
 
   /**

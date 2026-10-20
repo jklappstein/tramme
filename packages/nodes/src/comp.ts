@@ -3,7 +3,7 @@
 // optionally looping; `remap` (often an expression) gives the local time
 // directly.
 
-import { nestedTime, type Instance, type NestedTiming, type NodeType, type Placement } from '@tramme/core';
+import { instanceTime, nestedTime, type Instance, type NestedTiming, type NodeType, type Placement } from '@tramme/core';
 
 /**
  * Set by the Evaluator: $instance, how this layer reads the composition when
@@ -58,10 +58,10 @@ export const comp: NodeType<CompProps> = {
       const s = host.compositionSize(p.comp);
       if (!s) return;
       const lt = localTime(p, host.t, host.layerIn ?? 0, s.duration);
-      const draw = (inst?: Instance) => {
+      const draw = (inst?: Instance, at = lt) => {
         ctx.translate(-s.width / 2, -s.height / 2);
         if (p.crop) { ctx.beginPath(); ctx.rect(0, 0, s.width, s.height); ctx.clip(); }
-        host.drawComposition!(ctx, p.comp!, lt, inst);
+        host.drawComposition!(ctx, p.comp!, at, inst);
       };
       if (!p.$instances) return draw(p.$instance);
       // the instances in order, the first at the bottom
@@ -69,7 +69,7 @@ export const comp: NodeType<CompProps> = {
         ctx.save();
         ctx.translate(one.at[0], one.at[1]);
         if (one.rotation) ctx.rotate((one.rotation * Math.PI) / 180);
-        draw(one.instance);
+        draw(one.instance, instanceTime(lt, one, s.duration));
         ctx.restore();
       }
     },

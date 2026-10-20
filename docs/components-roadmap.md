@@ -2,7 +2,7 @@
 
 How anything in a document is defined once and used many times with parameters: a layer of any type, a group, a whole composition, an animation alone or a style. Today the assistant writes every element in full through JSON Patch — twenty cards are twenty complete subtrees, a hundred dots a hundred layers — so the cost of a film follows the number of things on screen. After this it follows the number of different ideas in the film.
 
-Status: step 1 done (parameters, instances and overrides read by the Evaluator, detach, styles and animations), step 2 done (distributions: layouts, rules, a rank per instance; a distribution is not detached yet). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (parameters, instances and overrides read by the Evaluator, detach, styles and animations), step 2 done (distributions: layouts, rules, a rank per instance; a distribution is not detached yet), step 3 done (the time field, on any property and over a distribution). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -36,11 +36,11 @@ What exists goes partway. `stagger` and `noise` vary a value by the layer's rank
 
 ### Step 3. The time field
 
-- [ ] `timeField` in `packages/core/src/modifiers.ts`: the property read at `base(t − amount · d)`, with `d` from the rank, a position along an angle, the distance to a point or a layer, or noise (`fbm`, scale 0 for a fixed random offset per element, `speed` for a field that drifts).
-- [ ] Bounds: a local time outside the span holds the first or last pose; a `loop` before it repeats.
-- [ ] Continuity: `d` continuous in space and time (gradient noise), an animated seed or amount interpolated, never switched.
-- [ ] `stagger` becomes the `rank` case of `timeField`, still read in existing projects.
-- [ ] A distribution can take a time field, so a wave over a hundred instances is one rule.
+- [x] `timeField` in `packages/core/src/modifiers.ts`: the property read at `base(t − amount · d)`, with `d` from the rank, a position along an angle, the distance to a point or a layer, or noise (`fbm`, scale 0 for a fixed random offset per element, `speed` for a field that drifts).
+- [x] Bounds: a local time outside the span holds the first or last pose; a `loop` before it repeats.
+- [x] Continuity: `d` continuous in space and time (gradient noise), an animated seed or amount interpolated, never switched.
+- [x] `stagger` becomes the `rank` case of `timeField`, still read in existing projects.
+- [x] A distribution can take a time field, so a wave over a hundred instances is one rule.
 
 ### Step 4. The assistant
 

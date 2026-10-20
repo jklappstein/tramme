@@ -187,7 +187,10 @@ function AssetsField({ def, value, ctx, onCommit }: { def: PropDef; value: unkno
   );
 }
 
-const MOD_LABEL: Record<string, string> = { cycle: m('inspector.cycle'), pingpong: m('inspector.pingPong'), offset: m('inspector.accumulate'), first: m('inspector.first'), last: m('inspector.last') };
+const MOD_LABEL: Record<string, string> = {
+  cycle: m('inspector.cycle'), pingpong: m('inspector.pingPong'), offset: m('inspector.accumulate'), first: m('inspector.first'), last: m('inspector.last'),
+  rank: m('inspector.fieldRank'), angle: m('inspector.fieldAngle'), distance: m('inspector.fieldDistance'), noise: m('inspector.fieldNoise'),
+};
 
 /** the modifier stack of a property: one block per modifier with its parameters */
 function ModStack({ ctx, path, raw, label }: { ctx: Ctx; path: string; raw: Prop | undefined; label: string }) {
@@ -212,7 +215,19 @@ function ModStack({ ctx, path, raw, label }: { ctx: Ctx; path: string; raw: Prop
             {mt && Object.entries(mt.params).map(([k, d]) => (
               <div key={k} class="mod-param">
                 <span class="faint">{tr(d.label) || k}</span>
-                {d.type === 'enum'
+                {propKind(m[k]) === 'keyframes'
+                  // an animated parameter (a time field's amount, its seed): its keys live in the document
+                  ? <span class="faint">{t('inspector.animated')}</span>
+                  : d.type === 'bool'
+                  ? <div style={{ display: 'flex' }}><Toggle on={params[k] === true} onChange={(v) => setParam(i, k, v, `${title} : ${tr(d.label) || k}`)} /></div>
+                  : d.type === 'vec2'
+                  ? <div class="row" style={{ gap: '4px' }}>{[0, 1].map((c) => {
+                      // null: the composition's centre, as the modifier reads it
+                      const at = (Array.isArray(params[k]) ? params[k] : [ctx.doc.compositions[ctx.compId].width / 2, ctx.doc.compositions[ctx.compId].height / 2]) as [number, number];
+                      const put = (v: number) => (c ? [at[0], v] : [v, at[1]]);
+                      return <NumberField key={c} value={at[c]} step={d.step ?? 1} onDraft={(v) => setParam(i, k, put(v), '', true)} onCommit={(v) => setParam(i, k, put(v), `${title} : ${tr(d.label) || k}`)} onCancel={cancelDraft} />;
+                    })}</div>
+                  : d.type === 'enum'
                   ? <Seg value={String(params[k])} options={d.options!.map((o) => [o, t(MOD_LABEL[o] ?? ENUM_LABEL[o] ?? o)])} onChange={(v) => setParam(i, k, v, `${title} : ${tr(d.label) || k}`)} />
                   : d.type === 'layer'
                     ? <LayerParam ctx={ctx} path={`${path}/$mod/${i}/${k}`} value={params[k] == null ? '' : String(params[k])} onCommit={(v) => setParam(i, k, v, `${title} : ${tr(d.label) || k}`)} />

@@ -193,3 +193,15 @@ its network policy) and has no GPU: no model was downloaded or run there.
   distribution with `rows` and `row.name` in a rule: one card per row.
 - **Not yet:** detaching a distribution (refused, `distributed`), editing
   the layout in the inspector (step 5).
+
+## Components, step 3
+
+- **The time field, seen.** On a grid of 40 cards (a distribution with
+  `time: { mode: 'distance', amount: 0.8 }`): a ripple from the centre in the
+  preview and an export; `noise` with `speed` 0.3 looks liquid, not
+  jittery; animate the seed in the inspector (the parameter shows
+  Animated): no frame jumps. Judge the amounts the assistant notes (0.3 to
+  1.2 s across the field) on real briefs.
+- **The modifier block in the inspector.** Add Time field to a property:
+  the By segments (Rank, Direction, Distance, Noise), the Loop toggle and
+  the Centre fields show in EN and FR.
