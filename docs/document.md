@@ -85,7 +85,7 @@ Wherever a color is expected (gradient stops included), `"@name"` refers to the 
 
 ### Expressions
 
-A single expression (`value + 10`) or a body with `return`. Available names: `t` (= `time`), `frame`, `fps`, `value`, `comp` (`width`, `height`, `duration`, `fps`), `prop('layer.prop')`, `token('name')`, `marker('id|kind|label')` (`{ t, frame }`), `ease(spec, x)`, `clamp`, `lerp`, `prog(t, a, b)`, `smoothstep`, `linear(t, t0, t1, v0, v1)`, `random(seed)`, `noise(x, y, z)`, `add`, `sub`, `mul`, `Math` (without `Math.random`), `audio(source)`, `events(source)` and `track(layer, name?)` (below), and the modifiers below. An expression must stay a pure function of `t`: no state, no unseeded randomness, no access to the browser.
+A single expression (`value + 10`) or a body with `return`. Available names: `t` (= `time`), `frame`, `fps`, `value`, `comp` (`width`, `height`, `duration`, `fps`), `prop('layer.prop')`, `token('name')`, `marker('id|kind|label')` (`{ t, frame }`), `ease(spec, x)`, `clamp`, `lerp`, `prog(t, a, b)`, `smoothstep`, `linear(t, t0, t1, v0, v1)`, `random(seed)`, `noise(x, y, z)`, `add`, `sub`, `mul`, `Math` (without `Math.random`), `audio(source)`, `events(source)` and `track(layer, name?, at?)` (below), and the modifiers below. An expression must stay a pure function of `t`: no state, no unseeded randomness, no access to the browser.
 
 ### Camera (2.5D)
 
@@ -142,7 +142,7 @@ Where something filmed is over time. The `track` tool follows an object through 
   "frames": [{ "t": 3.2, "box": [0.479, 0.393, 0.068, 0.245] }, { "t": 3.3, "box": null }] }
 ```
 
-Times are those of the file and boxes `[x, y, width, height]` fractions of its picture, `null` where the object was lost; a cut ends the track. Read through a video layer, a track follows that layer: moved, scaled or cut otherwise, the object stays under its callout. Expressions read it with `track(layer, name?)`, the video layer and the track's name (its first track without one): `.found` (0 to 1: 0 when lost, out of the track or out of the layer's frame), `.box` `[x, y, width, height]`, `.center` and `.size`, in the space the video layer sits in (the composition for a layer at the root). For example a dot that rides on the car: `"position": { "$expr": "track('video', 'car').center" }`. The `callout` tool adds a `callout` layer that reads the track: brackets around the object, a label beside them.
+Times are those of the file and boxes `[x, y, width, height]` fractions of its picture, `null` where the object was lost; a cut ends the track. Read through a video layer, a track follows that layer: moved, scaled or cut otherwise, the object stays under its callout. Expressions read it with `track(layer, name?, at?)`, the video layer and the track's name (its first track without one), at the current time or at composition time `at`: `.found` (0 to 1: 0 when lost, out of the track or out of the layer's frame), `.box` `[x, y, width, height]`, `.center` and `.size`, in the space the video layer sits in (the composition for a layer at the root). For example a dot that rides on the car: `"position": { "$expr": "track('video', 'car').center" }`. The `callout` tool adds a `callout` layer that reads the track: brackets around the object, a label beside them.
 
 ## Built-in nodes
 

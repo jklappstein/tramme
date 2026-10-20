@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 under way (masks drawn on layers; their editing in the viewport next); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -78,7 +78,8 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
   `masks` on the layer (an addition to the format, `MASK_SCHEMA` in `packages/core/src/registry.ts`), evaluated like its effects (`layer.masks.<id>.<prop>`), drawn before its effects (`applyMasks`, `packages/render/src/canvas2d.ts`); a Masks section in the inspector, a new mask a rectangle over the layer. Rendered and read back in Chrome.
 - [x] Drawn and edited in the viewport with the path tools already there (vertices with their tangents, Alt+click to add one, Delete to remove it).
   The selected layer's masks show with its own paths (`masks.<id>.path` in `apps/editor/src/ui/Viewport.tsx`); the selected vertex remembers its path, so Delete and the tangents act on the right one.
-- [ ] A mask path can follow a track (`track()`), so a mask stays on something filmed.
+- [x] A mask path can follow a track (`track()`), so a mask stays on something filmed.
+  `track(layer, name, at)` now reads a track at another time too; Follow a track, on a mask in the inspector, keeps the path drawn and moves it by the object's move since the current time (`apps/editor/src/masks.ts`), divided by the layer's scale (its rotation is not counted). Where the object is lost, the mask goes back to where it was drawn.
 
 ### Step 6. Colour
 

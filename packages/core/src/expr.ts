@@ -31,8 +31,8 @@ export interface ExprScope {
   audio(source: string): AudioReader;
   /** an event list at this instant (running totals, the latest event): its asset id */
   events(source: string): EventsReader;
-  /** where a tracked object of a video layer is at this instant: the layer id, and the track's name or asset id (its first track by default) */
-  track(layer: string, name?: string): TrackReader;
+  /** where a tracked object of a video layer is at this instant (or at composition time `at`): the layer id, and the track's name or asset id (its first track by default) */
+  track(layer: string, name?: string, at?: number): TrackReader;
 }
 
 const SAFE_MATH: Math = Object.freeze(Object.assign(

@@ -129,3 +129,7 @@ its network policy) and has no GPU: no model was downloaded or run there.
 - **History.** Commit `f466b6a` alone does not typecheck (a label declared
   twice); `ef9f34f`, right after it, fixes it. Every other commit passed the
   checks before it was pushed.
+- **Step 5 — a mask on a tracked object.** Track a moving object (track
+  tool), draw a mask around it at a moment it shows, then Follow a track on
+  the mask: it stays on the object as it moves. A rotated layer drifts (only
+  its scale is counted).

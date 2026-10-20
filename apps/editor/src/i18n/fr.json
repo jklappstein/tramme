@@ -590,6 +590,8 @@
     "noProjectNamed": "Rien qui s'appelle « {query} »."
   },
   "inspector": {
+    "followATrack": "Suivre un suivi",
+    "noTrackYet": "Pas encore de suivi : suivez d'abord l'objet avec l'outil de suivi, le masque pourra alors le suivre",
     "maskSubtract": "Soustraire",
     "maskIntersect": "Intersection",
     "masks": "Masques",

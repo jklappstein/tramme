@@ -590,6 +590,8 @@
     "noProjectNamed": "Nothing named “{query}”."
   },
   "inspector": {
+    "followATrack": "Follow a track",
+    "noTrackYet": "No track yet: follow the object with the track tool first, then the mask can ride on it",
     "maskSubtract": "Subtract",
     "maskIntersect": "Intersect",
     "masks": "Masks",

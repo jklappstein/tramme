@@ -4,10 +4,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Evaluator, getAt, pointer, propKind, staticValue, sheetIssues, TRANSFORM_SCHEMA, MOTION_BLUR_SCHEMA, CAMERA_SCHEMA, SOUND_MIX_SCHEMA, type TrammeDoc, type Op, type Paint, type Prop, type PropDef, type PropSchema, type Token, MASK_SCHEMA } from '@tramme/core';
-import { comp, commit, draft, cancelDraft, S, viewDoc, select, uiTime } from '../state.ts';
+import { comp, commit, draft, cancelDraft, S, viewDoc, select, toast, uiTime } from '../state.ts';
 import { assetData } from '../preview.ts';
 import { addModifierOps, editAtOps, fixedOps, folderOf, imagesIn, keyAtOps, keyIndexAt, keysOf, removeKeyOps, removeModifierOps, setAtOps, snap, freshId, fmtSeconds } from '../model.ts';
 import { modsOf, modifierParams } from '@tramme/core';
+import { followTrackOps, tracksOf } from '../masks.ts';
 import { pickColor } from '../dropper.ts';
 import { ColorField, NumberField, openMenu, Popover, Select, Seg, TextInput, Toggle, type MenuItem } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
@@ -583,6 +584,11 @@ function MasksSection({ ctx, base, id, masks }: { ctx: Ctx; base: string; id: st
           <div class="fx-head">
             <Toggle on={mk.enabled !== false} onChange={(v) => commit(v ? t('inspector.enableMask') : t('inspector.disableMask'), setAtOps(ctx.doc, `${base}/masks/${i}/enabled`, v))} />
             <span class="fx-title">{mk.id}</span>
+            <button class="icon-btn xs" title={t('inspector.followATrack')} onClick={(e) => {
+              const tracks = tracksOf(ctx.doc, ctx.compId);
+              if (!tracks.length) { toast(t('inspector.noTrackYet')); return; }
+              openMenu(e, tracks.map(([video, track, name]) => ({ label: `${name} · ${ctx.doc.compositions[ctx.compId].layers[video]?.name ?? video}`, icon: 'target' as const, onClick: () => commit(t('inspector.followATrack'), followTrackOps(ctx.doc, ctx.compId, id, mk.id, video, track, ctx.t)) })));
+            }}><Icon name="target" /></button>
             <button class="icon-btn xs" title={t('inspector.moveUp')} disabled={i === 0} onClick={() => commit(t('inspector.maskOrder'), [{ op: 'move', from: `${base}/masks/${i}`, path: `${base}/masks/${i - 1}` }])}><Icon name="chevronDown" class="flip" /></button>
             <button class="icon-btn xs" title={t('common.remove')} onClick={() => commit(t('common.removeName', { name: mk.id }), [{ op: 'remove', path: `${base}/masks/${i}` }])}><Icon name="x" /></button>
           </div>

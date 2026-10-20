@@ -443,7 +443,11 @@ export class Evaluator {
       marker: (q: string) => markerInfo(comp, q),
       audio: (source: string) => this.audioAt(ctx, source),
       events: (source: string) => this.eventsAt(ctx, source),
-      track: (layer: string, name?: string) => { this.depend(address, `${layer}.transform.position`); return this.trackAt(ctx, layer, name); },
+      track: (layer: string, name?: string, at?: number) => {
+        this.depend(address, `${layer}.transform.position`);
+        const when = typeof at === 'number' && Number.isFinite(at) ? at : ctx.t;
+        return this.trackAt(when === ctx.t ? ctx : { ...ctx, t: when, frame: Math.round(when * ctx.comp.fps), memo: new Map(), stack: [...ctx.stack] }, layer, name);
+      },
       ease: (spec: unknown, x: number) => {
         const f = easeFn(spec as any, tokens);
         return f === 'hold' ? (x >= 1 ? 1 : 0) : f(x);
