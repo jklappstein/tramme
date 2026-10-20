@@ -702,6 +702,9 @@
     "camera": "Camera (2.5D)"
   },
   "panel": {
+    "proxyTitle": "Make a proxy?",
+    "proxyText": "{name} decodes at {fps} frames a second on this computer and plays at {need}: the preview would stutter. A lighter copy (540 lines) plays instead while you edit; the exports keep the original.",
+    "makeProxy": "Make a proxy",
     "luts": "LUTs",
     "text": "Text",
     "newLayerName": "New layer: {name}",
@@ -796,6 +799,8 @@
     "cliDefault": "Its default model"
   },
   "settings": {
+    "playProxies": "Play proxies",
+    "playProxiesHint": "a video with a proxy (the proxy tool) plays its lighter copy here; the exports always use the original",
     "adaptsToTheMachine": "Adapts to the machine: smaller if playback slows down, larger when there is room.",
     "alwaysTheStillResolution": "Always the still resolution. For a powerful machine.",
     "halfOfTheStill": "Half of the still resolution.",
@@ -1364,5 +1369,8 @@
   },
   "stabilize": {
     "reading": "reading the shake"
+  },
+  "proxy": {
+    "encoding": "encoding the proxy"
   }
 }

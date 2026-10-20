@@ -94,7 +94,7 @@ class Preview {
       const sandboxed = prefs.peek().sandboxPreview && (doc0.plugins ?? []).length > 0;
       // the sandbox's declarations are needed before the renderer opens: it registers from them, and the modules never load on the page
       if (sandboxed) await pluginHost(new URL(S.docUrl.peek(), location.href).href).ensure(pluginItemsOf(doc0, new URL(S.docUrl.peek(), location.href).href));
-      this.renderer = await Renderer.open(doc0, editorRegistry(), new URL(S.docUrl.peek(), location.href).href, this.canvas, { compId: compIdOf(doc0), raster: 'gpu', scale: S.previewScale.peek(), preserve: false, isolate: true, pluginModule: sandboxed ? undefined : filterModule, sandboxModules: sandboxed, sandboxDeclarations: sandboxed ? (id) => declarationsModule(sandboxDeclaration(id)!, id) : undefined });
+      this.renderer = await Renderer.open(doc0, editorRegistry(), new URL(S.docUrl.peek(), location.href).href, this.canvas, { compId: compIdOf(doc0), raster: 'gpu', scale: S.previewScale.peek(), preserve: false, isolate: true, proxies: prefs.peek().proxies, pluginModule: sandboxed ? undefined : filterModule, sandboxModules: sandboxed, sandboxDeclarations: sandboxed ? (id) => declarationsModule(sandboxDeclaration(id)!, id) : undefined });
       this.applied = doc0;
       await this.attachPlugins();
       setRegistry(this.renderer.registry);
@@ -183,6 +183,13 @@ class Preview {
     setRegistry(this.renderer.registry);
     this.pluginTours();
     this.invalidate();
+  }
+
+  /** the proxies setting changed: the videos that have one open again, the proxy or the original */
+  async useProxies(on: boolean) {
+    if (!this.renderer || !this.applied) return;
+    this.renderer.assets.useProxies = on;
+    await this.reload(Object.entries(this.applied.assets).filter(([, a]) => a.type === 'video' && a.proxy).map(([id]) => id));
   }
 
   /** the sandbox-preview flag changed: the registry is rebuilt from the other source (declarations or real modules) */

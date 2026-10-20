@@ -41,13 +41,15 @@ export interface Preferences {
   /** what the preview plays at, 0 to 1, and muted; the exports keep the mix as it is */
   previewVolume: number;
   previewMuted: boolean;
+  /** the preview plays a video's proxy when it has one (the exports always read the original) */
+  proxies: boolean;
   /** the model each local tool downloads and runs, per task: a model's id, or 'hub:owner/name'; missing, the default (models.ts) */
   models: Partial<Record<ModelTask, string>>;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   language: 'auto', theme: 'studio', view: 'studio', motion: 'auto', still: 'display', blur: 'document', exactFrames: true, sandboxPreview: false,
-  effectsDb: -8, musicDb: -14, duckDb: -12, varySounds: true, confirmPaid: true, paidPerTurn: 10, voiceProvider: 'auto', voice: '', voiceModel: '', previewVolume: 1, previewMuted: false, models: {},
+  effectsDb: -8, musicDb: -14, duckDb: -12, varySounds: true, confirmPaid: true, paidPerTurn: 10, voiceProvider: 'auto', voice: '', voiceModel: '', previewVolume: 1, previewMuted: false, proxies: true, models: {},
 };
 
 // ── themes and views ─────────────────────────────────────────
@@ -123,6 +125,7 @@ function load(): Preferences {
     if (!VOICE_PROVIDERS.includes(p.voiceProvider)) p.voiceProvider = d.voiceProvider;
     if (typeof p.voice !== 'string') p.voice = d.voice;
     if (typeof p.voiceModel !== 'string') p.voiceModel = d.voiceModel;
+    p.proxies = p.proxies !== false;
     const models = p.models && typeof p.models === 'object' ? p.models : {};
     p.models = Object.fromEntries(MODEL_TASKS.filter((k) => typeof models[k] === 'string').map((k) => [k, models[k]]));
     return p;

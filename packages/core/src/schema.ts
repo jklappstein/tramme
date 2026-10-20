@@ -26,6 +26,7 @@ const asset = z.strictObject({
   box: z.tuple([finite, finite, finite, finite]).optional(),
   hash: z.string().optional(),
   madeBy: z.array(z.string()).optional(),
+  proxy: z.string().optional(),
 });
 
 const transform = z.strictObject({

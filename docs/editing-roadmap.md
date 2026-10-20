@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation), step 8 done (proxies); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -103,9 +103,12 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 
 ### Step 8. Proxies
 
-- [ ] The `proxy` tool: a video re-encoded locally at a lower size (WebCodecs, as the cut-out writes its mask videos), saved as an asset linked to its source.
-- [ ] The preview plays the proxy when there is one and the computer's setting asks for it; exports and the command line always read the original. The setting is per computer, like the preview quality.
-- [ ] Offered on import above a size and a frame rate the machine plays poorly (measured, not guessed).
+- [x] The `proxy` tool: a video re-encoded locally at a lower size (WebCodecs, as the cut-out writes its mask videos), saved as an asset linked to its source.
+  `apps/editor/src/proxy.ts`: 540 lines by default, a keyframe every half second, its sound left in the original; the source names it (`proxy` on the asset, an addition to the format, checked by the validator).
+- [x] The preview plays the proxy when there is one and the computer's setting asks for it; exports and the command line always read the original. The setting is per computer, like the preview quality.
+  Settings → Preview → Play proxies (on by default); only the preview's renderer is opened with `proxies`, the asset store opening the proxy in place of its source and again when the setting changes.
+- [x] Offered on import above a size and a frame rate the machine plays poorly (measured, not guessed).
+  A second of the file decoded at its own size, timed: under 1.2 times its frame rate, and over 540 lines, the import asks. Left out: a project made from a video on the home screen is not measured yet; the tool is there for it.
 
 ### Step 9. Voice effects
 

@@ -154,3 +154,10 @@ its network policy) and has no GPU: no model was downloaded or run there.
   pan kept, no breathing zoom; `lock` on a tripod-like shot; a clip with a
   cut in it does not drift across the cut. Measured in the container on a
   synthetic shake only.
+## Editing, steps 7 to 9
+
+- **Step 8 — proxies.** Import a 4K or 60 fps phone video in the assets
+  panel on a modest computer: the question comes (and not for a 1080p file
+  on a fast one); make the proxy, the preview plays smoothly; Settings →
+  Preview → Play proxies off: the original plays again; an export uses the
+  original (its size and sharpness).

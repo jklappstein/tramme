@@ -702,6 +702,9 @@
     "camera": "Caméra (2.5D)"
   },
   "panel": {
+    "proxyTitle": "Créer un proxy ?",
+    "proxyText": "{name} se décode à {fps} images par seconde sur cet ordinateur et se lit à {need} : l'aperçu saccaderait. Une copie allégée (540 lignes) se lit à sa place pendant le montage ; les exports gardent l'original.",
+    "makeProxy": "Créer un proxy",
     "luts": "LUT",
     "text": "Texte",
     "newLayerName": "Nouveau calque : {name}",
@@ -796,6 +799,8 @@
     "cliDefault": "Son modèle par défaut"
   },
   "settings": {
+    "playProxies": "Lire les proxys",
+    "playProxiesHint": "une vidéo qui a un proxy (l'outil proxy) lit ici sa copie allégée ; les exports utilisent toujours l'original",
     "adaptsToTheMachine": "S'adapte à la machine : plus petite si la lecture ralentit, plus grande s'il y a de la marge.",
     "alwaysTheStillResolution": "Toujours la résolution de l'arrêt. Pour une machine puissante.",
     "halfOfTheStill": "Moitié de la résolution de l'arrêt.",
@@ -1159,6 +1164,10 @@
     "used": "Plugin {name} ajouté à ce projet."
   },
   "content": {
+    "Height (lines)": "Hauteur (lignes)",
+    "Make a proxy": "Créer un proxy",
+    "a lighter copy of a video (540 lines by default) that the preview plays instead, so a 4K or a high frame rate file plays smoothly while editing; the exports keep the original": "une copie allégée d'une vidéo (540 lignes par défaut) que l'aperçu lit à sa place, pour qu'un fichier 4K ou à haute cadence se lise sans à-coups pendant le montage ; les exports gardent l'original",
+    "the video file (the one of the selected layer by default)": "le fichier vidéo (celui du calque sélectionné par défaut)",
     "Locked": "Verrouillé",
     "Stabilisation": "Stabilisation",
     "Stabilise a video": "Stabiliser une vidéo",
@@ -2350,5 +2359,8 @@
   },
   "stabilize": {
     "reading": "lecture du tremblement"
+  },
+  "proxy": {
+    "encoding": "encodage du proxy"
   }
 }

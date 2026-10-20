@@ -65,6 +65,8 @@ export interface RendererOptions {
   preserve?: boolean;
   /** true (the editor's preview): a layer or effect that fails is drawn as a red frame and listed in `errors`, the rest renders; exports keep failing */
   isolate?: boolean;
+  /** true (the editor's preview, when its setting asks): a video with a proxy plays its proxy; exports leave it out */
+  proxies?: boolean;
   /**
    * What the registry takes from a plugin module, as the caller wants it: the
    * editor strips the tools and checks, which run in its sandbox instead
@@ -138,6 +140,7 @@ export class Renderer {
     r.sandboxModules = opts.sandboxModules ?? false;
     r.sandboxDeclarations = opts.sandboxDeclarations;
     r.assets.sandboxModules = r.sandboxModules;
+    r.assets.useProxies = opts.proxies ?? false;
     await r.setDoc(doc, { compId: opts.compId });
     return r;
   }

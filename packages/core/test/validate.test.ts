@@ -18,6 +18,12 @@ describe('validation', () => {
     expect(issuesOf((d) => { d.assets.mask = { type: 'video', src: 'assets/cutout/v.mp4', madeBy: 'u2net' }; })[0].path).toBe('/assets/mask/madeBy');
   });
 
+  it('a video names its proxy, another video asset', () => {
+    expect(issuesOf((d) => { d.assets.take = { type: 'video', src: 'take.mp4', proxy: 'small' }; d.assets.small = { type: 'video', src: 'small.mp4' }; })).toEqual([]);
+    expect(issuesOf((d) => { d.assets.take = { type: 'video', src: 'take.mp4', proxy: 'gone' }; })[0].path).toBe('/assets/take/proxy');
+    expect(issuesOf((d) => { d.assets.photo.proxy = 'photo'; })[0].message).toMatch(/only a video/);
+  });
+
   it('masks: their props from the mask schema, one id each', () => {
     const path = { v: [[0, 0], [10, 0], [10, 10]], closed: true };
     expect(issuesOf((d) => { d.compositions.main.layers.bg.masks = [{ id: 'm', props: { path, mode: 'subtract', feather: { $k: [{ t: 0, v: 0 }, { t: 1, v: 20 }] } } }]; })).toEqual([]);

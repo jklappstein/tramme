@@ -70,6 +70,8 @@ export interface Asset {
   hash?: string;
   /** the models that made this file (a cut-out's matte, a depth map, a transcript), with their version: another model later never changes it */
   madeBy?: string[];
+  /** video: the asset of a lighter copy (the proxy tool) the editor's preview may play instead; exports always read this one */
+  proxy?: string;
 }
 
 export interface Transform {
