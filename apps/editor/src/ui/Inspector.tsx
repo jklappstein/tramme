@@ -8,6 +8,7 @@ import { comp, commit, draft, cancelDraft, S, viewDoc, select, uiTime } from '..
 import { assetData } from '../preview.ts';
 import { addModifierOps, editAtOps, fixedOps, folderOf, imagesIn, keyAtOps, keyIndexAt, keysOf, removeKeyOps, removeModifierOps, setAtOps, snap, freshId, fmtSeconds } from '../model.ts';
 import { modsOf, modifierParams } from '@tramme/core';
+import { pickColor } from '../dropper.ts';
 import { ColorField, NumberField, openMenu, Popover, Select, Seg, TextInput, Toggle, type MenuItem } from './controls.tsx';
 import { Icon, kindColor, kindIcon } from './icons.tsx';
 import { mediaOf, transcribe, TranscribeButton } from './Transcribe.tsx';
@@ -96,7 +97,12 @@ function PropRow({ ctx, label, def, path, address }: { ctx: Ctx; label: string; 
       <span class={`plabel${scrubLabel ? '' : ' static'}`} title={tr(def.description) || label}>{label}</span>
       <div class="pvalue">
         {editable
-          ? <Field def={def} value={value} ctx={ctx} label={label} onDraft={live} onCommit={set} />
+          ? <Field def={def} value={value} ctx={ctx} label={label} onDraft={live} onCommit={set} onPick={def.type === 'color' ? async () => {
+            // an effect's colour is picked with the effect off: a key picks the screen as filmed
+            const fx = /^(.*\/effects\/\d+)\/props\/[^/]+$/.exec(path)?.[1];
+            const hex = await pickColor(fx ? [{ op: 'add', path: `${fx}/enabled`, value: false }] : []);
+            if (hex) set(hex);
+          } : undefined} />
           : kind === 'expression'
             ? <span class="prop-note">{short(value)}</span>
             : <span class="prop-note">{short(value)}</span>}
@@ -265,7 +271,7 @@ function LinkField({ ctx, def, value, onCommit }: { ctx: Ctx; def: PropDef; valu
 }
 
 // ── fields by type ───────────────────────────────────────────
-function Field({ def, value, ctx, label, onDraft, onCommit }: { def: PropDef; value: unknown; ctx: Ctx; label: string; onDraft: (v: unknown) => void; onCommit: (v: unknown) => void }) {
+function Field({ def, value, ctx, label, onDraft, onCommit, onPick }: { def: PropDef; value: unknown; ctx: Ctx; label: string; onDraft: (v: unknown) => void; onCommit: (v: unknown) => void; onPick?: () => void }) {
   const unit = def.unit ? UNIT[def.unit] : undefined;
   switch (def.type) {
     case 'number':
@@ -301,7 +307,7 @@ function Field({ def, value, ctx, label, onDraft, onCommit }: { def: PropDef; va
       return <Select value={String(value ?? '')} options={[['', t('inspector.none')], ...opts]} onChange={(v) => onCommit(v || null)} />;
     }
     case 'color':
-      return value === null ? <NullPaint onSet={() => onCommit('#FFFFFF')} /> : <ColorField value={rawColor(value)} tokens={ctx.tokens} onDraft={onDraft} onCommit={onCommit} />;
+      return value === null ? <NullPaint onSet={() => onCommit('#FFFFFF')} /> : <ColorField value={rawColor(value)} tokens={ctx.tokens} onDraft={onDraft} onCommit={onCommit} onPick={onPick} />;
     case 'paint':
       return <PaintField value={value as Paint} ctx={ctx} onCommit={onCommit} onDraft={onDraft} />;
     case 'assets':

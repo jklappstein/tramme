@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { Evaluator, layerActive, propKind, anchorShift, movePathVertex, setPathTangent, insertPathVertex, removePathVertex, nearestOnPath, pathD, localFrame, neighbourDrawings, type Composition, type TrammeDoc, type EvaluatedLayer, type Handle, type PathValue, type Rect, type Vec2 } from '@tramme/core';
 import { drawingRect } from '@tramme/nodes';
 import { localMatrix } from '@tramme/render';
-import { comp, commit, draft, cancelDraft, S, select, viewDoc, previewDoc, toast } from '../state.ts';
+import { comp, commit, draft, cancelDraft, S, select, viewDoc, previewDoc, toast, uiTime } from '../state.ts';
 import { decide } from '../ai/conversation.ts';
 import { editAtOps, flatTree, layerName, parentOf, propPath, rawProp } from '../model.ts';
 import { assetData, preview, previewInfo } from '../preview.ts';
@@ -17,6 +17,7 @@ import { prefs, setPrefs, settingsOpen, type Preferences } from '../settings.ts'
 import { openMenu, type MenuItem } from './controls.tsx';
 import { Icon } from './icons.tsx';
 import { m, t } from '../i18n/index.ts';
+import { picking, pixelAt } from '../dropper.ts';
 
 /** a finger rather than a mouse: bigger handles */
 const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
@@ -390,6 +391,17 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
   };
 
   const onPointerDown = (e: PointerEvent) => {
+    // a colour field waiting: this click picks the pixel under it
+    const waiting = picking.peek();
+    if (waiting && e.button === 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      // drawn once more and read at once: the WebGL canvas keeps nothing between tasks
+      try { preview.renderer?.render(uiTime.peek()); } catch { /* the last picture, then */ }
+      waiting(pixelAt(preview.canvas, e.clientX, e.clientY));
+      preview.invalidate();
+      return;
+    }
     if (e.button === 1 || (e.button === 0 && spaceDown)) { e.preventDefault(); dragPan(e); return; }
     if (e.button !== 0 || S.draft.peek()) return;
     const p = toComp(e);
@@ -464,7 +476,7 @@ export function Viewport({ bare = false, inset = INSET, overlay, intercept }: Vi
         <span class="sep" />
         <QualityButton />
       </div>}
-      <div class="stage" ref={stageRef} style={{ left, top, width: sw, height: sh }} onPointerDown={onPointerDown} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+      <div class={`stage${picking.value ? ' picking' : ''}`} ref={stageRef} style={{ left, top, width: sw, height: sh }} onPointerDown={onPointerDown} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
         <svg class="overlay" ref={svgRef} viewBox={`0 0 ${c.width} ${c.height}`} preserveAspectRatio="none">
           {grid && <g>
             {[1, 2].map((i) => <line key={`v${i}`} class="grid-line" x1={(c.width * i) / 3} y1={0} x2={(c.width * i) / 3} y2={c.height} />)}

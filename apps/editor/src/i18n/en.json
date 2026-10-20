@@ -1,5 +1,6 @@
 {
   "common": {
+    "pickInViewport": "Pick in the viewport (Escape: cancel)",
     "companionHttpStatus": "companion: HTTP {status}",
     "companion": "Companion",
     "server": "Server",

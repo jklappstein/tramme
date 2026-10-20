@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 under way (the key and its notes; the dropper next); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -68,7 +68,8 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 
 - [x] `fx.key`, a chroma key: distance to the key colour in YCbCr, tolerance and softness, spill suppression (the key colour taken out of the edges), a choke to shrink the matte, and a matte view to judge it.
   One GL program: the distance to the key on the chroma alone (Cb, Cr, BT.709), so the screen in shade keys like the screen in light; spill takes the part of the colour that goes the key's way out of what stays, its brightness kept; choke takes the least of eight looks around. Rendered and read back in Chrome (`packages/cli/test/render-effects.test.ts`). To check on a device: real green-screen footage, hair and motion blur.
-- [ ] The key colour picked from the viewport with a dropper.
+- [x] The key colour picked from the viewport with a dropper.
+  Every colour property of the inspector has a dropper (`apps/editor/src/dropper.ts`): the next click on the picture gives the pixel's colour, Escape cancels; an effect's colour is picked with that effect off, so a key picks the screen as filmed. It reads the picture as shown (the composition's look included).
 - [x] The assistant's notes: key green or blue screens, never a picture that only happens to have green in it (that is `cutout`).
 
 ### Step 5. Drawn masks

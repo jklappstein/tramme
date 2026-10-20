@@ -1,5 +1,6 @@
 {
   "common": {
+    "pickInViewport": "Prendre dans la vue (Échap : annuler)",
     "companionHttpStatus": "compagnon : HTTP {status}",
     "companion": "Compagnon",
     "server": "Serveur",
