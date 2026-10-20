@@ -540,7 +540,9 @@ const duck: ToolType<{ layers?: unknown; under?: string; depth?: number; attack?
     for (const id of targets) {
       const l = c.layers[id];
       if (!l || (l.type !== 'audio' && l.type !== 'video')) throw new Error(`${id} is not a sound layer`);
-      const base = Number(audioClips(ctx.doc, ctx.compId).find((x) => x.layerId === id)?.gainDb ?? 0);
+      // the layer's own gain (a voice played with its cleaned copy has its share taken back)
+      const clip = audioClips(ctx.doc, ctx.compId).find((x) => x.layerId === id);
+      const base = Number((clip?.gainDb ?? 0) - (clip?.share ?? 0));
       const keys: { t: number; v: number }[] = [];
       for (const [s, e] of spans) {
         const down = Math.max(0, s - attack), up = e + release;

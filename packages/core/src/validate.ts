@@ -51,6 +51,11 @@ class Checker {
       if (a.type !== 'video') this.err(pointer('assets', id, 'proxy'), 'only a video has a proxy');
       else if (doc.assets[a.proxy]?.type !== 'video' || a.proxy === id) this.err(pointer('assets', id, 'proxy'), `the proxy "${a.proxy}" must be another video asset`);
     }
+    for (const [id, a] of Object.entries(doc.assets)) {
+      if (a.clean === undefined) continue;
+      if (a.type !== 'audio' && a.type !== 'video') this.err(pointer('assets', id, 'clean'), 'only a sound or a video has a cleaned voice');
+      else if (doc.assets[a.clean]?.type !== 'audio' || a.clean === id) this.err(pointer('assets', id, 'clean'), `the cleaned voice "${a.clean}" must be another sound asset`);
+    }
     for (const [name, tk] of Object.entries(doc.tokens)) this.token(name, tk.type, tk.value);
     for (const [cid, comp] of Object.entries(doc.compositions)) this.comp(cid, comp);
     this.nestingCycles();

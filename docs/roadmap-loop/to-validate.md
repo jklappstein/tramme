@@ -265,3 +265,20 @@ its network policy) and has no GPU: no model was downloaded or run there.
 - Identity was checked here: PNG frames byte for byte (the simulations
   case), MP4 decoded at 53 dB PSNR against the single-page MP4 (only the
   encoder's keyframes differ).
+
+## Editing, step 10
+
+- **A real noisy voice.** A phone video recorded in the street or by a
+  fan: `/denoise` on it (or ask the assistant): the progress line, the
+  cleaned voice in the assets (`clean-…`), the layer's Clean voice at 0.85;
+  play it: the noise gone between the words, the voice alive; slide Clean
+  voice to 1 then 0; an MP4 export sounds as the preview. Measured here on a
+  synthetic voice only (the floor down by more than 20 dB, in step to the
+  sample).
+- **The check.** `/check` on the noisy project: "The voice stands only N dB
+  over its noise…"; after denoise, gone.
+- **The desktop app and the phone**: RNNoise loads (a 1.9 MB chunk, fetched
+  the first time); a long file (10 min) takes about a minute on a laptop.
+- **Not done:** DeepFilterNet (ONNX), the better model "where the machine
+  allows": it needs its own feature extraction around the ONNX graph; the
+  tool's engine is RNNoise only for now.

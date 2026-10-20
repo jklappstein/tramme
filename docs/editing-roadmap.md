@@ -2,7 +2,7 @@
 
 What a video editor is expected to do with footage, done on the user's machine alone: speed curves, transitions between shots, keying, drawn masks, colour from LUTs and curves, stabilisation, proxies, voice effects, a clean voice, cut hesitations, retouched faces, and the heavier jobs (a voice pulled out of its music, upscaling, frame interpolation), then 10-bit exports. tramme already cuts silences, captions word by word, reframes for 9:16, cuts people out and tracks things; what it lacks is the craft of the edit itself.
 
-Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation), step 8 done (proxies), step 9 done (voice effects); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (models in the settings), step 2 done (speed curves), step 3 done (transitions), step 4 done (keying), step 5 done (masks), step 6 done (colour), step 7 done (stabilisation), step 8 done (proxies), step 9 done (voice effects), step 10 done (a clean voice, by RNNoise; DeepFilterNet, the better model where the machine allows, not yet); the models other than the defaults are to try on a device. What is left is listed under each step. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -119,9 +119,9 @@ Done when: a video layer ramps from 1× to 0.3× and back over two seconds, the 
 
 ### Step 10. A clean voice
 
-- [ ] The `denoise` tool: background noise taken out of a voice (RNNoise compiled to WebAssembly: small, faster than real time on any processor; DeepFilterNet in ONNX where the machine allows, for a better result). The result is a sound asset linked to its source; the layer plays it with `clean` on, the original kept.
-- [ ] The strength set by mixing the cleaned and the original sound (a clean voice sounds dead at 100 %).
-- [ ] The assistant runs it before captions and sound design on a voice recorded outside, and the `check` tool flags a voice whose noise floor is high.
+- [x] The `denoise` tool: background noise taken out of a voice (RNNoise compiled to WebAssembly: small, faster than real time on any processor; DeepFilterNet in ONNX where the machine allows, for a better result). The result is a sound asset linked to its source; the layer plays it with `clean` on, the original kept.
+- [x] The strength set by mixing the cleaned and the original sound (a clean voice sounds dead at 100 %).
+- [x] The assistant runs it before captions and sound design on a voice recorded outside, and the `check` tool flags a voice whose noise floor is high.
 
 ### Step 11. Hesitations
 

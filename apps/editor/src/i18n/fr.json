@@ -2228,7 +2228,13 @@
     "copies a component of this project (with the compositions it holds, its styles and tokens) into the library shared by the projects": "copie un composant de ce projet (avec les compositions qu'il contient, ses styles et ses jetons) dans la bibliothèque partagée par les projets",
     "Bring a component from the library": "Importer un composant de la bibliothèque",
     "the components of the library (list), or copies one into this project, ready to instantiate": "les composants de la bibliothèque (liste), ou en copie un dans ce projet, prêt à être instancié",
-    "its file in the library (component-….js); left out, the tool lists them": "son fichier dans la bibliothèque (component-….js) ; s'il est omis, l'outil les liste"
+    "its file in the library (component-….js); left out, the tool lists them": "son fichier dans la bibliothèque (component-….js) ; s'il est omis, l'outil les liste",
+    "Clean voice": "Voix nettoyée",
+    "how much of the voice cleaned by the denoise tool plays instead of the recorded one: 0 the original, 1 all cleaned (a voice sounds dead there), 0.8 to 0.9 keeps it alive": "la part de la voix nettoyée par l'outil denoise jouée à la place de la voix enregistrée : 0 l'originale, 1 tout nettoyé (la voix y sonne morte), 0,8 à 0,9 la garde vivante",
+    "Clean a voice": "Nettoyer une voix",
+    "takes the background noise out of a voice (a sound or a video layer): the cleaned voice saved beside the original, which stays; the layer plays the two mixed by its Clean voice amount": "retire le bruit de fond d'une voix (un calque son ou vidéo) : la voix nettoyée enregistrée à côté de l'originale, qui reste ; le calque joue les deux mêlées selon sa propriété Voix nettoyée",
+    "The voice stands only {snr} dB over its noise ({floor} dBFS between the words): clean it (denoise)": "La voix n'est qu'à {snr} dB au-dessus de son bruit ({floor} dBFS entre les mots) : nettoyez-la (denoise)",
+    "how much of the cleaned voice plays: 0.85 keeps the voice alive, 1 takes all the noise and some of the life": "la part de voix nettoyée jouée : 0,85 garde la voix vivante, 1 retire tout le bruit et un peu de vie"
   },
   "personal": {
     "cannotStart": "tramme ne peut pas démarrer ici",
@@ -2442,6 +2448,13 @@
     "placed": "Instances de {name}",
     "placedNotice": "{name} placé.",
     "detached": "Instance détachée"
+  },
+  "denoise": {
+    "reading": "Lecture de la voix",
+    "cleaning": "Nettoyage de la voix",
+    "cleanName": "Voix nettoyée",
+    "label": "Voix nettoyée",
+    "done": "La voix de {name} est nettoyée."
   },
   "stabilize": {
     "reading": "lecture du tremblement"

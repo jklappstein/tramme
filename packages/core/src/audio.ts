@@ -38,6 +38,8 @@ export interface AudioClip {
   /** seconds of fade at each end */
   fadeIn: number;
   fadeOut: number;
+  /** its share of a voice played with its cleaned copy (dB, already in gainDb and the envelope); none when it plays alone */
+  share?: number;
   /** a transition's crossfade (composition times): in, the clip rises over the window; out, it falls and stays silent after */
   cross?: { in?: [number, number]; out?: [number, number] };
   /** an effect on the sound (none, pitch, robot, telephone, radio, megaphone, echo) and the semitones of the pitch voice */
@@ -117,6 +119,10 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
     const loopEnd = num(staticValue(props.loopEnd), 0), loops = staticValue(props.loop) === true && loopEnd > start + 0.01;
     // where the clip starts in its file: the video node's clock, so picture and sound agree
     const offset = mediaTime({ start, rate, loop: loops, loopEnd, ...(rateCurve ? { rateElapsed: curveIntegral(rateCurve, layer.in ?? 0, at) } : {}) }, at, layer.in ?? 0);
+    // a cleaned voice beside its source: both play in step, mixed by the layer's clean amount
+    const cleanAmount = clamp(num(staticValue(props.clean), 0), 0, 1), cleaned = doc.assets[asset].clean;
+    const withClean = cleanAmount > 0 && !!cleaned && doc.assets[cleaned]?.type === 'audio';
+    const first = clips.length;
     clips.push({
       layerId, asset, at, duration,
       // unsaid: a video's sound is someone speaking; a sound is what its names say, an effect otherwise
@@ -145,6 +151,14 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
       compress: clamp(num(staticValue(props.compress), 0), 0, 1),
       reverb: clamp(num(staticValue(props.reverb), 0), 0, 1),
     });
+    if (withClean) {
+      // the voice is the sum of both: the original lowered, the cleaned one beside it (identical in their speech, so the voice keeps its level)
+      const orig = clips[first], db = (k: number) => 20 * Math.log10(k);
+      const shift = (c: AudioClip, k: number): AudioClip => ({ ...c, share: db(k), gainDb: c.gainDb + db(k), envelope: c.envelope?.map(([t, v]) => [t, v + db(k)] as [number, number]) ?? null });
+      const clean = shift({ ...orig, asset: cleaned! }, cleanAmount);
+      if (cleanAmount >= 1) clips[first] = clean;
+      else { clips[first] = shift(orig, 1 - cleanAmount); clips.push(clean); }
+    }
   }
   crossfades(comp, clips);
   return clips.sort((a, b) => a.at - b.at);
@@ -156,15 +170,16 @@ export function audioClips(doc: TrammeDoc, compId: string): AudioClip[] {
  * outgoing one falls (equal power), the outgoing silent after it.
  */
 function crossfades(comp: Composition, clips: AudioClip[]) {
-  const byLayer = new Map(clips.map((c) => [c.layerId, c]));
+  // a layer may play two clips (its voice and the same cleaned): both cross
+  const byLayer = new Map<string, AudioClip[]>();
+  for (const c of clips) byLayer.set(c.layerId, [...(byLayer.get(c.layerId) ?? []), c]);
   for (const [id, layer] of Object.entries(comp.layers)) {
     for (const e of layer.effects ?? []) {
       if (e.type !== 'fx.transition' || e.enabled === false || staticValue(e.props?.sound) === false) continue;
       const from = staticValue(e.props?.from), duration = num(staticValue(e.props?.duration), 0.5);
-      const incoming = byLayer.get(id), outgoing = typeof from === 'string' ? byLayer.get(from) : undefined;
       const start = layer.in ?? 0, window: [number, number] = [start, start + Math.max(0.01, duration)];
-      if (incoming) incoming.cross = { ...incoming.cross, in: window };
-      if (outgoing) outgoing.cross = { ...outgoing.cross, out: window };
+      for (const c of byLayer.get(id) ?? []) c.cross = { ...c.cross, in: window };
+      for (const c of typeof from === 'string' ? byLayer.get(from) ?? [] : []) c.cross = { ...c.cross, out: window };
     }
   }
 }

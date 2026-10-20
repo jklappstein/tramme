@@ -75,6 +75,8 @@ export interface Asset {
   madeBy?: string[];
   /** video: the asset of a lighter copy (the proxy tool) the editor's preview may play instead; exports always read this one */
   proxy?: string;
+  /** sound or video: the sound asset of its voice cleaned (the denoise tool), timed like it; a layer plays it with its `clean` amount */
+  clean?: string;
 }
 
 export interface Transform {

@@ -1404,6 +1404,13 @@
     "placedNotice": "{name} placed.",
     "detached": "Instance detached"
   },
+  "denoise": {
+    "reading": "Reading the voice",
+    "cleaning": "Cleaning the voice",
+    "cleanName": "Clean voice",
+    "label": "Clean voice",
+    "done": "The voice of {name} is cleaned."
+  },
   "stabilize": {
     "reading": "reading the shake"
   },

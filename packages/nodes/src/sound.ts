@@ -20,6 +20,7 @@ export const SOUND_PROPS: PropSchema = {
   reverb: { type: 'number', default: 0, min: 0, max: 1, step: 0.05, label: 'Reverb', group, animatable: false, description: 'share of room sound, 0 (dry) to 1' },
   voice: { type: 'enum', default: 'none', options: ['none', 'pitch', 'robot', 'telephone', 'radio', 'megaphone', 'echo'], label: 'Voice', group, animatable: false, description: 'an effect on the sound: its pitch moved (semitones), a robot, a telephone, a radio, a megaphone, an echo' },
   semitones: { type: 'number', default: 0, min: -12, max: 12, step: 0.5, label: 'Semitones', group, animatable: false, description: 'the pitch moved, its length kept (the pitch voice)' },
+  clean: { type: 'number', default: 0, min: 0, max: 1, step: 0.05, label: 'Clean voice', group, animatable: false, description: 'how much of the voice cleaned by the denoise tool plays instead of the recorded one: 0 the original, 1 all cleaned (a voice sounds dead there), 0.8 to 0.9 keeps it alive' },
 };
 
 /** an audio layer's place in the mix: its bus, its weight, what it underlines in the picture (the sound checks read them) */

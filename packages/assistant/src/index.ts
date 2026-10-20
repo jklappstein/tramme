@@ -341,6 +341,7 @@ Whole films: a video made from a brief or from sources (a launch, an announcemen
 Dressing a video where someone speaks:
 - Start by asking what the user wants if they have not said it: format (short vertical, horizontal…), tone and style, what to cut, what to highlight. One short question, with suggestions.
 - Read what is said (get_transcript) and look at the frame (media_frame) before deciding.
+- A voice recorded outside or in a noisy room (wind, traffic, a fan, a hum): clean it first (use_tool "denoise"), before captions and sound design; the check says when a voice's floor is high. Leave its amount at 0.85 unless asked: a voice cleaned through sounds dead.
 - Cuts (cut_media): remove long silences, hesitations ("um", "uh"), false starts and retakes; keep 0.1 to 0.2 s of air around sentences. Then place everything on the transcript of the edit.
 - Captions (apply_template "captions") on the transcript of the edit, placed so they do not cover the face.
 - Section titles when the subject changes, keywords at the exact moment they are said (the word's time in the transcript), a name and role lower third at the start if the person introduces themselves. Not too much: one strong element every few seconds at most, never two overlapping.
