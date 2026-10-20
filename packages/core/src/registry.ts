@@ -231,6 +231,8 @@ export interface EffectType<P = any> {
   canvas2d?: {
     /** scale: canvas pixels per composition pixel (sizes in props are composition pixels) */
     filter?(props: P, scale: number): string;
+    /** how far the filter spreads the picture beyond what was drawn, in canvas pixels: only the layer's box grown by it is filtered (a filter without it runs over the whole frame) */
+    reach?(props: P, scale: number): number;
     apply?(ctx: CanvasRenderingContext2D, props: P, scale: number, host: Host): void;
   };
   /**

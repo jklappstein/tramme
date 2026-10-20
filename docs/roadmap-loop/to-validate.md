@@ -426,3 +426,17 @@ its network policy) and has no GPU: no model was downloaded or run there.
   not resolve.
 - **Not done:** a hanging tool is not timed out (tools may run long);
   step 8, the marketplace, is blocked until tramme has its API.
+
+## Performance, step 4
+
+- **The filters over a layer's box**: `tramme load effects --json before.json`
+  on the previous commit, then `--before before.json` on this one, on a
+  machine with a GPU. Here (software GL): 27.4 s → 6.8 s a frame. With GPU
+  raster the gain should be smaller but real (less area to blur).
+- **Same pixels on real films**: render a few of your projects with blurs,
+  shadows and glows (text with a glow, a stroked shape with a shadow, a
+  rotated or scaled layer) before and after, then `tramme compare before/
+  after --threshold 0`. If a stroke or glyph is cut at an edge, a node's
+  `bounds` is smaller than what it draws by more than the margin (48 px plus 5 %).
+- **Not done (by the measures):** WebGL2 blurs and Rust. Nothing measured
+  here calls for them; take `tramme load --json` on a GPU machine to decide.

@@ -225,7 +225,13 @@ function drawLayer(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: DrawEn
     ctx.globalAlpha *= L.transform.opacity;
     if (L.layer.blend && L.layer.blend !== 'normal') ctx.globalCompositeOperation = BLEND[L.layer.blend];
     if (filter) ctx.filter = filter;
-    ctx.drawImage(off.canvas, 0, 0);
+    // a filter runs over what it is given: the layer's box grown by the filters' reach, not the whole frame (outside it the layer is empty)
+    const box = filter ? filterBox(L, env, at, fx, k, w, h) : null;
+    if (box) {
+      // clipped too: the filter's own layer is as large as the clip
+      if (box.w > 0 && box.h > 0) { ctx.beginPath(); ctx.rect(box.x, box.y, box.w, box.h); ctx.clip(); ctx.drawImage(off.canvas, box.x, box.y, box.w, box.h, box.x, box.y, box.w, box.h); }
+    }
+    else ctx.drawImage(off.canvas, 0, 0);
     env.pool.release(off);
   } else {
     ctx.transform(m.a, m.b, m.c, m.d, m.e, m.f);
@@ -234,6 +240,55 @@ function drawLayer(ctx: CanvasRenderingContext2D, L: EvaluatedLayer, env: DrawEn
     drawContent(ctx, L, env);
   }
   ctx.restore();
+}
+
+type Box = { x: number; y: number; w: number; h: number };
+/** what a node may draw past its bounds (a stroke's half, a glyph's overhang), in its own pixels */
+const INK = 48;
+
+/** a layer's box on the canvas (`at`: its canvas transform), its children's included; null when one of them cannot say (no bounds, effects of its own) */
+function canvasBox(L: EvaluatedLayer, env: DrawEnv, at: DOMMatrix): Box | null {
+  let b: Box | null = null;
+  if (L.node.render.canvas2d || L.node.render.gl) {
+    // a node's bounds are its box, not always its ink: what simulates or holds a composition may draw anywhere
+    if (!L.node.bounds || L.node.simulate || L.node.composes || L.layer.type === 'comp') return null;
+    try { b = L.node.bounds(L.props, env.host(L.id)); } catch { return null; }
+    if (!b) return null;
+    // strokes, glyphs and antialiasing reach past the box: a margin in composition pixels
+    const m = INK + 0.05 * Math.max(b.w, b.h);
+    b = { x: b.x - m, y: b.y - m, w: b.w + 2 * m, h: b.h + 2 * m };
+  }
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  if (b) for (const [x, y] of [[b.x, b.y], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x + b.w, b.y + b.h]]) {
+    const px = at.a * x + at.c * y + at.e, py = at.b * x + at.d * y + at.f;
+    x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px); y1 = Math.max(y1, py);
+  }
+  for (const c of L.children) {
+    if (c.effects.length || c.node.composes) return null;
+    const m = localMatrix(c.transform), cb = canvasBox(c, env, at.multiply(m));
+    if (!cb) return null;
+    x0 = Math.min(x0, cb.x); y0 = Math.min(y0, cb.y); x1 = Math.max(x1, cb.x + cb.w); y1 = Math.max(y1, cb.y + cb.h);
+  }
+  return x0 === Infinity ? { x: 0, y: 0, w: 0, h: 0 } : { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+/**
+ * The part of a layer's picture its filters need to run over: its box grown
+ * by what each filter spreads, in whole pixels, within the canvas (empty
+ * when it falls outside); null for the whole frame, when a filter does not
+ * say how far it reaches or an effect draws by code.
+ */
+export function filterBox(L: EvaluatedLayer, env: DrawEnv, at: DOMMatrix, fx: { e: { props: Record<string, unknown> }; type: { canvas2d?: { filter?: unknown; reach?: (p: any, k: number) => number; apply?: unknown }; gl?: unknown } | null }[], k: number, w: number, h: number): Box | null {
+  let reach = 0;
+  for (const { e, type } of fx) {
+    if (type!.gl || type!.canvas2d?.apply || !type!.canvas2d?.reach) return null;
+    reach += type!.canvas2d.reach(e.props, k);
+  }
+  const b = canvasBox(L, env, at);
+  if (!b || !Number.isFinite(reach)) return null;
+  const x0 = Math.max(0, Math.floor(b.x - reach)), y0 = Math.max(0, Math.floor(b.y - reach));
+  const x1 = Math.min(w, Math.ceil(b.x + b.w + reach)), y1 = Math.min(h, Math.ceil(b.y + b.h + reach));
+  return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) };
 }
 
 /** draw layers over what the context already holds (nested compositions) */

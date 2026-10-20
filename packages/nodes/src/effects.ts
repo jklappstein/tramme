@@ -35,7 +35,8 @@ export const exposure: EffectType = {
 export const blur: EffectType<{ radius: number }> = {
   type: 'fx.blur', title: 'Blur', category: 'Effects', stage: 'layer',
   props: { radius: { type: 'number', default: 12, min: 0, step: 0.5, unit: 'px', label: 'Radius' } },
-  canvas2d: { filter: (p, k) => (p.radius > 0 ? `blur(${p.radius * k}px)` : '') },
+  // a CSS blur's radius is its standard deviation: three of them hold all but a 1/1000 of it
+  canvas2d: { filter: (p, k) => (p.radius > 0 ? `blur(${p.radius * k}px)` : ''), reach: (p, k) => Math.ceil(3 * Math.max(0, p.radius) * k) + 2 },
 };
 
 export const shadow: EffectType<{ color: string; blur: number; offset: [number, number] }> = {
@@ -45,8 +46,13 @@ export const shadow: EffectType<{ color: string; blur: number; offset: [number, 
     blur: { type: 'number', default: 24, min: 0, step: 0.5, unit: 'px', label: 'Blur' },
     offset: { type: 'vec2', default: [0, 12], unit: 'px', label: 'Offset' },
   },
-  canvas2d: { filter: (p, k) => `drop-shadow(${p.offset[0] * k}px ${p.offset[1] * k}px ${p.blur * k}px ${p.color})` },
+  canvas2d: {
+    filter: (p, k) => `drop-shadow(${p.offset[0] * k}px ${p.offset[1] * k}px ${p.blur * k}px ${p.color})`,
+    reach: (p, k) => Math.ceil((Math.max(Math.abs(p.offset[0]), Math.abs(p.offset[1])) + 3 * Math.max(0, p.blur)) * k) + 2,
+  },
 };
+
+const glows = (strength: number) => Math.max(1, Math.min(4, Math.round(strength)));
 
 export const glow: EffectType<{ color: string; radius: number; strength: number }> = {
   type: 'fx.glow', title: 'Glow', category: 'Effects', stage: 'layer',
@@ -55,7 +61,11 @@ export const glow: EffectType<{ color: string; radius: number; strength: number 
     radius: { type: 'number', default: 18, min: 0, step: 0.5, unit: 'px', label: 'Radius' },
     strength: { type: 'number', default: 2, min: 1, max: 4, step: 1, label: 'Intensity' },
   },
-  canvas2d: { filter: (p, k) => Array.from({ length: Math.max(1, Math.min(4, Math.round(p.strength))) }, () => `drop-shadow(0 0 ${p.radius * k}px ${p.color})`).join(' ') },
+  canvas2d: {
+    filter: (p, k) => Array.from({ length: glows(p.strength) }, () => `drop-shadow(0 0 ${p.radius * k}px ${p.color})`).join(' '),
+    // each shadow spreads the one before it
+    reach: (p, k) => glows(p.strength) * Math.ceil(3 * Math.max(0, p.radius) * k) + 2,
+  },
 };
 
 export const color: EffectType<{ brightness: number; contrast: number; saturation: number; hue: number }> = {
@@ -66,7 +76,7 @@ export const color: EffectType<{ brightness: number; contrast: number; saturatio
     saturation: { type: 'number', default: 1, min: 0, step: 0.01, unit: 'x', label: 'Saturation' },
     hue: { type: 'number', default: 0, step: 1, unit: 'deg', label: 'Hue' },
   },
-  canvas2d: { filter: (p) => `brightness(${p.brightness}) contrast(${p.contrast}) saturate(${p.saturation}) hue-rotate(${p.hue}deg)` },
+  canvas2d: { filter: (p) => `brightness(${p.brightness}) contrast(${p.contrast}) saturate(${p.saturation}) hue-rotate(${p.hue}deg)`, reach: () => 0 },
 };
 
 export const tint: EffectType<{ color: string; amount: number }> = {
