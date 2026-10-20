@@ -33,6 +33,18 @@ Status: steps 1 and 5 done (the breakdown per frame, the load cases and `tramme 
 
 Done when: for each load case we can say whether the bottleneck is the JavaScript, the GPU, video decoding or the transfer.
 
+First figures, 15 frames per case, in a cloud container without a GPU (Chrome's software GL and canvas), ms per frame:
+
+| case | frame | evaluate | draw | video | readback | send | held back by |
+|---|---|---|---|---|---|---|---|
+| `layers` | 341 | 4.0 | 28 | 0 | 251 | 44 | the GPU |
+| `effects` | 40,236 | 2.3 | 39,618 | 0 | 543 | 56 | the JavaScript (Canvas 2D filters drawn by the processor) |
+| `video4k` | 501 | 0.2 | 41 | 36 | 361 | 46 | the GPU |
+| `crossfade4k` | 666 | 0.6 | 83 | 121 | 372 | 61 | the GPU |
+| `simulation` | 331 | 0.2 | 40 | 0 | 233 | 42 | the GPU |
+
+Without a GPU, the readback weighs on everything, and the filters of the `effects` case cost 40 s a frame: these figures say where to look on such a machine, not on a user's. The reference figures are to be taken with a real GPU (`tramme load --json`), before step 4 picks anything to move.
+
 ### Step 2. Parallel export
 
 - [ ] The film cut into N segments rendered by N pages of the same Chrome, each encoding its segment; the segments joined by ffmpeg without re-encoding (cuts on keyframes).
