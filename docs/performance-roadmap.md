@@ -2,7 +2,7 @@
 
 How tramme renders faster without leaving its stack: measure where a frame's time goes, export in parallel, prepare the Evaluator for documents with hundreds of instances, and move to WebGL or to Rust compiled to WebAssembly only what a measure points at.
 
-Status: steps 1 and 5 done (the breakdown per frame, the load cases and `tramme load`; a pool of readers per video file, one asset per file); the figures on a machine with a real GPU are still to take. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: steps 1 and 5 done (the breakdown per frame, the load cases and `tramme load`; a pool of readers per video file, one asset per file), step 3 done (the Evaluator for many instances: 400 instances under a time field evaluated in 12 ms a frame instead of 29, in Node; the `instances` load case); the figures on a machine with a real GPU are still to take. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Where things stand
 
@@ -56,8 +56,8 @@ Done when: an export with N pages is identical frame by frame to the sequential 
 
 ### Step 3. The Evaluator for many instances
 
-- [ ] A per-frame cache of values by `(address, t)` for the calls through `base(t)`: `smooth` already makes 9 per value, `timeField` over hundreds of instances will make many more (`docs/components-roadmap.md`).
-- [ ] The instances of a distribution evaluated in batches into typed arrays rather than object by object: the shape that suits a WebAssembly module if step 1 calls for one.
+- [x] A per-frame cache of values by `(address, t)` for the calls through `base(t)`: `smooth` already makes 9 per value, `timeField` over hundreds of instances will make many more (`docs/components-roadmap.md`).
+- [x] The instances of a distribution evaluated in batches into typed arrays rather than object by object: the shape that suits a WebAssembly module if step 1 calls for one.
 
 Done when: a distribution of several hundred instances with a time field stays within the frame budget of the editor's preview.
 

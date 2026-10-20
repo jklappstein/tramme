@@ -11,7 +11,7 @@ describe('the load cases of the bench', () => {
   });
 
   it('each push one part of a frame, under its own name', () => {
-    expect(cases.map((c) => c.id)).toEqual(['layers', 'effects', 'video4k', 'crossfade4k', 'simulation']);
+    expect(cases.map((c) => c.id)).toEqual(['layers', 'effects', 'video4k', 'crossfade4k', 'simulation', 'instances']);
   });
 
   it('are the same on every run', () => {

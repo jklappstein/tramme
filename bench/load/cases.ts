@@ -4,7 +4,7 @@
 // They are built here rather than kept as JSON: hundreds of layers, and a 4K
 // source made by ffmpeg on the machine instead of a file in the repository.
 
-import type { Composition, Layer, Prop, TrammeDoc } from '@tramme/core';
+import type { Composition, Layer, Prop, TrammeDoc, Vec2 } from '@tramme/core';
 
 export interface LoadCase {
   id: string;
@@ -127,4 +127,31 @@ function simulation(): LoadCase {
 }
 
 /** every load case, in the order they are run */
-export const loadCases = (): LoadCase[] => [manyLayers(), effects(), video4k(), crossfade4k(), simulation()];
+/**
+ * A card component (a plate, a dot, a bar, their entrance) placed 400 times
+ * by one distribution, its colour from the palette, played as a ripple by a
+ * time field, a wiggle smoothed on the dot: the Evaluator for many
+ * instances (docs/performance-roadmap.md, step 3)
+ */
+function instances(): LoadCase {
+  const enter = (a: unknown, b: unknown) => ({ $k: [{ t: 0, v: a, ease: [0.16, 1, 0.3, 1] }, { t: 0.6, v: b }] }) as { $k: { t: number; v: never }[] };
+  const card: Composition = {
+    name: 'Card', width: 80, height: 48, fps: FPS, duration: DURATION, background: null,
+    params: { color: { type: 'paint', targets: ['plate.fill'] } },
+    layers: {
+      plate: { type: 'shape.rect', transform: { position: [40, 24], scale: enter([0.4, 0.4], [1, 1]), opacity: enter(0, 1) }, props: { size: [72, 40], radius: 8, fill: '#FFFFFF' } },
+      dot: { type: 'shape.ellipse', transform: { position: { ...enter([20, 24], [60, 24]), $mod: [{ type: "wiggle", freq: 1.5, amp: 3 }, { type: "smooth", window: 0.2 }] } as Prop<Vec2>, opacity: enter(0, 1) }, props: { size: [12, 12], fill: '#101216' } },
+      bar: { type: 'shape.rect', transform: { position: [40, 36] }, props: { size: enter([0, 4], [56, 4]), fill: '#101216' } },
+    },
+    order: ['plate', 'dot', 'bar'],
+  };
+  const main = comp('Many instances', {
+    grid: {
+      type: 'comp', transform: { position: [W / 2, H / 2] }, props: { comp: 'card', crop: false },
+      distribute: { count: 400, layout: { type: 'grid', columns: 25, spacing: [76, 66] }, params: { color: { $palette: 'random', colors: PALETTE } }, time: { mode: 'distance', amount: 1.2 } },
+    },
+  });
+  return { id: 'instances', title: '400 instances of a component, a time field over them (the Evaluator for many instances)', doc: { ...doc('Load: many instances', main), compositions: { main, card } } };
+}
+
+export const loadCases = (): LoadCase[] => [manyLayers(), effects(), video4k(), crossfade4k(), simulation(), instances()];

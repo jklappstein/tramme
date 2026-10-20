@@ -119,3 +119,26 @@ describe('a time field over a distribution', () => {
     expect(Math.abs(f(1.999) - f(2))).toBeLessThan(0.01);
   });
 });
+
+describe('the Evaluator for many instances', () => {
+  it('keys each instance by where it is, the same at every frame (its simulation keeps going)', () => {
+    const d: TrammeDoc = {
+      schema: 'tramme/1', meta: { title: 'keys' }, tokens: {}, assets: {}, root: 'main',
+      compositions: {
+        dot: { name: 'Dot', width: 10, height: 10, fps: 30, duration: 2, params: { r: { type: 'number', targets: ['d.radius'] } }, layers: { d: { type: 'box' } }, order: ['d'] },
+        main: { name: 'Main', width: 100, height: 100, fps: 30, duration: 2, order: ['many'], layers: { many: { type: 'comp', props: { comp: 'dot' }, distribute: { count: 3, layout: { type: 'list' }, params: { r: { $expr: 't * 10 + index' } } } as never } } },
+      },
+    };
+    const ev = new Evaluator(d, registry());
+    const keys = (t: number) => (ev.layerAt('many', t, 'main').props.$instances as { instance: Instance }[]).map((x) => x.instance.key);
+    expect(keys(0)).toEqual(['main/many#0', 'main/many#1', 'main/many#2']);
+    expect(keys(1)).toEqual(keys(0));
+  });
+
+  it('reads a smoothing through a time field the same, its readings shared within a frame', () => {
+    const smooth = row([{ type: 'wiggle', freq: 2, amp: 30 }, { type: 'smooth', window: 0.3 }, { type: 'timeField', mode: 'angle', amount: 0.5 }]);
+    const a = radii(smooth, 0.7), b = radii(smooth, 0.7);
+    expect(a).toEqual(b);
+    expect(new Set(a.map((v) => v.toFixed(3))).size).toBe(5);
+  });
+});

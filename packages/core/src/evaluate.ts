@@ -5,16 +5,16 @@
 // cycles are reported and the editor can show what drives what. Static
 // properties are cached across frames.
 
-import { componentOf, distributionCount, instanceProps, isPaletteRule, layoutPlacements, paletteColor, paramDef, styleProps, type Instance, type Placement } from './components.ts';
+import { componentOf, distributionCount, instanceProps, isPaletteRule, layoutBatch, paletteColor, paramDef, styleProps, type Instance, type Placement } from './components.ts';
 import { applyMat, invertMat, layerMatrix } from './math.ts';
 import { audioReader, type AudioReader } from './analysis.ts';
 import { eventsReader, type EventsReader } from './events.ts';
 import { integrate, mediaClockOf, mediaMoments, mediaTime, trackId, trackReader, type MediaClock, type TrackReader } from './track.ts';
 import { compileExpr, type ExprScope } from './expr.ts';
-import { modifierParams, seedOf, timeDelay, type ModifierContext, type ModifierType, type TimeField } from './modifiers.ts';
+import { fieldOf, modifierParams, seedOf, type ModifierContext, type ModifierType, type TimeField } from './modifiers.ts';
 import { asExpr, asKeyframed, asLink, easeFn, modsOf, propKind, resolveTokens, sampleKeyframes, staticValue, tokenValue } from './props.ts';
 import { CAMERA_SCHEMA, MASK_SCHEMA, MOTION_BLUR_SCHEMA, SOUND_MIX_SCHEMA, TRANSFORM_SCHEMA, type NodeType, type PathValue, type PropDef, type Registry } from './registry.ts';
-import type { Composition, TrammeDoc, Layer, Marker, ModifierSpec, Prop, Vec2 } from './types.ts';
+import type { Composition, TrammeDoc, KeyframedProp, Layer, Marker, ModifierSpec, Prop, Vec2 } from './types.ts';
 
 export interface EvaluatedTransform {
   anchor: Vec2;
@@ -83,6 +83,10 @@ interface FrameCtx {
   stack: string[];
   /** the instance the composition is read through: the properties its parameters and overrides set */
   inst?: Instance;
+  /** values read at other instants through base(t), by address (and modifiers applied) then time: shared by the contexts one evaluation spawns */
+  at: Map<string, Map<number, unknown>>;
+  /** the composition's fixed values (the Evaluator's static cache), found once per context */
+  fixed?: Map<string, unknown>;
 }
 
 const COMP_DEFS: Record<string, PropDef> = {
@@ -114,7 +118,8 @@ export class Evaluator {
   private data?: (assetId: string) => unknown;
   /** address -> addresses it read, from the last evaluations */
   readonly deps = new Map<string, Set<string>>();
-  private staticCache = new Map<string, unknown>();
+  /** fixed values, by composition then address */
+  private staticCache = new Map<string, Map<string, unknown>>();
 
   constructor(doc: TrammeDoc, registry: Registry, opts: EvaluatorOptions = {}) {
     this.doc = doc;
@@ -174,15 +179,19 @@ export class Evaluator {
    * How an instance reads a component: the parameters' values (evaluated in
    * the composition holding it) on their targets, and the overrides.
    */
-  instance(compId: string, values: Record<string, unknown>, overrides?: Record<string, Prop>): Instance {
-    const props = instanceProps(this.comp(compId), values, overrides);
-    return { key: JSON.stringify([compId, ...props]), props };
+  instance(compId: string, values: Record<string, unknown>, overrides?: Record<string, Prop>, key = compId): Instance {
+    return { key, props: instanceProps(this.comp(compId), values, overrides) };
+  }
+
+  /** a fresh evaluation context at time t */
+  private ctxAt(compId: string, comp: Composition, t: number, inst?: Instance): FrameCtx {
+    return { compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [], inst, at: new Map() };
   }
 
   /** the resolved scene of a composition at time t (seconds), read through an instance when it holds one */
   frame(t: number, compId = this.doc.root, inst?: Instance): EvaluatedFrame {
     const comp = this.comp(compId);
-    const ctx: FrameCtx = { compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [], inst };
+    const ctx = this.ctxAt(compId, comp, t, inst);
     const effects: EvaluatedEffect[] = (comp.effects || []).filter((e) => e.enabled !== false).map((e) => ({
       id: e.id, type: e.type, props: this.evalSchema(ctx, `$comp.effects.${e.id}`, this.effectSchema(e.type)),
     }));
@@ -203,7 +212,7 @@ export class Evaluator {
   /** value of one property: 'layerId.prop', 'layerId.transform.position', '$comp.background' */
   value(address: string, t: number, compId = this.doc.root, inst?: Instance): unknown {
     const comp = this.comp(compId);
-    return this.read({ compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [], inst }, address);
+    return this.read(this.ctxAt(compId, comp, t, inst), address);
   }
 
   /**
@@ -215,14 +224,14 @@ export class Evaluator {
   elapsed(layerId: string, t: number, compId = this.doc.root, prop = 'rate'): number | null {
     const comp = this.comp(compId);
     if (!comp.layers[layerId]) throw new Error(`unknown layer: ${layerId}`);
-    return this.integralOf({ compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [] }, layerId, prop);
+    return this.integralOf(this.ctxAt(compId, comp, t), layerId, prop);
   }
 
   /** one layer at time t, whether or not it is active then (node loading, editor) */
   layerAt(id: string, t: number, compId = this.doc.root, inst?: Instance): EvaluatedLayer {
     const comp = this.comp(compId);
     if (!comp.layers[id]) throw new Error(`unknown layer: ${id}`);
-    return this.layer({ compId, comp, t, frame: Math.round(t * comp.fps), memo: new Map(), stack: [], inst }, id);
+    return this.layer(this.ctxAt(compId, comp, t, inst), id);
   }
 
   // ── layers ─────────────────────────────────────────────────
@@ -251,8 +260,10 @@ export class Evaluator {
     if (inner && (inner.params || layer.overrides || layer.distribute)) {
       const values: Record<string, unknown> = {};
       for (const name of Object.keys(inner.params || {})) if (layer.params?.[name] !== undefined) values[name] = this.read(ctx, `${id}.params.${name}`);
-      if (layer.distribute) props.$instances = this.distribute(ctx, id, String(props.comp), values);
-      else props.$instance = this.instance(String(props.comp), values, layer.overrides);
+      // its key: where it is (the instance's path through the compositions), the same at every frame
+      const key = `${ctx.inst ? `${ctx.inst.key}/` : ''}${ctx.compId}/${id}`;
+      if (layer.distribute) props.$instances = this.distribute(ctx, id, String(props.comp), values, key);
+      else props.$instance = this.instance(String(props.comp), values, layer.overrides, key);
     }
     return {
       id, layer, node,
@@ -274,29 +285,39 @@ export class Evaluator {
    * and its row (index, count and row for the component's expressions and
    * modifiers).
    */
-  private distribute(ctx: FrameCtx, id: string, compId: string, values: Record<string, unknown>): ({ instance: Instance } & Placement)[] {
+  private distribute(ctx: FrameCtx, id: string, compId: string, values: Record<string, unknown>, key: string): ({ instance: Instance } & Placement)[] {
     const layer = ctx.comp.layers[id], d = layer.distribute!, inner = this.comp(compId);
     const data = d.rows ? this.data?.(d.rows) : undefined;
     const rows = d.rows ? (Array.isArray(data) ? data : []) : null;
     const points = d.layout.type === 'points' ? this.pointsOf(ctx, id, d.layout.layer) : null;
     const n = distributionCount(d, rows, points);
-    const places = layoutPlacements(d.layout, n, points);
+    // the numbers of every instance in one pass, in typed arrays: their place, their turn, their delay
+    const { x, y, rotation } = layoutBatch(d.layout, n, points);
+    let delay: Float64Array | null = null;
     if (d.time) {
-      // the field over the instances: its amount and seed read at this instant (keyframed, they slide)
+      // the field over the instances, read once: its amount and seed at this instant (keyframed, they slide)
       const num = (p: Prop<number> | undefined, name: string) => (p === undefined ? 0 : Number(this.computeRaw(ctx, `${id}.distribute.time.${name}`, p, { type: 'number', default: 0 })) || 0);
       const f = { ...d.time, amount: num(d.time.amount, 'amount'), seed: num(d.time.seed, 'seed') } as TimeField;
-      const extent = places.map((p) => p.at);
-      for (const [i, p] of places.entries()) { p.delay = timeDelay(f, p.at, i, n, extent, ctx.t, d.time.center ?? [0, 0]); if (d.time.loop) p.loop = true; }
+      const extent: Vec2[] = Array.from({ length: n }, (_, i) => [x[i], y[i]]);
+      const field = fieldOf(f, extent, d.time.center ?? [0, 0]);
+      delay = new Float64Array(n);
+      for (let i = 0; i < n; i++) delay[i] = field(x[i], y[i], i, n, ctx.t);
     }
-    return places.map((place, i) => {
-      const row = rows?.[i], vals = { ...values };
-      for (const [name, rule] of Object.entries(d.params || {})) {
-        const p = inner.params?.[name];
-        if (p) vals[name] = this.ruleValue(ctx, `${id}.distribute.params.${name}`, rule, paramDef(p), vals[name] ?? p.default ?? null, i, n, row);
-      }
-      const inst = this.instance(compId, vals, layer.overrides);
-      return { instance: { ...inst, key: `${inst.key}#${i}`, rank: [i, n], ...(row !== undefined ? { row } : {}) }, ...place };
+    // the rules, a parameter at a time; the parameters that no rule gives are the same object for all
+    const rules = Object.entries(d.params || {}).flatMap(([name, rule]) => {
+      const p = inner.params?.[name];
+      return p ? [{ name, rule, def: paramDef(p), base: values[name] ?? p.default ?? null, address: `${id}.distribute.params.${name}` }] : [];
     });
+    const out: ({ instance: Instance } & Placement)[] = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const row = rows?.[i], vals = rules.length ? { ...values } : values;
+      for (const r of rules) vals[r.name] = this.ruleValue(ctx, r.address, r.rule, r.def, r.base, i, n, row);
+      const inst = this.instance(compId, vals, layer.overrides, `${key}#${i}`);
+      inst.rank = [i, n];
+      if (row !== undefined) inst.row = row;
+      out[i] = { instance: inst, at: [x[i], y[i]], rotation: rotation[i], ...(delay ? { delay: delay[i], ...(d.time!.loop ? { loop: true } : {}) } : {}) };
+    }
+    return out;
   }
 
   /** a distribution's rule for instance i of n: the palette, an expression, or a value */
@@ -348,13 +369,18 @@ export class Evaluator {
   // ── addresses ──────────────────────────────────────────────
   /** the property at an address: the document's, then a style's on the layer, then the instance's */
   private slot(ctx: FrameCtx, address: string): Slot {
-    const s = this.docSlot(ctx, address);
+    // where an address lives in the document depends on it alone (documents are immutable): found once
+    let slots = this.slots.get(ctx.comp);
+    if (!slots) this.slots.set(ctx.comp, (slots = new Map()));
+    let s = slots.get(address);
+    if (!s) slots.set(address, (s = this.docSlot(ctx, address)));
     const dot = address.indexOf('.');
     const styled = dot > 0 && address[0] !== '$' ? this.styled(ctx.comp.layers[address.slice(0, dot)])?.get(address.slice(dot + 1)) : undefined;
     const own = ctx.inst?.props.get(address);
     return own !== undefined ? { ...s, prop: own, inst: true } : styled !== undefined ? { ...s, prop: styled } : s;
   }
 
+  private slots = new WeakMap<Composition, Map<string, Slot>>();
   private styles = new WeakMap<Layer, Map<string, Prop> | null>();
   /** the properties a layer's styles set, once per layer */
   private styled(layer: Layer | undefined): Map<string, Prop> | null {
@@ -410,9 +436,16 @@ export class Evaluator {
   }
 
   private read(ctx: FrameCtx, address: string): unknown {
-    if (ctx.memo.has(address)) return ctx.memo.get(address);
-    const cacheKey = `${ctx.compId}:${address}`;
-    if (!ctx.inst?.props.has(address) && this.staticCache.has(cacheKey)) return this.staticCache.get(cacheKey);
+    const memo = ctx.memo.get(address);
+    if (memo !== undefined || ctx.memo.has(address)) return memo;
+    let fixed = ctx.fixed;
+    if (!fixed) {
+      fixed = this.staticCache.get(ctx.compId);
+      if (!fixed) this.staticCache.set(ctx.compId, (fixed = new Map()));
+      ctx.fixed = fixed;
+    }
+    const known = fixed.get(address);
+    if ((known !== undefined || fixed.has(address)) && !ctx.inst?.props.has(address)) return known;
     if (ctx.stack.includes(address)) throw new EvalError(address, `circular dependency (${[...ctx.stack, address].join(' → ')})`);
     const { prop, def, inst } = this.slot(ctx, address);
     ctx.stack.push(address);
@@ -423,7 +456,7 @@ export class Evaluator {
       ctx.stack.pop();
     }
     // a fixed value reads nothing else: the same in every frame and every instance, except one an instance sets
-    if (!inst && (prop === undefined || (propKind(prop) === 'static' && !modsOf(prop)))) this.staticCache.set(cacheKey, v);
+    if (!inst && (prop === undefined || (propKind(prop) === 'static' && !modsOf(prop)))) fixed.set(address, v);
     else ctx.memo.set(address, v);
     return v;
   }
@@ -438,7 +471,7 @@ export class Evaluator {
   private applyMods(ctx: FrameCtx, address: string, prop: Prop, def: PropDef, v: unknown, upto: number): unknown {
     const mods = modsOf(prop)!;
     const kp = propKind(prop) === 'keyframes' ? asKeyframed(prop) : null;
-    const selfId = address.split('.')[0];
+    const selfId = address.slice(0, address.indexOf('.') >>> 0);
     // an instance of a distribution: its rank among the instances, and noise of its own
     const [index, count] = ctx.inst?.rank ?? this.rank(ctx.comp, selfId);
     const seed = seedOf(address) + (ctx.inst?.rank ? ctx.inst.rank[0] * 7919 : 0);
@@ -451,7 +484,7 @@ export class Evaluator {
         audio: (source: string) => this.audioAt(ctx, source),
         position: (id: string, t2?: number) => this.layerPosition(ctx, address, id || selfId, t2 ?? ctx.t),
         keys: kp ? kp.$k : null,
-        keyValues: kp ? kp.$k.map((key) => resolveTokens(def.type, key.v, this.doc.tokens)) : null,
+        keyValues: kp ? this.keyValues(kp, def) : null,
         base: (t2: number) => this.valueAt(ctx, address, prop, def, t2, k),
       };
       v = m.apply(v, this.modParams(m, spec, ctx.t), mc);
@@ -459,13 +492,26 @@ export class Evaluator {
     return v;
   }
 
-  /** a modifier's parameters at time t: its defaults filled in, a keyframed one (an amount, a seed) sampled, so it slides rather than jumps */
+  private keyed = new WeakMap<object, unknown[]>();
+  /** a keyframed property's key values, tokens resolved, once per property */
+  private keyValues(kp: KeyframedProp, def: PropDef): unknown[] {
+    let v = this.keyed.get(kp);
+    if (!v) this.keyed.set(kp, (v = kp.$k.map((key) => resolveTokens(def.type, key.v, this.doc.tokens))));
+    return v;
+  }
+
+  private params = new WeakMap<ModifierSpec, { p: Record<string, unknown>; keyed: string[] }>();
+  /** a modifier's parameters at time t: its defaults filled in (once per modifier of the document), a keyframed one (an amount, a seed) sampled, so it slides rather than jumps */
   private modParams(m: ModifierType, spec: ModifierSpec, t: number): Record<string, unknown> {
-    const p = modifierParams(m, spec);
-    for (const [k, v] of Object.entries(p)) {
-      const def = m.params[k];
-      if (def && propKind(v) === 'keyframes') p[k] = sampleKeyframes(def.type, asKeyframed(v).$k, t, this.doc.tokens);
+    let c = this.params.get(spec);
+    if (!c) {
+      const p = modifierParams(m, spec);
+      c = { p, keyed: Object.keys(p).filter((k) => m.params[k] && propKind(p[k]) === 'keyframes') };
+      this.params.set(spec, c);
     }
+    if (!c.keyed.length) return c.p;
+    const p = { ...c.p };
+    for (const k of c.keyed) p[k] = sampleKeyframes(m.params[k].type, asKeyframed(c.p[k]).$k, t, this.doc.tokens);
     return p;
   }
 
@@ -495,8 +541,15 @@ export class Evaluator {
 
   /** the property at another time, with only its first `upto` modifiers */
   private valueAt(ctx: FrameCtx, address: string, prop: Prop, def: PropDef, t: number, upto: number): unknown {
+    // the same reading asked again within this evaluation (modifiers reading other instants, a time field over a smoothing)
+    const key = upto ? `${address}#${upto}` : address;
+    let times = ctx.at.get(key);
+    if (!times) ctx.at.set(key, (times = new Map<number, unknown>()));
+    if (times.has(t)) return times.get(t);
     const c2: FrameCtx = { ...ctx, t, frame: Math.round(t * ctx.comp.fps), memo: new Map(), stack: [...ctx.stack] };
-    return this.applyMods(c2, address, prop, def, this.computeRaw(c2, address, prop, def), upto);
+    const v = this.applyMods(c2, address, prop, def, this.computeRaw(c2, address, prop, def), upto);
+    times.set(t, v);
+    return v;
   }
 
   private ranks = new WeakMap<Composition, Map<string, [number, number]>>();

@@ -283,16 +283,22 @@ export const MAX_INSTANCES = 10000;
 
 /** the placements of n instances by a layout; `points` gives a points layout its vertices, already in the layer's space */
 export function layoutPlacements(layout: Layout, n: number, points: Vec2[] | null = null): Placement[] {
-  const out: Placement[] = [];
+  const { x, y, rotation } = layoutBatch(layout, n, points);
+  return Array.from({ length: n }, (_, i) => ({ at: [x[i], y[i]] as Vec2, rotation: rotation[i] }));
+}
+
+/** the same placements in typed arrays, one pass over the instances (the shape a WebAssembly module would take) */
+export function layoutBatch(layout: Layout, n: number, points: Vec2[] | null = null): { x: Float64Array; y: Float64Array; rotation: Float64Array } {
+  const x = new Float64Array(n), y = new Float64Array(n), rotation = new Float64Array(n);
   switch (layout.type) {
     case 'grid': {
       const cols = Math.max(1, layout.columns ?? Math.ceil(Math.sqrt(n))), rows = Math.ceil(n / cols), [sx, sy] = layout.spacing ?? [100, 100];
-      for (let i = 0; i < n; i++) out.push({ at: [((i % cols) - (cols - 1) / 2) * sx, (Math.floor(i / cols) - (rows - 1) / 2) * sy], rotation: 0 });
+      for (let i = 0; i < n; i++) { x[i] = ((i % cols) - (cols - 1) / 2) * sx; y[i] = (Math.floor(i / cols) - (rows - 1) / 2) * sy; }
       break;
     }
     case 'list': {
       const s = layout.spacing ?? 100, v = layout.direction === 'vertical';
-      for (let i = 0; i < n; i++) { const k = (i - (n - 1) / 2) * s; out.push({ at: v ? [0, k] : [k, 0], rotation: 0 }); }
+      for (let i = 0; i < n; i++) { const k = (i - (n - 1) / 2) * s; if (v) y[i] = k; else x[i] = k; }
       break;
     }
     case 'circle': {
@@ -301,24 +307,25 @@ export function layoutPlacements(layout: Layout, n: number, points: Vec2[] | nul
       const step = n > 1 ? sweep / (Math.abs(Math.abs(sweep) - 360) < 1e-9 ? n : n - 1) : 0;
       for (let i = 0; i < n; i++) {
         const a = start + i * step, rad = (a * Math.PI) / 180;
-        out.push({ at: [r * Math.cos(rad), r * Math.sin(rad)], rotation: layout.rotate ? a + 90 : 0 });
+        x[i] = r * Math.cos(rad); y[i] = r * Math.sin(rad);
+        if (layout.rotate) rotation[i] = a + 90;
       }
       break;
     }
     case 'path': {
-      const s = pathSampler(layout.path);
-      const gaps = layout.path.closed ? n : n - 1;
+      const s = pathSampler(layout.path), gaps = layout.path.closed ? n : n - 1;
       for (let i = 0; i < n; i++) {
         const { at, angle } = s(gaps > 0 ? i / gaps : 0);
-        out.push({ at, rotation: layout.rotate ? angle : 0 });
+        x[i] = at[0]; y[i] = at[1];
+        if (layout.rotate) rotation[i] = angle;
       }
       break;
     }
     case 'points':
-      for (let i = 0; i < n; i++) out.push({ at: points?.[i] ?? [0, 0], rotation: 0 });
+      for (let i = 0; i < n; i++) { x[i] = points?.[i]?.[0] ?? 0; y[i] = points?.[i]?.[1] ?? 0; }
       break;
   }
-  return out;
+  return { x, y, rotation };
 }
 
 /** a point along a path at a fraction of its length, and its direction there in degrees */

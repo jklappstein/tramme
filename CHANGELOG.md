@@ -36,6 +36,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Changed
 
+- **Faster evaluation of many elements**: a frame of 400 instances of a component under a time field is evaluated in about 12 ms instead of 29 (the field read once rather than per instance, the modifiers' settings, the curves and where each property lives found once, the readings at other instants shared within a frame). `tramme load` has an `instances` case.
 - **Two layers showing one video at different moments read it at once**: a crossfade between two shots of one take, a split screen or the clips of a cut that overlap each read forward on a decoder of their own (three per file at most) instead of making one decoder seek at every frame. On a crossfade within a 4K file, the time spent waiting for video frames drops by three quarters.
 
 ### Fixed

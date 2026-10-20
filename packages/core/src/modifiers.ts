@@ -157,26 +157,40 @@ export interface TimeField {
  * the amount and the seed: a seed or an amount animated slides, never jumps.
  */
 export function timeDelay(f: TimeField, pos: Vec2, index: number, count: number, extent: Vec2[], t: number, center?: Vec2): number {
+  return fieldOf(f, extent, center)(pos[0], pos[1], index, count, t);
+}
+
+/**
+ * The same delay as a function of the element, its field read once (the
+ * span of the extent along the angle, the farthest point from the centre):
+ * a field over N elements costs N, not N².
+ */
+export function fieldOf(f: TimeField, extent: Vec2[], center?: Vec2): (x: number, y: number, index: number, count: number, t: number) => number {
   switch (f.mode) {
-    case 'rank': return f.amount * (f.from === 'last' ? count - 1 - index : index);
+    case 'rank': return (_x, _y, index, count) => f.amount * (f.from === 'last' ? count - 1 - index : index);
     case 'angle': {
-      const a = ((f.angle ?? 0) * Math.PI) / 180, dir = (p: Vec2) => p[0] * Math.cos(a) + p[1] * Math.sin(a);
-      const ds = extent.map(dir), lo = Math.min(...ds), hi = Math.max(...ds);
-      return hi > lo ? (f.amount * (dir(pos) - lo)) / (hi - lo) : 0;
+      const a = ((f.angle ?? 0) * Math.PI) / 180, ca = Math.cos(a), sa = Math.sin(a);
+      let lo = Infinity, hi = -Infinity;
+      for (const p of extent) { const d = p[0] * ca + p[1] * sa; if (d < lo) lo = d; if (d > hi) hi = d; }
+      return hi > lo ? (x, y) => (f.amount * (x * ca + y * sa - lo)) / (hi - lo) : () => 0;
     }
     case 'distance': {
-      const c = center ?? f.center ?? [0, 0], far = Math.max(1e-9, ...extent.map((p) => Math.hypot(p[0] - c[0], p[1] - c[1])));
-      return (f.amount * Math.min(1, Math.hypot(pos[0] - c[0], pos[1] - c[1]) / far));
+      const c = center ?? f.center ?? [0, 0];
+      let far = 1e-9;
+      for (const p of extent) far = Math.max(far, Math.hypot(p[0] - c[0], p[1] - c[1]));
+      return (x, y) => f.amount * Math.min(1, Math.hypot(x - c[0], y - c[1]) / far);
     }
     case 'noise': {
       const seed = f.seed ?? 0, scale = f.scale ?? 300;
       if (scale <= 0) {
         // a fixed random delay per element; a seed between two whole ones blends theirs
-        const s0 = Math.floor(seed), k = seed - s0, r = (s: number) => hash(index * 977 + s * 7919 + 13);
-        return f.amount * (r(s0) * (1 - k) + r(s0 + 1) * k);
+        const s0 = Math.floor(seed), k = seed - s0, r = (index: number, s: number) => hash(index * 977 + s * 7919 + 13);
+        return (_x, _y, index) => f.amount * (r(index, s0) * (1 - k) + r(index, s0 + 1) * k);
       }
-      const n = fbm(pos[0] / scale, pos[1] / scale + seed * 1.37, t * (f.speed ?? 0) + seed * 0.71, f.octaves ?? 2);
-      return f.amount * Math.min(1, Math.max(0, (n + 1) / 2));
+      return (x, y, _i, _n, t) => {
+        const n = fbm(x / scale, y / scale + seed * 1.37, t * (f.speed ?? 0) + seed * 0.71, f.octaves ?? 2);
+        return f.amount * Math.min(1, Math.max(0, (n + 1) / 2));
+      };
     }
   }
 }

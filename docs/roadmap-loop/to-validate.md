@@ -238,3 +238,16 @@ its network policy) and has no GPU: no model was downloaded or run there.
   `/component-use` lists and brings it in. Not run against a real library
   server here (the tools are unit-tested on packing and unpacking only).
 - **Not done:** the volume view (the roadmap's "later").
+
+## Performance, step 3
+
+- **The frame budget on a real machine.** `tramme load instances` on a
+  laptop with a GPU: here (software GL) the frame is 349 ms, of which
+  readback 252 ms (the software GPU), draw 38 ms (the 400 nested
+  evaluations, about 12 ms, and the Canvas 2D of 1200 shapes). The
+  done-when is the editor's preview: open a project with a 400-instance
+  distribution and a time field (the `instances` case's document, written by
+  `tramme load --out`), play it, read the frame time in the preview's
+  stats; it should hold 30 fps on a laptop.
+- `node bench/evaluate-instances.ts` prints the evaluation alone (12 ms
+  here, 29 before).
