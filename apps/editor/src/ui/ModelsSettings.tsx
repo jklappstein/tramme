@@ -97,6 +97,7 @@ function ModelRow({ task, files, changed }: { task: ModelTask; files: CachedFile
           {note && <> · {t(note)}</>}
         </span>
       </div>}
+      {task === 'transcription' && <div class="set-info"><Icon name="info" /><span>{t('localModels.transcriptionPaths')}</span></div>}
       <InCache model={chosen} files={files} changed={changed} />
     </>}>
       <Select value={chosen.id} options={options} onChange={(id) => setModel(task, id)} />

@@ -231,6 +231,7 @@
     "thisFileHasNo": "ce fichier n'a pas de son",
     "soundCannotBeDecoded": "son non décodable dans ce navigateur ({codec})",
     "localCompanion": "compagnon local",
+    "inThisBrowser": "dans ce navigateur",
     "server": "serveur",
     "done": "terminé",
     "aSoundOrA": "un son ou une vidéo est attendu",
@@ -2239,6 +2240,7 @@
     "downloadFailed": "{name} n'a pas pu être téléchargé : {error}",
     "cacheTitle": "Dans ce navigateur",
     "cacheHint": "Les modèles gardés par ce navigateur pèsent {size} en tout. Ci-dessous, ceux qu'aucune ligne n'utilise (un choix d'avant, une version plus ancienne) : supprimez-les pour libérer la place.",
-    "nothingElse": "Rien d'autre : chaque modèle gardé ici sert."
+    "nothingElse": "Rien d'autre : chaque modèle gardé ici sert.",
+    "transcriptionPaths": "Le serveur transcrit avec son propre modèle quand il en a un : Whisper large v3 turbo sur Workers AI, ou whisper-1 d'OpenAI avec une clé OpenAI. Sans lui, le compagnon local fait tourner le modèle choisi ici (TRAMME_WHISPER_MODEL, sur sa machine, l'emporte), et sans compagnon, ce navigateur s'en charge (le plus lent)."
   }
 }

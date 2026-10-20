@@ -72,3 +72,9 @@ its network policy) and has no GPU: no model was downloaded or run there.
   another model, the former one shows under "In this browser" with Delete.
   Checked in the container with fake files put in the cache, never with a
   real download.
+- **Step 1 — transcription by every path.** With the companion running
+  (`npm run tramme -- agent`), choose Whisper base in Settings → Models and
+  transcribe a clip: the companion's log should load `Xenova/whisper-base`;
+  with `TRAMME_WHISPER_MODEL` set, that one instead. Then, in the desktop app
+  or `npm run dev:personal` without a companion and without a server route,
+  transcribe again: the progress says "in this browser" and the words come.

@@ -99,3 +99,8 @@ export function mergeChunks(chunks: { start: number; end: number; words: Transcr
   });
   return out.sort((a, b) => a.s - b.s);
 }
+
+/** Whisper's word chunks (transformers.js, return_timestamps: 'word') as words with their timing; empty ones dropped */
+export function asrWords(out: { chunks?: { text: string; timestamp: [number, number | null] }[] }): TranscriptWord[] {
+  return (out.chunks ?? []).map((c) => ({ w: c.text.trim(), s: c.timestamp[0], e: c.timestamp[1] ?? c.timestamp[0] })).filter((w) => w.w);
+}

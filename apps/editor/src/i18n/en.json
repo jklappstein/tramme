@@ -231,6 +231,7 @@
     "thisFileHasNo": "this file has no sound",
     "soundCannotBeDecoded": "sound cannot be decoded in this browser ({codec})",
     "localCompanion": "local companion",
+    "inThisBrowser": "in this browser",
     "server": "server",
     "done": "done",
     "aSoundOrA": "a sound or a video is expected",
@@ -1322,6 +1323,7 @@
     "downloadFailed": "{name} could not be downloaded: {error}",
     "cacheTitle": "In this browser",
     "cacheHint": "The models kept by this browser weigh {size} in all. Below, those no row uses (an earlier choice, an older version): delete them to free the space.",
-    "nothingElse": "Nothing else: every model kept here is in use."
+    "nothingElse": "Nothing else: every model kept here is in use.",
+    "transcriptionPaths": "The server transcribes with its own model when it has one: Whisper large v3 turbo on Workers AI, or OpenAI's whisper-1 with an OpenAI key. Without it, the local companion runs the model chosen here (TRAMME_WHISPER_MODEL, on its machine, overrides it), and without a companion, this browser does (the slowest way)."
   }
 }
