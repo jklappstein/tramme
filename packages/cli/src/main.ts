@@ -23,6 +23,7 @@ import { fromLottie, toLottie, toSvg } from '@tramme/interop';
 import { fileAssetReader } from '@tramme/interop/node';
 import { launch, openDoc } from './browser.ts';
 import { compareFiles } from './compare.ts';
+import { formatParts } from '@tramme/render/src/timing.ts';
 import { renderAudio, renderVideo } from './jobs.ts';
 import { VIDEO_FORMATS, type VideoFormat } from './media.ts';
 import { docRegistry, filesRegistry } from './plugins.ts';
@@ -108,6 +109,7 @@ async function cmdRender(file: string) {
       docUrl: s.docUrl, doc, compId: str('comp'), format, samples: num('samples'), from: num('from'), to: num('to'), crf: num('crf'), mute: !!flags.mute, out,
     });
     console.log(`${r.frames} frames in ${r.seconds.toFixed(1)} s (${r.msPerFrame.toFixed(0)} ms/frame)${r.audio ? ', with sound' : ''} -> ${path.relative(process.cwd(), out)}`);
+    console.log(`  per frame: ${formatParts(r.parts)}`);
   } finally { await s.close(); }
 }
 

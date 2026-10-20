@@ -8,6 +8,10 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+### Added
+
+- **An export says where a frame's time goes**: next to the `ms/frame`, `tramme render` prints the time per frame spent evaluating the document, drawing it, waiting for video frames, reading the pixels back from the GPU and waiting for the encoder, so a slow export tells whether the JavaScript, the GPU, the decoding or the transfer holds it back.
+
 ## [0.11.1] - 2026-10-19
 
 ### Fixed

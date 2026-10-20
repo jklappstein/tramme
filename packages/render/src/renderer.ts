@@ -7,6 +7,7 @@ import { assertValid, DocSchema, Evaluator, parseColor, type Composition, type T
 import { AssetStore } from './assets.ts';
 import { CanvasPool, drawComposed, drawFrame, drawLayers, type DrawEnv, type HostFactory } from './canvas2d.ts';
 import { Compositor, type Finish, type FinishPass, type Look } from './compositor.ts';
+import { noParts, type FrameParts } from './timing.ts';
 
 export interface RenderOptions {
   /** sub-frames: overrides the composition's motion blur (1 for a fast preview) */
@@ -103,6 +104,8 @@ export class Renderer {
   private sy = 1;
   /** seed of the last finished frame (for the YUV / RGBA dither) */
   lastSeed = 0;
+  /** time spent evaluating, drawing and waiting for video since the last reset (ms; readback and send are the export's) */
+  times: FrameParts = noParts();
   /** what the last frame drawn was missing (video frames being decoded) */
   private pending: Promise<unknown>[] = [];
   private preserve = true;
@@ -310,8 +313,14 @@ export class Renderer {
     const p = this.pending;
     this.pending = [];
     if (!p.length) return false;
-    if (limit === Infinity && !signal) { await Promise.all(p); return true; }
+    if (limit === Infinity && !signal) {
+      const t0 = performance.now();
+      await Promise.all(p);
+      this.times.video += performance.now() - t0;
+      return true;
+    }
     let timer: ReturnType<typeof setTimeout> | undefined, onAbort: (() => void) | undefined;
+    const t0 = performance.now();
     try {
       const outcome = await new Promise<'done' | 'late'>((resolve, reject) => {
         Promise.all(p).then(() => resolve('done'), reject);
@@ -327,6 +336,7 @@ export class Renderer {
     } finally {
       clearTimeout(timer);
       if (onAbort) signal?.removeEventListener('abort', onAbort);
+      this.times.video += performance.now() - t0;
     }
   }
 
@@ -360,7 +370,9 @@ export class Renderer {
    * render in between starts over.
    */
   renderSteps(t: number, opts: RenderOptions = {}): () => EvaluatedFrame | null {
+    const e0 = performance.now();
     const frame = this.evaluator.frame(t, this.compId);
+    this.times.evaluate += performance.now() - e0;
     const n = opts.samples ?? frame.motionBlur.samples;
     const times = subTimes(t, n, opts.shutter ?? frame.motionBlur.shutter, this.comp);
     let i = 0;
@@ -368,11 +380,19 @@ export class Renderer {
       if (i === 0) { this.compositor.begin(); this.pending = []; this.errors.clear(); }
       if (i < times.length) {
         const ts = times[i++];
-        this.drawScene(ts === t ? frame : this.evaluator.frame(ts, this.compId));
+        const e1 = performance.now();
+        const sub = ts === t ? frame : this.evaluator.frame(ts, this.compId);
+        const d0 = performance.now();
+        this.times.evaluate += d0 - e1;
+        this.drawScene(sub);
         this.compositor.add(this.scene, 1 / times.length);
+        this.times.draw += performance.now() - d0;
         if (i < times.length) return null;
       }
-      return this.finishFrame(frame, opts);
+      const d1 = performance.now();
+      const done = this.finishFrame(frame, opts);
+      this.times.draw += performance.now() - d1;
+      return done;
     };
   }
 

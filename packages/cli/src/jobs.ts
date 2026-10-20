@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Page } from 'puppeteer-core';
 import type { TrammeDoc } from '@tramme/core';
+import type { FrameParts } from '@tramme/render/src/timing.ts';
 import { openDoc, type DocInfo } from './browser.ts';
 import { encoder, frameKind, type VideoFormat } from './media.ts';
 import type { Server } from './server.ts';
@@ -48,9 +49,9 @@ export async function renderVideo(server: Server, page: Page, job: VideoJob, onP
   if (onProgress) await page.exposeFunction('__trammeProgress', onProgress).catch(() => {});
   const t0 = Date.now();
   try {
-    const ms: number = await page.evaluate((a) => (window as any).TRAMME.capture(a.f0, a.f1, a.opts, a.kind), { f0, f1, opts: { samples: job.samples }, kind: frameKind(format) });
+    const { ms, parts }: { ms: number; parts: FrameParts } = await page.evaluate((a) => (window as any).TRAMME.capture(a.f0, a.f1, a.opts, a.kind), { f0, f1, opts: { samples: job.samples }, kind: frameKind(format) });
     await enc.end();
-    return { info, frames: f1 - f0, audio: !!audio, msPerFrame: ms, seconds: (Date.now() - t0) / 1000 };
+    return { info, frames: f1 - f0, audio: !!audio, msPerFrame: ms, parts, seconds: (Date.now() - t0) / 1000 };
   } finally {
     server.sink = null;
     if (audio) fs.rmSync(mix, { force: true });
