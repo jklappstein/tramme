@@ -4,8 +4,10 @@
 // N at once by a layout and rules, an instance detached into plain layers.
 // The assistant reaches them through use_tool, the user through the / menu.
 
-import { defineComponentPlan, detachPlan, Evaluator, pointer, sampleComposition, type Distribution, type Layout, type Op, type ToolContext, type ToolType, type Vec2 } from '@tramme/core';
+import { defineComponentPlan, detachPlan, Evaluator, pointer, sampleComposition, type Distribution, type Layout, type Op, type ToolContext, type ToolType, type TrammeDoc, type Vec2 } from '@tramme/core';
 import { freshId, slug } from './model.ts';
+import { api } from './api.ts';
+import { libraryList, refreshLibrary } from './library.ts';
 import { t } from './i18n/index.ts';
 
 /** an object argument, or the same written as JSON (the / menu's text field) */
@@ -179,4 +181,98 @@ const detach: ToolType<{ layer?: string }> = {
   },
 };
 
-export const COMPONENT_TOOLS: ToolType[] = [defineComponent, instantiate, detach];
+// ── the library of components, shared by the projects ──
+// A component kept in the library is a file of the shared library
+// (component-<name>.js, beside the plugins): its composition and the ones it
+// holds, its styles and tokens, as data. Using it copies them into the
+// project, so the project stays self-contained. A component that shows a
+// file of the project (a picture, a font) is not kept: the library holds no
+// files.
+
+/** the library file of a component */
+export const componentFile = (name: string) => `component-${slug(name) || 'component'}.js`.slice(0, 66);
+export const isComponentFile = (name: string) => /^component-[a-z0-9_-]+\.js$/.test(name);
+
+interface LibraryComponent { kind: 'tramme-component'; version: 1; root: string; compositions: TrammeDoc['compositions']; styles: NonNullable<TrammeDoc['styles']>; tokens: TrammeDoc['tokens'] }
+
+/** a component with what it needs from the document: the compositions it holds, the styles and tokens it names */
+export function packComponent(doc: TrammeDoc, id: string): LibraryComponent | { error: string } {
+  const compositions: TrammeDoc['compositions'] = {}, styles: NonNullable<TrammeDoc['styles']> = {}, tokens: TrammeDoc['tokens'] = {};
+  const files = new Set<string>();
+  const visit = (cid: string) => {
+    if (compositions[cid] || !doc.compositions[cid]) return;
+    compositions[cid] = doc.compositions[cid];
+    const text = JSON.stringify(doc.compositions[cid]);
+    for (const m of text.matchAll(/"@([A-Za-z0-9_-]+)"/g)) if (doc.tokens[m[1]]) tokens[m[1]] = doc.tokens[m[1]];
+    for (const l of Object.values(doc.compositions[cid].layers)) {
+      for (const u of l.styles ?? []) if (doc.styles?.[u.style]) styles[u.style] = doc.styles[u.style];
+      if (l.type === 'comp' && typeof l.props?.comp === 'string') visit(l.props.comp);
+    }
+    for (const a of Object.keys(doc.assets)) if (text.includes(`"${a}"`)) files.add(a);
+  };
+  visit(id);
+  // tokens that name other tokens come along
+  for (let more = true; more;) {
+    more = false;
+    for (const tk of Object.values(tokens)) {
+      const ref = typeof tk.value === 'string' && tk.value.startsWith('@') ? tk.value.slice(1) : null;
+      if (ref && doc.tokens[ref] && !tokens[ref]) { tokens[ref] = doc.tokens[ref]; more = true; }
+    }
+  }
+  if (files.size) return { error: `it shows files of the project (${[...files].join(', ')}): the library keeps no files` };
+  return { kind: 'tramme-component', version: 1, root: id, compositions, styles, tokens };
+}
+
+/** the operations bringing a library component into a document: its compositions (ids made free), its styles and tokens where the project has none of that name */
+export function unpackComponent(doc: TrammeDoc, lib: LibraryComponent): { ops: Op[]; root: string } {
+  const ids = new Map<string, string>(), taken: Record<string, unknown> = { ...doc.compositions };
+  for (const cid of Object.keys(lib.compositions)) { const id = freshId(taken, cid); taken[id] = 1; ids.set(cid, id); }
+  const ops: Op[] = [];
+  for (const [cid, c] of Object.entries(lib.compositions)) {
+    const copy = structuredClone(c);
+    for (const l of Object.values(copy.layers)) if (l.type === 'comp' && typeof l.props?.comp === 'string' && ids.has(l.props.comp)) l.props.comp = ids.get(l.props.comp)!;
+    ops.push({ op: 'add', path: pointer('compositions', ids.get(cid)!), value: copy });
+  }
+  for (const [name, tk] of Object.entries(lib.tokens)) if (!doc.tokens[name]) ops.push({ op: 'add', path: pointer('tokens', name), value: tk });
+  const styles = Object.entries(lib.styles).filter(([name]) => !doc.styles?.[name]);
+  if (styles.length) ops.push(doc.styles ? { op: 'add', path: '/styles', value: { ...doc.styles, ...Object.fromEntries(styles) } } : { op: 'add', path: '/styles', value: Object.fromEntries(styles) });
+  return { ops, root: ids.get(lib.root)! };
+}
+
+const keepComponent: ToolType<{ component: string; name?: string }> = {
+  name: 'component-keep', title: 'Keep a component in the library', description: 'copies a component of this project (with the compositions it holds, its styles and tokens) into the library shared by the projects',
+  input: { type: 'object', properties: { component: { type: 'string', title: 'Component', description: 'its composition id' }, name: { type: 'string', title: 'Name in the library' } }, required: ['component'] },
+  ai: { when: 'the user wants a component (a card, a lower third, a badge) in their other projects' },
+  async run({ component, name }, ctx) {
+    if (!ctx.doc.compositions[component]) throw new Error(`component-keep: no composition "${component}"`);
+    const packed = packComponent(ctx.doc, component);
+    if ('error' in packed) throw new Error(`component-keep: ${packed.error}`);
+    const file = componentFile(name ?? ctx.doc.compositions[component].name);
+    await api.libraryPut(file, `export default ${JSON.stringify(packed)};\n`);
+    await refreshLibrary();
+    return { text: `Component "${component}" kept in the library as ${file} (${Object.keys(packed.compositions).length} composition(s)); another project brings it in with component-use.`, notice: t('components.kept', { name: file }) };
+  },
+};
+
+const useComponent: ToolType<{ name?: string }> = {
+  name: 'component-use', title: 'Bring a component from the library', description: 'the components of the library (list), or copies one into this project, ready to instantiate',
+  input: { type: 'object', properties: { name: { type: 'string', format: 'component-library', title: 'Component', description: 'its file in the library (component-….js); left out, the tool lists them' } } },
+  ai: { when: 'the user mentions a component of theirs from another project: list, bring it in, then instantiate it' },
+  async run({ name }, ctx) {
+    if (!name) {
+      await refreshLibrary();
+      const list = libraryList.peek().filter((x) => isComponentFile(x.name)).map((x) => `- ${x.name}`);
+      return { text: list.length ? `The components of the library:\n${list.join('\n')}` : 'No component in the library yet (component-keep).' };
+    }
+    const file = isComponentFile(name) ? name : componentFile(name);
+    const code = await api.libraryGet(file);
+    const json = code.trim().replace(/^export default\s*/, '').replace(/;\s*$/, '');
+    let lib: LibraryComponent;
+    try { lib = JSON.parse(json); } catch { throw new Error(`component-use: ${file} is not a component of the library`); }
+    if (lib?.kind !== 'tramme-component' || !lib.compositions?.[lib.root]) throw new Error(`component-use: ${file} is not a component of the library`);
+    const { ops, root } = unpackComponent(ctx.doc, lib);
+    return { ops, label: t('components.broughtIn', { name: lib.compositions[lib.root].name }), notice: t('components.broughtIn', { name: lib.compositions[lib.root].name }), text: `${file} brought in as the composition "${root}": place it with instantiate (component "${root}").` };
+  },
+};
+
+export const COMPONENT_TOOLS: ToolType[] = [defineComponent, instantiate, detach, keepComponent, useComponent];

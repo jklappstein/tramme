@@ -590,6 +590,20 @@
     "noProjectNamed": "Nothing named “{query}”."
   },
   "inspector": {
+    "removeParameter": "Remove the parameter",
+    "exposeAsParameter": "Expose as a parameter",
+    "exposeName": "Expose {name}",
+    "cannotDetach": "This instance cannot be detached: its time, an expression or its component would draw differently as plain layers.",
+    "detach": "Detach the instance",
+    "instanceOf": "Instance of {name}",
+    "openTheComponent": "Open the component",
+    "distribution": "{n} instances · {layout}",
+    "withTimeField": "time field",
+    "noParameter": "The component has no parameter: expose a property inside it from its menu.",
+    "overrides": "Overrides",
+    "removeOverride": "Remove the override",
+    "parameters": "Parameters",
+    "componentUsedN": "A component: {n} instance(s) in the project.",
     "voicePitch": "Pitch",
     "voiceRobot": "Robot",
     "voiceTelephone": "Telephone",
@@ -713,6 +727,9 @@
     "camera": "Camera (2.5D)"
   },
   "panel": {
+    "keepInLibrary": "Keep in the library",
+    "componentWith": "A component: {params}",
+    "component": "component",
     "proxyTitle": "Make a proxy?",
     "proxyText": "{name} decodes at {fps} frames a second on this computer and plays at {need}: the preview would stutter. A lighter copy (540 lines) plays instead while you edit; the exports keep the original.",
     "makeProxy": "Make a proxy",
@@ -1379,6 +1396,8 @@
     "transcriptionPaths": "The server transcribes with its own model when it has one: Whisper large v3 turbo on Workers AI, or OpenAI's whisper-1 with an OpenAI key. Without it, the local companion runs the model chosen here (TRAMME_WHISPER_MODEL, on its machine, overrides it), and without a companion, this browser does (the slowest way)."
   },
   "components": {
+    "kept": "{name} kept in the library",
+    "broughtIn": "Component {name} brought in",
     "defined": "Component {name}",
     "definedNotice": "{name} is a component now: its first instance is in place of the layers.",
     "placed": "Instances of {name}",

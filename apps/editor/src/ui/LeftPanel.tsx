@@ -15,6 +15,8 @@ import { safeName, takenPaths, upload } from '../files.ts';
 import { askUser } from '../confirm.ts';
 import { assetWithHash, contentHash } from '../hash.ts';
 import { m, t, tr } from '../i18n/index.ts';
+import { listCommands } from '../ai/commands.ts';
+import { runCommand } from '../ai/conversation.ts';
 
 const tab = signal<'layers' | 'assets' | 'tokens'>('layers');
 
@@ -534,6 +536,8 @@ function Compositions() {
       { label: t('common.open'), icon: 'comp', onClick: () => { S.compId.value = id; select([]); } },
       { label: t('panel.insertAsLayer'), icon: 'plus', disabled: id === active, onClick: () => insertLayer({ type: 'comp', name: c.name, transform: { position: [doc.compositions[active].width / 2, doc.compositions[active].height / 2] }, props: { comp: id } }, id) },
       { label: t('panel.mainComposition'), icon: doc.root === id ? 'check' : 'film', disabled: doc.root === id, onClick: () => commit(t('panel.mainComposition'), [{ op: 'replace', path: '/root', value: id }]) },
+      // a component goes to the library shared by the projects
+      ...(c.params && id !== doc.root ? [{ label: t('panel.keepInLibrary'), icon: 'download' as const, onClick: () => { const cmd = listCommands(S.registry.peek()).find((x) => x.name === 'component-keep'); if (cmd) void runCommand(cmd, { component: id }); } }] : []),
       'sep',
       { label: t('common.delete'), icon: 'trash', disabled: doc.root === id, onClick: () => { if (commit(t('panel.deleteName2', { name: c.name }), [{ op: 'remove', path: pointer('compositions', id) }])) { if (active === id) S.compId.value = doc.root; } } },
     ]);
@@ -544,9 +548,9 @@ function Compositions() {
       {Object.entries(doc.compositions).map(([id, c]) => (
         <div key={id} class={`list-row${id === active ? ' on' : ''}`} onClick={() => { S.compId.value = id; select([]); }}
           onPointerDown={(e) => longPress(e, (pos) => menu(pos, id))} onContextMenu={(e) => menu(e, id)}>
-          <span class="thumb"><Icon name={doc.root === id ? 'film' : 'comp'} /></span>
-          <span class="name">{c.name}</span>
-          <span class="meta mono">{c.width}×{c.height} · {c.duration} s</span>
+          <span class="thumb"><Icon name={doc.root === id ? 'film' : c.params ? 'sliders' : 'comp'} /></span>
+          <span class="name" title={c.params ? t('panel.componentWith', { params: Object.keys(c.params).join(', ') }) : undefined}>{c.name}</span>
+          <span class="meta mono">{c.params ? `${t('panel.component')} · ` : ''}{c.width}×{c.height} · {c.duration} s</span>
         </div>
       ))}
     </div>

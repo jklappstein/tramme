@@ -2,7 +2,7 @@
 
 How anything in a document is defined once and used many times with parameters: a layer of any type, a group, a whole composition, an animation alone or a style. Today the assistant writes every element in full through JSON Patch — twenty cards are twenty complete subtrees, a hundred dots a hundred layers — so the cost of a film follows the number of things on screen. After this it follows the number of different ideas in the film.
 
-Status: step 1 done (parameters, instances and overrides read by the Evaluator, detach, styles and animations), step 2 done (distributions: layouts, rules, a rank per instance; a distribution is not detached yet), step 3 done (the time field, on any property and over a distribution), step 4 done (define_component, instantiate and detach; the guide; the repeated check; the dressings as instances of components of their look). Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
+Status: step 1 done (parameters, instances and overrides read by the Evaluator, detach, styles and animations), step 2 done (distributions: layouts, rules, a rank per instance; a distribution is not detached yet), step 3 done (the time field, on any property and over a distribution), step 4 done (define_component, instantiate and detach; the guide; the repeated check; the dressings as instances of components of their look), step 5 done but its last box (parameters and instances in the inspector, any property exposed from its menu, a library of components shared by the projects); the volume view stays for later. Tick the boxes as steps land, and keep this file as the reference instead of re-deciding the plan.
 
 ## Why
 
@@ -51,9 +51,9 @@ What exists goes partway. `stagger` and `noise` vary a value by the layer's rank
 
 ### Step 5. The editor
 
-- [ ] A component's parameters in the property panel, generated from its exposed list like a node's schema.
-- [ ] Instances shown as such (overrides marked, detach, go to the component).
-- [ ] A library of the project's components, reusable across projects.
+- [x] A component's parameters in the property panel, generated from its exposed list like a node's schema.
+- [x] Instances shown as such (overrides marked, detach, go to the component).
+- [x] A library of the project's components, reusable across projects.
 - [ ] Later: a volume view of a layer's timeline (its value over time and across instances) where the cut of a time field is seen and its angle set directly.
 
 ### Step 6. The cut per pixel (separate, later)

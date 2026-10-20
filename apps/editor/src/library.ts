@@ -46,6 +46,7 @@ const use: ToolType<{ name: string }> = {
   ai: { when: 'the user mentions a plugin of theirs from another project; list_nodes shows its nodes and tools once added' },
   async run({ name }, ctx) {
     if (!NAME.test(name)) throw new Error(`invalid name "${name}"`);
+    if (name.startsWith('component-')) throw new Error(`${name} is a component, not a plugin: bring it in with component-use`);
     const code = await api.libraryGet(name);
     const id = name.replace(/\.(js|mjs)$/, '').replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 64);
     const path = await ctx.writeFile(`plugins/${name}`, code);

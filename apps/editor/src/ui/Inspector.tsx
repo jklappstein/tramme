@@ -7,7 +7,7 @@ import { Evaluator, getAt, pointer, propKind, staticValue, sheetIssues, TRANSFOR
 import { comp, commit, draft, cancelDraft, S, viewDoc, select, toast, uiTime } from '../state.ts';
 import { assetData } from '../preview.ts';
 import { addModifierOps, editAtOps, fixedOps, folderOf, imagesIn, keyAtOps, keyIndexAt, keysOf, removeKeyOps, removeModifierOps, setAtOps, snap, freshId, fmtSeconds } from '../model.ts';
-import { modsOf, modifierParams } from '@tramme/core';
+import { addressDef, componentOf, detachPlan, modsOf, modifierParams, paramDef } from '@tramme/core';
 import { followTrackOps, tracksOf } from '../masks.ts';
 import { pickColor } from '../dropper.ts';
 import { ColorField, NumberField, openMenu, Popover, Select, Seg, TextInput, Toggle, type MenuItem } from './controls.tsx';
@@ -80,6 +80,13 @@ function PropRow({ ctx, label, def, path, address }: { ctx: Ctx; label: string; 
       items.push('sep');
     }
     items.push({ label: t('inspector.defaultValue'), icon: 'undo', disabled: raw === undefined, onClick: () => setRaw(undefined, t('inspector.nameDefault', { name: label })) });
+    // any property of a composition can become one of its parameters: the composition is then a component
+    if (!address.startsWith('$') && !address.includes('.params.')) {
+      const c = ctx.doc.compositions[ctx.compId], exposed = Object.entries(c.params ?? {}).find(([, p]) => p.targets.includes(address));
+      items.push('sep', exposed
+        ? { label: t('inspector.removeParameter'), icon: 'x', hint: exposed[0], onClick: () => commit(t('inspector.removeParameter'), unexposeOps(ctx, exposed[0])) }
+        : { label: t('inspector.exposeAsParameter'), icon: 'sliders', onClick: () => commit(t('inspector.exposeName', { name: label }), exposeOps(ctx, address, def)) });
+    }
     openMenu(e, items);
   };
 
@@ -125,6 +132,92 @@ function PropRow({ ctx, label, def, path, address }: { ctx: Ctx; label: string; 
       {error && editable && <div class="prop-extra"><div class="prop-note err">{error}</div></div>}
       {!error && <PropCheck ctx={ctx} path={path} value={value} />}
     </div>
+  );
+}
+
+/** the operations exposing a property of the composition as a parameter (named after the property, made unique) */
+function exposeOps(ctx: Ctx, address: string, def: PropDef): Op[] {
+  const c = ctx.doc.compositions[ctx.compId], cp = pointer('compositions', ctx.compId, 'params');
+  const base = address.split('.').pop()!.replace(/[^A-Za-z0-9_-]/g, '') || 'param';
+  const name = freshId(c.params ?? {}, base);
+  const p = { type: def.type, targets: [address] };
+  return c.params ? [{ op: 'add', path: `${cp}/${name}`, value: p }] : [{ op: 'add', path: cp, value: { [name]: p } }];
+}
+
+/** a parameter removed from the composition, and the values its instances gave it */
+function unexposeOps(ctx: Ctx, name: string): Op[] {
+  const c = ctx.doc.compositions[ctx.compId];
+  const ops: Op[] = Object.keys(c.params ?? {}).length > 1
+    ? [{ op: 'remove', path: pointer('compositions', ctx.compId, 'params', name) }]
+    : [{ op: 'remove', path: pointer('compositions', ctx.compId, 'params') }];
+  for (const [cid, k] of Object.entries(ctx.doc.compositions)) {
+    for (const [lid, l] of Object.entries(k.layers)) {
+      if (l.type !== 'comp' || l.props?.comp !== ctx.compId) continue;
+      if (l.params?.[name] !== undefined) ops.push({ op: 'remove', path: pointer('compositions', cid, 'layers', lid, 'params', name) });
+      if (l.distribute?.params?.[name] !== undefined) ops.push({ op: 'remove', path: pointer('compositions', cid, 'layers', lid, 'distribute', 'params', name) });
+    }
+  }
+  return ops;
+}
+
+/**
+ * A comp layer holding a component: its parameters as properties (from the
+ * component's list, like a node's schema), its overrides marked (each can be
+ * removed), its distribution in a line; open the component, or detach the
+ * instance into plain layers.
+ */
+function InstanceSection({ ctx, id }: { ctx: Ctx; id: string }) {
+  const layer = ctx.doc.compositions[ctx.compId].layers[id], inner = componentOf(ctx.doc, layer);
+  if (!inner) return null;
+  const innerId = String(staticValue(layer.props?.comp)), lp = pointer('compositions', ctx.compId, 'layers', id);
+  const params = Object.entries(inner.params ?? {}), overrides = Object.entries(layer.overrides ?? {});
+  const detach = () => {
+    const plan = detachPlan(ctx.doc, S.registry.peek(), ctx.compId, id);
+    if ('error' in plan) toast(t('inspector.cannotDetach'));
+    else commit(t('inspector.detach'), plan.ops);
+  };
+  const d = layer.distribute;
+  return (
+    <Section id="instance" title={t('inspector.instanceOf', { name: inner.name })} right={<>
+      <button class="icon-btn sm" title={t('inspector.openTheComponent')} onClick={() => { S.compId.value = innerId; select([]); }}><Icon name="comp" /></button>
+      {!d && <button class="icon-btn sm" title={t('inspector.detach')} onClick={detach}><Icon name="split" /></button>}
+    </>}>
+      {d && <div class="prop-note">{t('inspector.distribution', { n: d.count ?? '…', layout: d.layout.type })}{d.time ? ` · ${t('inspector.withTimeField')}` : ''}</div>}
+      {params.map(([name, p]) => (
+        <PropRow key={name} ctx={ctx} label={p.label || name} def={paramDef(p)} path={`${lp}/params/${name}`} address={`${id}.params.${name}`} />
+      ))}
+      {!params.length && <div class="prop-note">{t('inspector.noParameter')}</div>}
+      {overrides.length > 0 && <div class="section-label">{t('inspector.overrides')}</div>}
+      {overrides.map(([address, v]) => {
+        const def = addressDef(ctx.doc, S.registry.peek(), inner, address);
+        return (
+          <div key={address} class="prop keyed">
+            <span /><span class="plabel static mono" title={tr(def?.description)}>{address}</span>
+            <div class="pvalue"><span class="prop-note">{short(staticValue(v))}</span></div>
+            <button class="icon-btn xs" title={t('inspector.removeOverride')} onClick={() => commit(t('inspector.removeOverride'), [{ op: 'remove', path: Object.keys(layer.overrides!).length > 1 ? `${lp}${pointer('overrides', address)}` : `${lp}/overrides` }])}><Icon name="x" /></button>
+          </div>
+        );
+      })}
+    </Section>
+  );
+}
+
+/** a composition's parameters, when it exposes some: each with where it lands, removable */
+function ParamsSection({ ctx }: { ctx: Ctx }) {
+  const c = ctx.doc.compositions[ctx.compId], params = Object.entries(c.params ?? {});
+  if (!params.length) return null;
+  const users = Object.values(ctx.doc.compositions).reduce((n, k) => n + Object.values(k.layers).filter((l) => l.type === 'comp' && l.props?.comp === ctx.compId).length, 0);
+  return (
+    <Section id="params" title={t('inspector.parameters')}>
+      <div class="prop-note">{t('inspector.componentUsedN', { n: users })}</div>
+      {params.map(([name, p]) => (
+        <div key={name} class="prop">
+          <span /><span class="plabel static" title={p.description}>{p.label || name}</span>
+          <div class="pvalue"><span class="prop-note mono">{p.type} → {p.targets.join(', ')}</span></div>
+          <button class="icon-btn xs" title={t('inspector.removeParameter')} onClick={() => commit(t('inspector.removeParameter'), unexposeOps(ctx, name))}><Icon name="x" /></button>
+        </div>
+      ))}
+    </Section>
   );
 }
 
@@ -570,6 +663,7 @@ function LayerInspector({ ctx, id }: { ctx: Ctx; id: string }) {
           <SchemaRows ctx={ctx} schema={TRANSFORM_SCHEMA} basePath={`${lp}/transform`} baseAddress={`${id}.transform`} />
         </Section>
       ) : null}
+      {layer.type === 'comp' && <InstanceSection ctx={ctx} id={id} />}
       {node && grouped(node.props, node.title).map(([g, schema]) => (
         <Section key={g} id={`${layer.type}.${g}`} title={tr(g)}>
           <SchemaRows ctx={ctx} schema={schema} basePath={`${lp}/props`} baseAddress={id} />
@@ -759,6 +853,7 @@ function CompInspector({ ctx }: { ctx: Ctx }) {
         <div class="prop"><span /><span class="plabel static">{t('common.duration')}</span><div class="pvalue"><NumberField value={c.duration} step={1 / c.fps} min={1 / c.fps} unit="s" onCommit={(v) => setComp('duration', +v.toFixed(4), t('common.duration'))} /></div><span /></div>
         <PropRow ctx={ctx} label={t('inspector.background')} def={{ type: 'color', default: null, nullable: true }} path={`${cp}/background`} address="$comp.background" />
       </Section>
+      <ParamsSection ctx={ctx} />
       <Section id="blur" title={t('common.motionBlur')}>
         {c.motionBlur
           ? <SchemaRows ctx={ctx} schema={MOTION_BLUR_SCHEMA} basePath={`${cp}/motionBlur`} baseAddress="$comp.motionBlur" />

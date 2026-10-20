@@ -223,3 +223,18 @@ its network policy) and has no GPU: no model was downloaded or run there.
   time (its phase differs from before, by design). A keyword cannot be
   detached (its wiggle reads the time); a lower third can.
 - **The Repeated elements check** on an old project with copied cards.
+
+## Components, step 5
+
+- **The inspector.** Select an instance: Instance of …, its parameters as
+  properties (keyframe one, link one), its overrides listed (remove one);
+  the open and detach buttons. In a composition, a property's ⋯ menu →
+  Expose as a parameter; the composition's Parameters section lists them
+  with their instances' count. Seen in screenshots here (EN and FR); try
+  it by hand on a phone (the menu on a long press).
+- **The library.** Compositions list → a component's menu → Keep in the
+  library (desktop app, CLI server and personal deployment each store it as
+  `component-<name>.js` beside the plugins); in another project,
+  `/component-use` lists and brings it in. Not run against a real library
+  server here (the tools are unit-tested on packing and unpacking only).
+- **Not done:** the volume view (the roadmap's "later").

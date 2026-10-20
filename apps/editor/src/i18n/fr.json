@@ -590,6 +590,20 @@
     "noProjectNamed": "Rien qui s'appelle « {query} »."
   },
   "inspector": {
+    "removeParameter": "Retirer le paramètre",
+    "exposeAsParameter": "Exposer comme paramètre",
+    "exposeName": "Exposer {name}",
+    "cannotDetach": "Cette instance ne peut pas être détachée : son temps, une expression ou son composant se dessineraient autrement en calques ordinaires.",
+    "detach": "Détacher l'instance",
+    "instanceOf": "Instance de {name}",
+    "openTheComponent": "Ouvrir le composant",
+    "distribution": "{n} instances · {layout}",
+    "withTimeField": "champ temporel",
+    "noParameter": "Le composant n'a pas de paramètre : exposez une de ses propriétés depuis son menu.",
+    "overrides": "Remplacements",
+    "removeOverride": "Retirer le remplacement",
+    "parameters": "Paramètres",
+    "componentUsedN": "Un composant : {n} instance(s) dans le projet.",
     "voicePitch": "Hauteur",
     "voiceRobot": "Robot",
     "voiceTelephone": "Téléphone",
@@ -713,6 +727,9 @@
     "camera": "Caméra (2.5D)"
   },
   "panel": {
+    "keepInLibrary": "Garder dans la bibliothèque",
+    "componentWith": "Un composant : {params}",
+    "component": "composant",
     "proxyTitle": "Créer un proxy ?",
     "proxyText": "{name} se décode à {fps} images par seconde sur cet ordinateur et se lit à {need} : l'aperçu saccaderait. Une copie allégée (540 lignes) se lit à sa place pendant le montage ; les exports gardent l'original.",
     "makeProxy": "Créer un proxy",
@@ -2206,7 +2223,12 @@
     "per parameter, for many: a value, { $expr } reading index, count, row (random(index), noise(index * 0.3)), or { $palette: \"order\" | \"random\" }": "par paramètre, pour plusieurs : une valeur, { $expr } qui lit index, count, row (random(index), noise(index * 0.3)), ou { $palette: \"order\" | \"random\" }",
     "one instance per row of this JSON asset (an array), read as row": "une instance par ligne de cette ressource JSON (un tableau), lue comme row",
     "each instance later: { mode: 'rank' | 'angle' | 'distance' | 'noise', amount (s), angle, center, scale, speed, seed, loop }": "chaque instance plus tard : { mode: 'rank' | 'angle' | 'distance' | 'noise', amount (s), angle, center, scale, speed, seed, loop }",
-    "Instance": "Instance"
+    "Instance": "Instance",
+    "Keep a component in the library": "Garder un composant dans la bibliothèque",
+    "copies a component of this project (with the compositions it holds, its styles and tokens) into the library shared by the projects": "copie un composant de ce projet (avec les compositions qu'il contient, ses styles et ses jetons) dans la bibliothèque partagée par les projets",
+    "Bring a component from the library": "Importer un composant de la bibliothèque",
+    "the components of the library (list), or copies one into this project, ready to instantiate": "les composants de la bibliothèque (liste), ou en copie un dans ce projet, prêt à être instancié",
+    "its file in the library (component-….js); left out, the tool lists them": "son fichier dans la bibliothèque (component-….js) ; s'il est omis, l'outil les liste"
   },
   "personal": {
     "cannotStart": "tramme ne peut pas démarrer ici",
@@ -2413,6 +2435,8 @@
     "transcriptionPaths": "Le serveur transcrit avec son propre modèle quand il en a un : Whisper large v3 turbo sur Workers AI, ou whisper-1 d'OpenAI avec une clé OpenAI. Sans lui, le compagnon local fait tourner le modèle choisi ici (TRAMME_WHISPER_MODEL, sur sa machine, l'emporte), et sans compagnon, ce navigateur s'en charge (le plus lent)."
   },
   "components": {
+    "kept": "{name} gardé dans la bibliothèque",
+    "broughtIn": "Composant {name} importé",
     "defined": "Composant {name}",
     "definedNotice": "{name} est désormais un composant : sa première instance remplace les calques.",
     "placed": "Instances de {name}",

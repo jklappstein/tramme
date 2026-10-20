@@ -51,3 +51,32 @@ describe('the components tools', () => {
     await expect(Promise.resolve().then(() => tool('define_component').run({ name: 'x' }, ctxOf(doc)))).rejects.toThrow(/select/);
   });
 });
+
+describe('the library of components', () => {
+  it('packs a component with what it holds and needs, and brings it into another project under free ids', async () => {
+    const { packComponent, unpackComponent } = await import('../src/components.ts');
+    const doc = scene();
+    doc.tokens.ink = { type: 'color', value: '@sea' };
+    doc.styles = { pop: { props: { 'transform.opacity': { $k: [{ t: 0, v: 0 }, { t: 0.3, v: 1 }] } } } };
+    doc.compositions.dot = { name: 'Dot', width: 10, height: 10, fps: 30, duration: 1, order: ['d'], layers: { d: { type: 'shape.ellipse', props: { size: [10, 10], fill: '@ink' }, styles: [{ style: 'pop' }] } } };
+    doc.compositions.card = { name: 'Card', width: 200, height: 100, fps: 30, duration: 3, params: { color: { type: 'paint', targets: ['p.fill'] } }, order: ['p', 'dot'], layers: { p: { type: 'shape.rect', props: { size: [200, 100] } }, dot: { type: 'comp', props: { comp: 'dot' } } } };
+    const packed = packComponent(doc, 'card');
+    if ('error' in packed) throw new Error(packed.error);
+    expect(Object.keys(packed.compositions)).toEqual(['card', 'dot']);
+    expect(Object.keys(packed.tokens).sort()).toEqual(['ink', 'sea']);
+    expect(Object.keys(packed.styles)).toEqual(['pop']);
+    // another project, which already has a "dot"
+    const other = scene();
+    other.compositions.dot = { name: 'Mine', width: 5, height: 5, fps: 30, duration: 1, order: [], layers: {} };
+    const { ops, root } = unpackComponent(other, JSON.parse(JSON.stringify(packed)));
+    const out = applyOps(other, ops).doc;
+    expect(validate(out, builtinRegistry())).toEqual([]);
+    expect(root).toBe('card');
+    expect(out.compositions.card.layers.dot.props!.comp).toBe('dot2');
+    expect(out.compositions.dot.name).toBe('Mine');
+    // a component showing a file of its project is not kept
+    doc.assets.photo = { type: 'image', src: 'p.png' };
+    doc.compositions.card.layers.p = { type: 'image', props: { image: 'photo' } } as never;
+    expect(packComponent(doc, 'card')).toHaveProperty('error');
+  });
+});
