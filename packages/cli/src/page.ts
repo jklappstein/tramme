@@ -8,7 +8,7 @@
 import type { TrammeDoc } from '@tramme/core';
 import { builtinRegistry } from '@tramme/nodes';
 import { addParts, encodeWav, formatParts, mixComposition, noParts, perFrame, Renderer, type FrameParts, type RenderOptions } from '@tramme/render';
-import { blitSandboxFrame, ensureSandboxDoc, sandboxVideoFrames } from '../../../apps/editor/src/plugins/sandbox-draw.ts';
+import { blitSandboxFrame, ensureDeclared, ensureSandboxDoc, pluginItemsOf, sandboxVideoFrames } from '../../../apps/editor/src/plugins/sandbox-draw.ts';
 import { browserHost, type PluginHost } from '../../../apps/editor/src/plugins/host.ts';
 
 const q = new URLSearchParams(location.search);
@@ -30,6 +30,8 @@ async function sandboxReady(): Promise<PluginHost | null> {
   const doc = currentDoc;
   if (!sandboxOn || !doc || !(doc.plugins ?? []).length) return null;
   sandbox ??= browserHost(docUrl);
+  // the document's plugins loaded in the worker first (a url it knows is not loaded again), as the editor does
+  await ensureDeclared(sandbox, pluginItemsOf(doc, docUrl));
   ensureSandboxDoc(sandbox, {
     doc, docUrl,
     loaded: (id) => { try { return renderer.assets.get(id); } catch { return null; } },

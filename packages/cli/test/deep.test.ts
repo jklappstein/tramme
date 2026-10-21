@@ -31,7 +31,8 @@ describe.skipIf(!CHROME)('a 10-bit export', () => {
     page = b.page;
     close = async () => { await b.browser.close(); server.close(); };
   }, 120_000);
-  afterAll(async () => { await close?.(); if (dir) fs.rmSync(dir, { recursive: true, force: true }); });
+  // closing Chrome takes longer than the default hook's 10 s on a loaded machine
+  afterAll(async () => { await close?.(); if (dir) fs.rmSync(dir, { recursive: true, force: true }); }, 60_000);
 
   it('keeps the levels the half-float frame has, where 8 bits round them away', async () => {
     const out = path.join(dir, 'png10');

@@ -46,6 +46,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ### Changed
 
+- **The Models settings, regrouped**: the tasks on the picture, then those on the sound, one line each with the model chosen, its size, licence and whether it is in this browser, and a single button to download or delete it. A model hub id is entered once, for the task picked beside it.
 - **Faster evaluation of many elements**: a frame of 400 instances of a component under a time field is evaluated in about 12 ms instead of 29 (the field read once rather than per instance, the modifiers' settings, the curves and where each property lives found once, the readings at other instants shared within a frame). `tramme load` has an `instances` case.
 - **Two layers showing one video at different moments read it at once**: a crossfade between two shots of one take, a split screen or the clips of a cut that overlap each read forward on a decoder of their own (three per file at most) instead of making one decoder seek at every frame. On a crossfade within a 4K file, the time spent waiting for video frames drops by three quarters.
 
@@ -53,6 +54,7 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 - In the preview, a video played at another speed kept its pitch while the exports changed it: the pitch now goes with the speed everywhere.
 - An export of two layers playing the same video at different moments could draw one of them with a frame of the other: the shared decoder dropped the first layer's frame when the second one's came.
+- `tramme still` and `tramme render` failed on a project with its own plugins ("unknown node type"): the sandbox was never asked to load them. A frame drawn by the sandbox also came out upside down, in the CLI and in the editor's preview and filmstrip.
 - The cut-out of a person ran the small general network (U²-Netp) instead of U²-Net trained on people: the model hub repository it read held the wrong file. It now downloads rembg's human segmentation weights (176 MB), which keep the person and leave the objects they lean on. Whisper large v3 turbo, in the settings, now comes from the export that can time the words; the former one could not transcribe for the editor.
 
 ## [0.11.1] - 2026-10-19

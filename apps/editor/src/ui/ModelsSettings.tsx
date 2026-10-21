@@ -1,10 +1,10 @@
-// The settings' "Models" section (docs/editing-roadmap.md, step 1): one row
-// per task the editor runs on this machine, the model it downloads by default
-// named with its size and licence, and the models the user can take instead.
-// For the tasks that go through a pipeline, a model hub id too, tried on a
-// blank input before it is kept. The choice is per computer (preferences).
-// Each row says whether its model is in this browser and how much it weighs,
-// downloads it ahead of its tool, or deletes it to free the space.
+// The settings' "Models" section (docs/editing-roadmap.md, step 1): the tasks
+// the editor runs on this machine, those on the picture then those on the
+// sound, one line each: the model chosen (the default marked), its size,
+// licence and whether it is in this browser, and a button that downloads it
+// ahead of its tool or deletes it to free the space. A model hub id can stand
+// in for a task that goes through a pipeline, tried on a blank input before
+// it is kept. The choice is per computer (preferences).
 
 import { useEffect, useState } from 'preact/hooks';
 import { cachedFiles, cachedOf, deleteCached, downloadModel, groupCache, type CachedFile } from '../model-cache.ts';
@@ -39,11 +39,12 @@ const NOTE: Record<string, string> = {
   'whisper-large-v3-turbo': m('localModels.noteWhisperLarge'),
 };
 
+/** the tasks on the picture, then those on the sound */
+const PICTURE: ModelTask[] = ['cutout-person', 'cutout-any', 'detection', 'depth', 'face'];
+const SOUND: ModelTask[] = ['transcription', 'vad'];
+
 const bytes = (n: number) => size(n / 1e6);
 const size = (mb: number) => (mb >= 1000 ? `${(mb / 1000).toFixed(1)} GB` : `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`);
-
-/** "Whisper base · about 80 MB · MIT" */
-const describe = (e: ModelEntry) => [e.name, e.mb ? t('localModels.aboutSize', { size: size(e.mb) }) : '', e.licence].filter(Boolean).join(' · ');
 
 export const setModel = (task: ModelTask, id: string) => setPrefs({ models: { ...prefs.peek().models, [task]: id } });
 
@@ -55,60 +56,53 @@ const useCache = (): [CachedFile[], () => void] => {
   return [files, () => setRound((r) => r + 1)];
 };
 
-/** where the chosen model stands in this browser: its weight and a delete, or a download with its progress */
-function InCache({ model, files, changed }: { model: ModelEntry; files: CachedFile[]; changed: () => void }) {
-  const [progress, setProgress] = useState<number | null>(null);
-  const here = cachedOf(model, files);
-  const download = async () => {
-    setProgress(0);
-    try { await downloadModel(model, (loaded, total) => setProgress(total ? loaded / total : 0)); }
-    catch (e) { toast(t('localModels.downloadFailed', { name: model.name, error: (e as Error).message }), 'error'); }
-    finally { setProgress(null); changed(); }
-  };
-  const remove = async () => { await deleteCached(here.urls); changed(); };
-  return (
-    <div class="set-info">
-      <Icon name={here.bytes ? 'check' : progress !== null ? 'spinner' : 'download'} />
-      <span class="grow">
-        {here.bytes ? t('localModels.inThisBrowser', { size: bytes(here.bytes) })
-          : progress !== null ? t('localModels.downloading', { percent: Math.round(progress * 100) })
-          : t('localModels.notDownloaded')}
-      </span>
-      {here.bytes
-        ? <button class="btn ghost sm" onClick={remove}><Icon name="trash" />{t('common.delete')}</button>
-        : <button class="btn ghost sm" disabled={progress !== null} onClick={download}><Icon name="download" />{t('localModels.download')}</button>}
-    </div>
-  );
-}
-
+/**
+ * A task on one line: the model chosen, and under it its size (measured once
+ * it is here), its licence and where it stands in this browser; beside it a
+ * download, or a delete. A model other than the default says what to know of it.
+ */
 function ModelRow({ task, files, changed }: { task: ModelTask; files: CachedFile[]; changed: () => void }) {
+  const [progress, setProgress] = useState<number | null>(null);
   const chosen = resolveModel(task, prefs.value.models[task]);
   const list = modelsFor(task);
   const options: [string, string][] = list.map((e, i) => [e.id, i === 0 ? t('localModels.byDefault', { name: e.name }) : e.name]);
   if (!list.includes(chosen)) options.push([chosen.id, chosen.name]);
-  const note = NOTE[chosen.id];
+  const here = cachedOf(chosen, files);
+  const download = async () => {
+    setProgress(0);
+    try { await downloadModel(chosen, (loaded, total) => setProgress(total ? loaded / total : 0)); }
+    catch (e) { toast(t('localModels.downloadFailed', { name: chosen.name, error: (e as Error).message }), 'error'); }
+    finally { setProgress(null); changed(); }
+  };
+  const remove = async () => { await deleteCached(here.urls); changed(); };
+  const hint = [
+    here.bytes ? bytes(here.bytes) : chosen.mb ? t('localModels.aboutSize', { size: size(chosen.mb) }) : '',
+    chosen.licence,
+    here.bytes ? t('localModels.inThisBrowser') : progress !== null ? t('localModels.downloading', { percent: Math.round(progress * 100) }) : t('localModels.notDownloaded'),
+  ].filter(Boolean).join(' · ');
+  const warnings = chosen === list[0] ? [] : [
+    chosen.commercial === false ? t('localModels.notCommercial') : chosen.commercial === null ? t('localModels.ownLicence') : '',
+    chosen.checked ? '' : t('localModels.notTried'),
+    NOTE[chosen.id] ? t(NOTE[chosen.id]) : '',
+  ].filter(Boolean);
   return (
-    <Row label={t(TASK[task])} hint={t('localModels.defaultIs', { model: describe(list[0]) })} below={<>
-      {chosen !== list[0] && <div class="set-info">
-        <Icon name={chosen.commercial === false ? 'alert' : 'info'} />
-        <span>
-          {describe(chosen)}
-          {chosen.commercial === false && <> · {t('localModels.notCommercial')}</>}
-          {chosen.commercial === null && <> · {t('localModels.ownLicence')}</>}
-          {!chosen.checked && <> · {t('localModels.notTried')}</>}
-          {note && <> · {t(note)}</>}
-        </span>
-      </div>}
-      {task === 'transcription' && <div class="set-info"><Icon name="info" /><span>{t('localModels.transcriptionPaths')}</span></div>}
-      <InCache model={chosen} files={files} changed={changed} />
-    </>}>
-      <Select value={chosen.id} options={options} onChange={(id) => setModel(task, id)} />
+    <Row label={t(TASK[task])} hint={hint} below={warnings.length > 0 && <p class="set-note models-note">
+      {chosen.commercial === false && <Icon name="alert" />}{warnings.join(' · ')}
+    </p>}>
+      <div class="set-actions models-actions">
+        <Select value={chosen.id} options={options} onChange={(id) => setModel(task, id)} />
+        {here.bytes
+          ? <button class="icon-btn sm" title={t('common.delete')} aria-label={t('common.delete')} onClick={remove}><Icon name="trash" /></button>
+          : <button class="icon-btn sm" title={t('localModels.download')} aria-label={t('localModels.download')} disabled={progress !== null} onClick={download}><Icon name={progress !== null ? 'spinner' : 'download'} /></button>}
+      </div>
     </Row>
   );
 }
 
-/** a model hub id for a pipeline task: kept once it loaded and answered a blank input */
-function HubRow({ task }: { task: ModelTask }) {
+/** a model hub id for a task that goes through a pipeline: kept once it loaded and answered a blank input */
+function HubRow() {
+  const tasks = MODEL_TASKS.filter((task) => PIPELINE_OF[task]);
+  const [task, setTask] = useState(tasks[0]);
   const [id, setId] = useState('');
   const [trying, setTrying] = useState(false);
   const run = async () => {
@@ -125,9 +119,10 @@ function HubRow({ task }: { task: ModelTask }) {
     } finally { setTrying(false); }
   };
   return (
-    <Row label={t('localModels.hubModel', { task: t(TASK[task]) })} hint={t('localModels.hubModelHint')}>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <div class="field"><input value={id} placeholder="owner/model" spellcheck={false} onInput={(e) => setId((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') void run(); }} /></div>
+    <Row stack label={t('localModels.hubModel')} hint={t('localModels.hubModelHint')}>
+      <div class="set-pair models-hub">
+        <Select value={task} options={tasks.map((k) => [k, t(TASK[k])])} onChange={(k) => setTask(k as ModelTask)} />
+        <div class="field"><input value={id} placeholder="owner/model" spellcheck={false} aria-label={t('localModels.hubModel')} onInput={(e) => setId((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') void run(); }} /></div>
         <button class="btn sm" disabled={trying || !id.trim()} onClick={run}><Icon name={trying ? 'spinner' : 'check'} />{t('localModels.tryAndUse')}</button>
       </div>
     </Row>
@@ -154,11 +149,14 @@ export function LocalModels() {
   const [files, changed] = useCache();
   return (
     <>
-      <Section title={t('localModels.title')} hint={t('localModels.hint')}>
-        {MODEL_TASKS.map((task) => <ModelRow key={task} task={task} files={files} changed={changed} />)}
+      <Section title={t('localModels.picture')} hint={t('localModels.hint')}>
+        {PICTURE.map((task) => <ModelRow key={task} task={task} files={files} changed={changed} />)}
+      </Section>
+      <Section title={t('localModels.sound')} hint={t('localModels.soundHint')}>
+        {SOUND.map((task) => <ModelRow key={task} task={task} files={files} changed={changed} />)}
       </Section>
       <Section title={t('localModels.advanced')} hint={t('localModels.advancedHint')}>
-        {MODEL_TASKS.filter((task) => PIPELINE_OF[task]).map((task) => <HubRow key={task} task={task} />)}
+        <HubRow />
       </Section>
       <Others files={files} changed={changed} />
     </>

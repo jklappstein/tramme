@@ -225,6 +225,8 @@ export class Compositor {
   /** ping-pong targets of the GLSL finishing effects, made when first needed */
   private passTargets: Target[] = [];
   private custom = new Map<string, WebGLProgram | Error>();
+  /** where an ImageBitmap is drawn before its upload, made the first time one comes */
+  private bitmapPad: OffscreenCanvasRenderingContext2D | null = null;
 
   /**
    * preserve: keep the picture after it is shown (reading the canvas later);
@@ -305,6 +307,15 @@ export class Compositor {
   }
   private upload(tex: WebGLTexture, src: TexImageSource, premultiply: boolean) {
     const gl = this.gl;
+    // an ImageBitmap ignores the unpack flip and premultiplication (WebGL's rule): the sandbox's frames
+    // would land upside down. Drawn on a canvas first, it is uploaded like every other picture
+    if (typeof ImageBitmap !== 'undefined' && src instanceof ImageBitmap) {
+      const { width: w, height: h } = src;
+      if (!this.bitmapPad || this.bitmapPad.canvas.width !== w || this.bitmapPad.canvas.height !== h) this.bitmapPad = new OffscreenCanvas(w, h).getContext('2d')!;
+      this.bitmapPad.clearRect(0, 0, w, h);
+      this.bitmapPad.drawImage(src, 0, 0);
+      src = this.bitmapPad.canvas;
+    }
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premultiply);

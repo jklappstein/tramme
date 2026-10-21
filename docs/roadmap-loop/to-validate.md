@@ -427,12 +427,14 @@ its network policy) and has no GPU: no model was downloaded or run there.
 - **A newer version**: install 1.1 of a plugin a project copied at 1.0. The
   project's row offers "Use 1.1 here"; other projects keep 1.0.
 - **The sandbox for copies.** A project with a copied plugin draws through
-  the sandbox even with the experimental flag off. **To check:** in the
-  headless run, the "eyes" scene of the Evening Breeze example came out dark
-  blue in the filmstrip once drawn by the sandbox (pink on the page). The
-  sandbox's whole-frame render seems to miss something there, an effect or a
-  blend. Compare the page and the sandbox on that scene with the flag on
-  (Settings, Preview, sandbox) before shipping. The worker's CSP now allows
+  the sandbox even with the experimental flag off. The "eyes" scene of the
+  Evening Breeze example that came out dark blue in the filmstrip once drawn
+  by the sandbox (pink on the page) was most likely the frame upside down:
+  the sandbox hands back an ImageBitmap, which WebGL uploads without the
+  compositor's flip. Fixed (the bitmap is drawn on a canvas first) and
+  tested on the CLI with the `night-sky` fixture, the same as the page's
+  picture. Left: that scene in the editor, flag on (Settings, Preview,
+  sandbox), against the page. The worker's CSP now allows
   `eval` (expressions such as `frame + 1` failed in the sandbox without it).
 - **Permissions**: a plugin that declares `permissions.network:
   ['https://api.example.com']` gets `ctx.fetch` to that origin only from its
