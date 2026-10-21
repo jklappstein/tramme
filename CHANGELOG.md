@@ -8,6 +8,8 @@ Until 1.0.0, the document format and the APIs may still change between minor ver
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-21
+
 ### Added
 
 - **Time displacement**: the `time.shift` node reads a composition later in some places than in others: slit-scan along a side, a time ripple from the centre or the edges, or a liquid time in noise patches. It keeps a ring of past frames as a 3D texture and stays a pure function of time.
@@ -422,7 +424,8 @@ First public release.
 
 - Cloudflare Worker serving the editor and the API, projects stored in R2, access protected by Cloudflare Access.
 
-[Unreleased]: ../../compare/v0.11.1...HEAD
+[Unreleased]: ../../compare/v0.12.0...HEAD
+[0.12.0]: ../../compare/v0.11.1...v0.12.0
 [0.11.1]: ../../compare/v0.11.0...v0.11.1
 [0.11.0]: ../../compare/v0.10.0...v0.11.0
 [0.10.0]: ../../compare/v0.9.0...v0.10.0
